@@ -1,0 +1,232 @@
+"""认证相关的路由处理模块。
+
+这个模块包含了所有与用户认证相关的路由处理器，包括注册、登录、登出等功能。
+"""
+
+from datetime import datetime, timedelta
+from typing import Optional
+
+from fastapi import (APIRouter, Depends, HTTPException, Request, Response,
+                     status)
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from pydantic import BaseModel, EmailStr
+from redis import Redis
+from redis.connection import ConnectionPool
+from sqlalchemy.orm import Session
+
+from config import get_settings
+from database import get_db
+from models.users import User, UserStatus
+from services.auth import AuthService
+from services.email import email_service
+from services.session import get_current_user, session_manager
+
+settings = get_settings()
+
+# 创建Redis连接池
+redis_pool = ConnectionPool(
+    host=settings.REDIS_HOST,
+    port=settings.REDIS_PORT,
+    db=settings.REDIS_DB,
+    password=settings.REDIS_PASSWORD,
+    decode_responses=True,
+)
+
+# 创建Redis客户端
+redis_client = Redis(connection_pool=redis_pool)
+
+# 创建认证服务实例
+auth_service = AuthService(redis_client)
+
+router = APIRouter(prefix="/auth", tags=["authentication"])
+
+
+class UserRegisterRequest(BaseModel):
+    email: EmailStr
+    username: str
+    password: str
+    full_name: Optional[str] = None
+
+
+class VerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class VerificationConfirmRequest(BaseModel):
+    email: EmailStr
+    code: str
+    username: str
+    password: str
+    full_name: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    username: str
+    full_name: Optional[str]
+    status: UserStatus
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+class Token(BaseModel):
+    """令牌模型类。
+
+    用于返回JWT令牌信息。
+    """
+
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    """令牌数据模型类。
+
+    用于存储JWT令牌中的用户信息。
+    """
+
+    username: Optional[str] = None
+
+
+class UserBase(BaseModel):
+    """用户基础模型类。
+
+    包含用户的基本信息字段。
+    """
+
+    username: str
+    email: EmailStr
+
+
+@router.post("/register/request-verification")
+async def request_verification(
+    request: VerificationRequest, db: Session = Depends(get_db)
+):
+    """请求发送验证码"""
+    # 检查邮箱是否已被注册
+    if db.query(User).filter(User.email == request.email).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="该邮箱已被注册"
+        )
+
+    # 生成验证码
+    code = auth_service.generate_verification_code()
+
+    # 保存验证码
+    auth_service.save_verification_code(request.email, code)
+
+    # 发送验证码邮件
+    if not email_service.send_verification_code(request.email, code):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="验证码发送失败",
+        )
+
+    return {"message": "验证码已发送到您的邮箱"}
+
+
+@router.post("/register/verify", response_model=UserResponse)
+async def verify_and_register(
+    request: VerificationConfirmRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """验证验证码并完成注册"""
+    # 验证验证码
+    if not auth_service.verify_code(request.email, request.code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="验证码无效或已过期",
+        )
+
+    # 注册用户
+    user = auth_service.register_user(
+        db,
+        request.email,
+        request.username,
+        request.password,
+        request.full_name,
+    )
+
+    # 激活用户
+    user = auth_service.activate_user(db, user.id)
+
+    # 创建会话
+    session_id = session_manager.create_session({"user_id": user.id})
+    response.set_cookie(
+        key=session_manager.cookie_name,
+        value=session_id,
+        httponly=True,
+        max_age=60 * 60 * 24 * 7,  # 7天
+        samesite="lax",
+    )
+
+    return user
+
+
+@router.post("/login", response_model=UserResponse)
+async def login(
+    request: LoginRequest, response: Response, db: Session = Depends(get_db)
+):
+    """用户登录"""
+    user = auth_service.authenticate_user(db, request.email, request.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="邮箱或密码错误"
+        )
+
+    if user.status != UserStatus.ACTIVE:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号未激活")
+
+    # 更新最后登录时间
+    user.last_login = datetime.utcnow()
+    db.commit()
+
+    # 创建会话
+    session_id = session_manager.create_session({"user_id": user.id})
+    response.set_cookie(
+        key=session_manager.cookie_name,
+        value=session_id,
+        httponly=True,
+        max_age=60 * 60 * 24 * 7,  # 7天
+        samesite="lax",
+    )
+
+    return user
+
+
+@router.post("/logout")
+async def logout(
+    response: Response,
+    request: Request,
+    current_user_id: int = Depends(get_current_user),
+):
+    """用户登出"""
+    session_id = request.cookies.get(session_manager.cookie_name)
+    if session_id:
+        session_manager.delete_session(session_id)
+
+    response.delete_cookie(session_manager.cookie_name)
+    return {"message": "已成功登出"}
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(
+    current_user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """获取当前用户信息"""
+    user = db.query(User).filter(User.id == current_user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+    return user
