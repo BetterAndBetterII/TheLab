@@ -1,0 +1,65 @@
+.container {
+  width: 100%;
+  height: 100%;
+  background-color: #f8f9fa;
+  padding: 20px 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  margin-bottom: 20px;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.list {
+  width: 100%;
+}
+
+.listItem {
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.listItem:hover {
+  background-color: #f0f0f0;
+}
+
+.sessionInfo {
+  width: 100%;
+}
+
+.sessionTitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.sessionMeta {
+  display: flex;
+  justify-content: space-between;
+  color: #666;
+  font-size: 14px;
+}
+
+.lastMessage {
+  color: #999;
+}
+
+.time {
+  color: #999;
+}
+
+.empty {
+  margin-top: 40px;
+}

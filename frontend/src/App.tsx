@@ -1,30 +1,22 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Layout } from 'antd';
-import Home from './pages/Home';
-import About from './pages/About';
-import Navbar from './components/Navbar';
+import React from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import AppRoutes from './routes';
+import styles from './App.module.css';
 
-const { Header, Content, Footer } = Layout;
-
-function App() {
+const App: React.FC = () => {
   return (
     <Router>
-      <Layout className="layout" style={{ minHeight: '100vh' }}>
-        <Header style={{ padding: 0 }}>
-          <Navbar />
-        </Header>
-        <Content style={{ padding: '24px 50px' }}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-          </Routes>
-        </Content>
-        <Footer style={{ textAlign: 'center' }}>
-          TheLab ©{new Date().getFullYear()} Created by Your Name
-        </Footer>
-      </Layout>
+      <AuthProvider>
+        <div className={styles.layout}>
+          {/* 右侧主内容区域 */}
+          <main className={styles.main}>
+            <AppRoutes />
+          </main>
+        </div>
+      </AuthProvider>
     </Router>
   );
-}
+};
 
 export default App;

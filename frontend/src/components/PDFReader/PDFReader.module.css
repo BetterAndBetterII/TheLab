@@ -1,0 +1,709 @@
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  position: relative;
+  background-color: #f8f9fa;
+  justify-content: flex-start;
+}
+
+.pdfContainer {
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  border-right: none;
+  box-sizing: border-box;
+  min-width: 200px;
+}
+
+/* 拖拽分隔条 */
+.resizer {
+  width: 4px;
+  height: 100%;
+  background-color: #e0e0e0;
+  cursor: col-resize;
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+.resizer:hover,
+.resizer.dragging {
+  background-color: #1976d2;
+}
+
+/* 高亮目标样式 */
+.highlightTarget {
+  position: absolute;
+  background: white;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  z-index: 1000;
+  transform: translateY(-100%);
+  margin-top: 36px;
+}
+
+.highlightTarget:hover {
+  background: #f8f9fa;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-100%) scale(1.02);
+}
+
+.highlightTargetInner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1976d2;
+}
+
+.highlightTargetInner :global(.rpv-core-annotation-popup-wrapper) {
+  display: flex;
+  align-items: center;
+  transform: scale(1.3);
+}
+
+.highlightTargetText {
+  font-size: 15px;
+  white-space: nowrap;
+  color: #333;
+  font-weight: 500;
+}
+
+/* 高亮内容样式 */
+.highlightContent {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  width: 320px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.highlightContent textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  resize: vertical;
+  font-size: 14px;
+  line-height: 1.5;
+  transition: border-color 0.2s ease;
+}
+
+.highlightContent textarea:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+}
+
+.highlightButtons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.highlightButtons button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.highlightButtons button:first-child {
+  background: #1976d2;
+  color: white;
+}
+
+.highlightButtons button:first-child:hover {
+  background: #1565c0;
+}
+
+.highlightButtons button:last-child {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.highlightButtons button:last-child:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+/* 添加动画效果 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-110%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-100%);
+  }
+}
+
+.highlightTarget {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* 批注面板样式 */
+.notesPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #e0e0e0;
+  background: #fff;
+  overflow: hidden;
+}
+
+.tabsContainer {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f5f5f5;
+}
+
+.tab {
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.tab::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: #1890ff;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(-50%);
+}
+
+.tab:hover::before {
+  width: 100%;
+}
+
+.activeTab::before {
+  width: 100%;
+}
+
+.activeTab {
+  color: #1890ff;
+  font-weight: 500;
+}
+
+.activeTab::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #1890ff;
+  transform-origin: center;
+  animation: tabActivate 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes tabActivate {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.tabContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  position: relative;
+}
+
+/* Tab切换动画 */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+
+.notesList,
+.chatContainer,
+.flowContainer,
+.quizContainer {
+  animation: fadeSlideIn 0.3s ease-out forwards;
+}
+
+/* 美化空状态动画 */
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #999;
+  font-size: 14px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.notesPanel h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #333;
+  padding-bottom: 8px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.notesList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 8px;  /* 为滚动条预留空间 */
+}
+
+/* 美化滚动条 */
+.notesList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notesList::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.notesList::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.notesList::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.noteItem {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.noteItem:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: #1976d2;
+}
+
+.noteHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pageInfo {
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.noteQuote {
+  font-size: 14px;
+  color: #666;
+  background: #f8f9fa;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  border-left: 3px solid #1976d2;
+}
+
+.noteContent {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+}
+
+.deleteNote {
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.deleteNote:hover {
+  background: #fff5f5;
+}
+
+.emptyNotes {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.toggleButton {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) translateX(-100%);
+  writing-mode: vertical-rl;
+  padding: 10px 5px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-right: none;
+  cursor: pointer;
+  border-radius: 4px 0 0 4px;
+}
+
+.notesInput {
+  margin-bottom: 20px;
+}
+
+.notesInput textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  resize: vertical;
+}
+
+.notesInput button {
+  width: 100%;
+  padding: 8px;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.notesInput button:hover {
+  background: #1565c0;
+}
+
+.noteItem p {
+  margin: 0 0 5px 0;
+}
+
+.noteItem small {
+  color: #666;
+  font-size: 0.8em;
+}
+
+.annotationLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.annotationModeActive {
+  cursor: crosshair;
+}
+
+/* 工具栏样式 */
+.toolbar {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 3;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.toolbar.collapsed {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.toolbar.expanded {
+  min-width: 120px;
+}
+
+.toggleToolbarButton {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  border-radius: 4px;
+}
+
+.toggleToolbarButton:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.toolbarButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #666;
+  border-radius: 4px;
+  width: 100%;
+  text-align: left;
+}
+
+.toolbarButton:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.toolbarButton.active {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.annotationPopup {
+  position: absolute;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 2;
+  min-width: 200px;
+  transform: translate(10px, -50%);
+}
+
+.annotationPopup textarea {
+  width: 100%;
+  min-height: 80px;
+  margin-bottom: 8px;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.annotationPopup button {
+  margin-right: 8px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: #1976d2;
+  color: white;
+  cursor: pointer;
+}
+
+.annotationPopup button:last-child {
+  margin-right: 0;
+  background: #666;
+}
+
+.annotationPopup button:hover {
+  opacity: 0.9;
+}
+
+.highlightArea {
+  transition: all 0.2s ease;
+}
+
+.highlightArea:hover {
+  background: rgba(255, 255, 0, 0.4) !important;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.chatInput {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  border-top: 1px solid #e0e0e0;
+  background: #fff;
+}
+
+.chatInput .input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.chatInput .input:focus {
+  outline: none;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.chatInput .input:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.chatInput .sendButton {
+  padding: 0 24px;
+  border: none;
+  border-radius: 8px;
+  background: #1890ff;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.chatInput .sendButton:hover:not(:disabled) {
+  background: #40a9ff;
+}
+
+.chatInput .sendButton:disabled {
+  background: #d9d9d9;
+  cursor: not-allowed;
+}
+
+/* 聊天输入框容器 */
+.chatInputContainer {
+  position: fixed;
+  bottom: -100px; /* 默认隐藏 */
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  transition: bottom 0.3s ease;
+  z-index: 1000;
+  width: 500px;
+  max-width: 90vw;
+}
+
+.chatInputContainer.visible {
+  bottom: 20px;
+}
+
+.chatForm {
+  display: flex;
+  gap: 8px;
+}
+
+.chatInput {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  min-height: 45px;
+  max-height: 150px;
+  resize: vertical;
+}
+
+.chatInput:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+}
+
+.sendButton {
+  padding: 8px 16px;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  height: 45px;
+}
+
+.sendButton:hover {
+  background: #1565c0;
+}
+
+/* 显示按钮 */
+.showInputButton {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: #1976d2;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  z-index: 1000;
+}
+
+.showInputButton:hover {
+  transform: scale(1.05);
+  background: #1565c0;
+}

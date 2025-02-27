@@ -1,0 +1,211 @@
+.quizPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.pageTitle {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.retryButton {
+  padding: 8px 16px;
+  border: 2px solid #1976d2;
+  border-radius: 8px;
+  background: white;
+  color: #1976d2;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retryButton:hover:not(:disabled) {
+  background: #1976d2;
+  color: white;
+  transform: translateY(-2px);
+}
+
+.retryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #ccc;
+  color: #999;
+}
+
+.questions {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.questionCard {
+  background: #f8f9fa;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.questionCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.questionText {
+  font-size: 18px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 16px;
+  color: #333;
+  width: 100%;
+  text-align: left;
+}
+
+.option:hover:not(:disabled) {
+  border-color: #1976d2;
+  background: rgba(25, 118, 210, 0.05);
+  transform: translateX(4px);
+}
+
+.option:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.optionLabel {
+  width: 28px;
+  height: 28px;
+  background: #f0f0f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #666;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.optionText {
+  flex: 1;
+}
+
+.correct {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.05);
+  animation: correctAnswer 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.correct .optionLabel {
+  background: #4caf50;
+  color: white;
+}
+
+.incorrect {
+  border-color: #f44336;
+  background: rgba(244, 67, 54, 0.05);
+  animation: incorrectAnswer 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.incorrect .optionLabel {
+  background: #f44336;
+  color: white;
+}
+
+.congratulations {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: #4caf50;
+  margin-top: 20px;
+  animation: congratsAppear 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes correctAnswer {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes incorrectAnswer {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-4px);
+  }
+  40%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes congratsAppear {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 滚动条样式 */
+.quizPanel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.quizPanel::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.quizPanel::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.quizPanel::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

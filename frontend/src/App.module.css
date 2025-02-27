@@ -1,0 +1,21 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f3f4f6;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  width: 100%;
+  transition: margin-left 0.3s;
+}
+
+/* 移动端样式 */
+@media (max-width: 768px) {
+  .main {
+    margin-left: 0;
+    padding: 1rem;
+  }
+}
