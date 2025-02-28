@@ -1,14 +1,5 @@
 # TheLab - AI文档处理系统
 
-<div align="center">
-
-![版本](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![许可证](https://img.shields.io/badge/license-MIT-green.svg)
-![Python版本](https://img.shields.io/badge/python-3.11+-yellow.svg)
-![测试覆盖率](https://img.shields.io/badge/coverage-85%25-brightgreen.svg)
-
-</div>
-
 ## 项目简介
 
 TheLab 是一个基于 FastAPI 的 AI 文档处理系统，提供文档上传、文本提取、智能分析、翻译等功能。系统采用现代化的技术栈，支持多种 AI 模型，并具有良好的可扩展性。
@@ -140,55 +131,10 @@ graph LR
 - [ ] 离线处理支持
 - [ ] 更多AI模型集成
 
-## 贡献者
-
-感谢以下贡献者的支持：
-
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/username1">
-        <img src="https://github.com/username1.png" width="100px;" alt=""/>
-        <br />
-        <sub><b>开发者1</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/username2">
-        <img src="https://github.com/username2.png" width="100px;" alt=""/>
-        <br />
-        <sub><b>开发者2</b></sub>
-      </a>
-    </td>
-  </tr>
-</table>
-
 ## 许可证
 
 本项目采用 MIT 许可证，详见 [LICENSE](LICENSE) 文件。
 
-## 联系我们
-
-- 问题反馈：[GitHub Issues](https://github.com/yourusername/TheLab/issues)
-- 邮件联系：support@example.com
-- 技术讨论：[GitHub Discussions](https://github.com/yourusername/TheLab/discussions)
-
-## 赞助商
-
-感谢以下赞助商的支持：
-
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://sponsor1.com">
-        <img src="docs/images/sponsor1.png" width="120px;" alt=""/>
-        <br />
-        <sub><b>赞助商1</b></sub>
-      </a>
-    </td>
-  </tr>
-</table>
-
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/TheLab&type=Date)](https://star-history.com/#yourusername/TheLab&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=betterandbetterii/TheLab&type=Date)](https://star-history.com/#betterandbetterii/TheLab&Date)
