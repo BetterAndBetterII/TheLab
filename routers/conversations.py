@@ -12,8 +12,9 @@ from sqlalchemy.orm import Session
 
 from database import Conversation, Document, Message, get_db
 from models.users import User
-from services.conversation_enhancer import (ConversationEnhancer,
-                                            EnhancementType)
+
+# from services.conversation_enhancer import (ConversationEnhancer,
+#                                             EnhancementType)
 from services.session import get_current_user
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
@@ -50,7 +51,8 @@ class MessageResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+        arbitrary_types_allowed = True
 
 
 class ConversationResponse(BaseModel):
@@ -67,34 +69,35 @@ class ConversationResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+        arbitrary_types_allowed = True
 
 
-class EnhanceRequest(BaseModel):
-    conversation_id: int
-    message_id: int
-    enhancement_types: List[EnhancementType]
+# class EnhanceRequest(BaseModel):
+#     conversation_id: int
+#     message_id: int
+#     enhancement_types: List[EnhancementType]
 
 
-class EnhanceResponse(BaseModel):
-    conversation_id: int
-    message_id: int
-    enhancements: List[dict]
+# class EnhanceResponse(BaseModel):
+#     conversation_id: int
+#     message_id: int
+#     enhancements: List[dict]
 
 
-class PageEnhanceRequest(BaseModel):
-    conversation_id: int
-    document_id: int
-    page: int
-    enhancement_types: List[EnhancementType]
-    window_size: Optional[int] = 3
+# class PageEnhanceRequest(BaseModel):
+#     conversation_id: int
+#     document_id: int
+#     page: int
+#     enhancement_types: List[EnhancementType]
+#     window_size: Optional[int] = 3
 
 
-class PageEnhanceResponse(BaseModel):
-    conversation_id: int
-    document_id: int
-    page: int
-    enhancements: List[dict]
+# class PageEnhanceResponse(BaseModel):
+#     conversation_id: int
+#     document_id: int
+#     page: int
+#     enhancements: List[dict]
 
 
 @router.post("", response_model=ConversationResponse)
@@ -211,64 +214,64 @@ async def delete_conversation(conversation_id: int, db: Session = Depends(get_db
     return {"message": "对话已删除"}
 
 
-@router.post("/enhance-page", response_model=PageEnhanceResponse)
-async def enhance_page(
-    request: PageEnhanceRequest,
-    db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user),
-):
-    """增强文档指定页面的内容"""
-    # 获取用户
-    user = db.query(User).filter(User.id == current_user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
-
-    # 获取对话
-    conversation = (
-        db.query(Conversation)
-        .filter(Conversation.id == request.conversation_id)
-        .first()
-    )
-    if not conversation:
-        raise HTTPException(status_code=404, detail="对话不存在")
-
-    # 获取文档
-    document = db.query(Document).filter(Document.id == request.document_id).first()
-    if not document:
-        raise HTTPException(status_code=404, detail="文档不存在")
-
-    # 验证页码
-    if request.page < 1 or request.page > document.total_pages:
-        raise HTTPException(status_code=400, detail="无效的页码")
-
-    # 创建增强器
-    enhancer = ConversationEnhancer(user=user)
-
-    # 执行增强
-    enhancements = await enhancer.batch_enhance_page(
-        document=document,
-        page=request.page,
-        enhancement_types=request.enhancement_types,
-        window_size=request.window_size,
-    )
-
-    # 为每个增强结果创建新的AI消息
-    for enhancement in enhancements:
-        if enhancement["status"] == "success":
-            message = Message(
-                conversation_id=request.conversation_id,
-                content=f"[第 {request.page} 页 - {enhancement['type']}]\n\n{enhancement['result']}",
-                is_ai=True,
-                position_x=0,  # 可以根据需要设置位置
-                position_y=0,
-            )
-            db.add(message)
-
-    db.commit()
-
-    return {
-        "conversation_id": request.conversation_id,
-        "document_id": request.document_id,
-        "page": request.page,
-        "enhancements": enhancements,
-    }
+# @router.post("/enhance-page", response_model=PageEnhanceResponse)
+# async def enhance_page(
+#     request: PageEnhanceRequest,
+#     db: Session = Depends(get_db),
+#     current_user_id: int = Depends(get_current_user),
+# ):
+#     """增强文档指定页面的内容"""
+#     # 获取用户
+#     user = db.query(User).filter(User.id == current_user_id).first()
+#     if not user:
+#         raise HTTPException(status_code=404, detail="用户不存在")
+#
+#     # 获取对话
+#     conversation = (
+#         db.query(Conversation)
+#         .filter(Conversation.id == request.conversation_id)
+#         .first()
+#     )
+#     if not conversation:
+#         raise HTTPException(status_code=404, detail="对话不存在")
+#
+#     # 获取文档
+#     document = db.query(Document).filter(Document.id == request.document_id).first()
+#     if not document:
+#         raise HTTPException(status_code=404, detail="文档不存在")
+#
+#     # 验证页码
+#     if request.page < 1 or request.page > document.total_pages:
+#         raise HTTPException(status_code=400, detail="无效的页码")
+#
+#     # 创建增强器
+#     enhancer = ConversationEnhancer(user=user)
+#
+#     # 执行增强
+#     enhancements = await enhancer.batch_enhance_page(
+#         document=document,
+#         page=request.page,
+#         enhancement_types=request.enhancement_types,
+#         window_size=request.window_size,
+#     )
+#
+#     # 为每个增强结果创建新的AI消息
+#     for enhancement in enhancements:
+#         if enhancement["status"] == "success":
+#             message = Message(
+#                 conversation_id=request.conversation_id,
+#                 content=f"[第 {request.page} 页 - {enhancement['type']}]\n\n{enhancement['result']}",
+#                 is_ai=True,
+#                 position_x=0,  # 可以根据需要设置位置
+#                 position_y=0,
+#             )
+#             db.add(message)
+#
+#     db.commit()
+#
+#     return {
+#         "conversation_id": request.conversation_id,
+#         "document_id": request.document_id,
+#         "page": request.page,
+#         "enhancements": enhancements,
+#     }

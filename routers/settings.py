@@ -28,7 +28,7 @@ class AISettingsResponse(BaseModel):
     temperature: Optional[float]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 @router.get("/ai", response_model=AISettingsResponse)

@@ -1,22 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './Chat.module.css';
 import PDFReader from '../../components/PDFReader';
 import ChatList, { ChatSession } from '../../components/ChatList';
-import pdfUrl from '../../assets/2501.12948v1.pdf';
+import { useParams, useNavigate } from 'react-router-dom';
+import { BASE_URL } from '../../api';
 
 const Chat: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const { conversationId } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (conversationId) {
+      setPdfUrl(`${BASE_URL}/documents/${conversationId}/download`);
+    }
+  }, [conversationId]);
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
 
   const handleSelectSession = (session: ChatSession) => {
-    setSelectedSession(session);
+    navigate(`/chat/${session.id}`);
   };
 
-  if (!selectedSession) {
+  if (!conversationId) {
     return <ChatList onSelectSession={handleSelectSession} />;
   }
 
@@ -25,7 +34,7 @@ const Chat: React.FC = () => {
       <div className={styles.content}>
         <div className={styles.pdfContainer}>
           <PDFReader
-            pdfUrl={pdfUrl}
+            pdfUrl={pdfUrl || ''}
             onPageChange={handlePageChange}
           />
         </div>

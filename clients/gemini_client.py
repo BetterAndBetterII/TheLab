@@ -9,10 +9,12 @@ from google.ai import generativelanguage as glm
 from PIL import Image
 
 from database import ApiKey
+from clients.llm_client import LLMClient
 
 
-class GeminiClient:
+class GeminiClient(LLMClient):
     def __init__(self, api_key=None, base_url=None):
+        super().__init__(api_key, base_url)
         # 初始化Gemini API配置
         self.api_key = api_key if api_key else os.getenv("GEMINI_API_KEY")
         self.base_url = base_url if base_url else os.getenv("GEMINI_API_BASE")

@@ -44,7 +44,7 @@ class ReplyResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TopicResponse(BaseModel):
@@ -61,7 +61,7 @@ class TopicResponse(BaseModel):
     replies: List[ReplyResponse]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # 路由处理函数

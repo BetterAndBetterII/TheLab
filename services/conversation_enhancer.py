@@ -6,11 +6,9 @@
 from enum import Enum
 from typing import Dict, List, Optional
 
-from clients.client_pool import ClientPool
 from clients.gemini_client import GeminiClient
 from clients.openai_client import OpenAIClient
 from database import Conversation, Document, Message, Session
-from models.conversations import ConversationCreate, MessageCreate
 from models.users import User
 
 

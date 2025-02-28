@@ -3,13 +3,24 @@
 这个模块包含了所有数据库相关的模型定义和数据库会话管理功能。
 """
 
-import datetime
 import enum
-from typing import Generator, Optional
+from datetime import datetime
 
-from sqlalchemy import (JSON, Boolean, Column, DateTime, Enum, Float,
-                        ForeignKey, Integer, LargeBinary, String, Table, Text,
-                        create_engine)
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+    Table,
+    Text,
+    create_engine,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -31,6 +42,10 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+
+# 导入所有模型以确保它们在创建表时被注册
+from models.users import User
 
 
 class ProcessingStatus(enum.Enum):
@@ -56,14 +71,15 @@ class Folder(Base):
     name = Column(String, index=True)
     path = Column(String, index=True, unique=True)  # 完整路径，如 "/文档/工作"
     parent_id = Column(Integer, ForeignKey("folders.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.now)
-    updated_at = Column(
-        DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now
-    )
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # 修改为外键
+    is_folder = Column(Boolean, default=True)  # 添加类型标识字段
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     # 关系
     parent = relationship("Folder", remote_side=[id], backref="subfolders")
     documents = relationship("Document", back_populates="folder")
+    owner = relationship("User", back_populates="folders")
 
 
 class ApiKey(Base):
@@ -77,10 +93,25 @@ class ApiKey(Base):
     name = Column(String)
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.datetime.now)
+    created_at = Column(DateTime, default=datetime.now)
     last_used_at = Column(DateTime, nullable=True)
     last_error_message = Column(Text, nullable=True)
     counter = Column(Integer, default=0)
+
+
+class ProcessingRecord(Base):
+    __tablename__ = "processing_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id"))
+    file_hash = Column(String, index=True)  # 文件内容的哈希值
+    version = Column(Integer, default=1)  # 处理版本号
+    processor_version = Column(String)  # 处理器版本
+    processing_config = Column(JSON)  # 处理配置
+    created_at = Column(DateTime, default=datetime.now)
+
+    # 关系
+    document = relationship("Document", back_populates="processing_records")
 
 
 class Document(Base):
@@ -96,6 +127,10 @@ class Document(Base):
     content_type = Column(String)
     file_data = Column(LargeBinary)  # 存储原始文件二进制数据
     file_size = Column(Integer)  # 文件大小（字节）
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # 修改为外键
+    path = Column(String)  # 添加路径字段
+    is_folder = Column(Boolean, default=False)  # 添加类型标识字段
+    mime_type = Column(String)  # 添加MIME类型字段
 
     # 分页文本内容，格式：{"1": "第一页内容", "2": "第二页内容", ...}
     content_pages = Column(JSON, default=dict)
@@ -119,19 +154,20 @@ class Document(Base):
     folder_id = Column(Integer, ForeignKey("folders.id"))
     folder = relationship("Folder", back_populates="documents")
 
+    # 用户关联
+    owner = relationship("User", back_populates="documents")
+
     # 时间戳
-    created_at = Column(DateTime, default=datetime.datetime.now)
-    updated_at = Column(
-        DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now
-    )
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     processed_at = Column(DateTime, nullable=True)
 
+    # 关系
     conversations = relationship(
         "Conversation",
         secondary=conversation_documents,
         back_populates="documents",
     )
-
     processing_records = relationship(
         "ProcessingRecord",
         back_populates="document",
@@ -165,10 +201,8 @@ class Conversation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String)
-    created_at = Column(DateTime, default=datetime.datetime.now)
-    updated_at = Column(
-        DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now
-    )
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     documents = relationship(
         "Document",
@@ -194,32 +228,41 @@ class Message(Base):
     is_ai = Column(Boolean, default=False)
     position_x = Column(Float)
     position_y = Column(Float)
-    created_at = Column(DateTime, default=datetime.datetime.now)
-    updated_at = Column(
-        DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now
-    )
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     conversation = relationship("Conversation", back_populates="messages")
 
 
-class ProcessingRecord(Base):
-    __tablename__ = "processing_records"
-
-    id = Column(Integer, primary_key=True, index=True)
-    document_id = Column(Integer, ForeignKey("documents.id"))
-    file_hash = Column(String, index=True)  # 文件内容的哈希值
-    version = Column(Integer, default=1)  # 处理版本号
-    processor_version = Column(String)  # 处理器版本
-    processing_config = Column(JSON)  # 处理配置
-    created_at = Column(DateTime, default=datetime.datetime.now)
-
-    # 关系
-    document = relationship("Document", backref="processing_records")
-
-
 # 创建数据库表
 def create_tables():
-    Base.metadata.create_all(bind=engine)
+    """创建所有数据库表"""
+    # 如果表存在，则不删除
+    Base.metadata.drop_all(bind=engine)  # 删除所有表
+    Base.metadata.create_all(bind=engine)  # 创建所有表
+    initialize_database()  # 初始化数据
+
+
+def initialize_database():
+    """初始化数据库数据"""
+    db = SessionLocal()
+    try:
+        # 检查是否已存在系统用户
+        system_user = db.query(User).filter(User.username == "system").first()
+        if not system_user:
+            # 创建系统用户
+            system_user = User(
+                username="system",
+                email="system@example.com",
+                hashed_password=User.get_password_hash("SYSTEM"),
+                is_active=True,
+                is_superuser=True,
+            )
+            db.add(system_user)
+            db.commit()
+            db.refresh(system_user)
+    finally:
+        db.close()
 
 
 # 获取数据库会话

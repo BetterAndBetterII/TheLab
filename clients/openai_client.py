@@ -7,31 +7,33 @@ from typing import Literal
 import openai
 from PIL import Image
 
-from clients.gemini_client import GeminiClient
+from clients.llm_client import LLMClient
 from database import ApiKey
 from models.users import AIProvider, User
 
 
-class OpenAIClient(GeminiClient):
+class OpenAIClient(LLMClient):
     def __init__(self, user: User = None):
         """
         初始化OpenAI客户端
         :param user: 用户对象，包含AI服务配置
         """
         if user and user.ai_provider == AIProvider.OPENAI:
-            self.api_key = user.ai_api_key
-            self.base_url = user.ai_base_url or os.getenv(
+            api_key = user.ai_api_key
+            base_url = user.ai_base_url or os.getenv(
                 "OPENAI_API_BASE", "https://api.openai.com/v1"
             )
             self.model = user.ai_model or "gpt-4"
             self.max_tokens = user.ai_max_tokens or 500
             self.temperature = user.ai_temperature or 0.7
         else:
-            self.api_key = os.getenv("OPENAI_API_KEY")
-            self.base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+            api_key = os.getenv("OPENAI_API_KEY")
+            base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
             self.model = os.getenv("OPENAI_MODEL", "gpt-4")
             self.max_tokens = int(os.getenv("OPENAI_MAX_TOKENS", "500"))
             self.temperature = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
+
+        super().__init__(api_key, base_url)
 
         try:
             self.api_key_model = ApiKey.objects.get(key=self.api_key)

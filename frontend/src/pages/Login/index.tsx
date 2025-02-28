@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
 import Loading from '../../components/Loading';
+import { authApi } from '../../api';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ const Login: React.FC = () => {
   const [errors, setErrors] = useState({
     email: '',
     password: '',
+    general: '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -25,6 +27,7 @@ const Login: React.FC = () => {
     setErrors((prev) => ({
       ...prev,
       [name]: '',
+      general: '',
     }));
   };
 
@@ -32,43 +35,49 @@ const Login: React.FC = () => {
     const newErrors = {
       email: '',
       password: '',
+      general: '',
     };
     let isValid = true;
 
-    // 开发模式：跳过邮箱验证
-    if (!formData.email && process.env.NODE_ENV !== 'development') {
+    if (!formData.email) {
       newErrors.email = '请输入邮箱';
       isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(formData.email) && process.env.NODE_ENV !== 'development') {
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = '请输入有效的邮箱地址';
       isValid = false;
     }
 
-    // 开发模式：跳过密码验证
-    if (!formData.password && process.env.NODE_ENV !== 'development') {
+    if (!formData.password) {
       newErrors.password = '请输入密码';
-      isValid = false;
-    } else if (formData.password.length < 6 && process.env.NODE_ENV !== 'development') {
-      newErrors.password = '密码长度至少为6位';
       isValid = false;
     }
 
     setErrors(newErrors);
-    return isValid || process.env.NODE_ENV === 'development';
+    return isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 开发模式：直接通过验证
-    if (process.env.NODE_ENV === 'development' || validateForm()) {
+    if (validateForm()) {
       setLoading(true);
       try {
-        // 开发模式：设置模拟token
-        localStorage.setItem('token', 'dev-token');
-        navigate('/');
+        const user = await authApi.login(formData);
+        if (user) {
+          // 登录成功后跳转到首页
+          window.location.href = "/";
+        } else {
+          setErrors(prev => ({
+            ...prev,
+            general: '登录失败，请重试',
+          }));
+        }
       } catch (error) {
         console.error('Login failed:', error);
+        setErrors(prev => ({
+          ...prev,
+          general: error instanceof Error ? error.message : '登录失败，请重试',
+        }));
       } finally {
         setLoading(false);
       }
@@ -81,12 +90,16 @@ const Login: React.FC = () => {
         <div className={styles.header}>
           <div className={styles.logo}>TheLab</div>
           <h2 className={styles.title}>欢迎回来</h2>
-          <p className={styles.subtitle}>
-            {process.env.NODE_ENV === 'development' ? '开发模式：输入任意内容即可登录' : '请登录您的账号'}
-          </p>
+          <p className={styles.subtitle}>请登录您的账号</p>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
+          {errors.general && (
+            <div className={styles.errorMessage}>
+              {errors.general}
+            </div>
+          )}
+
           <div className={styles.formGroup}>
             <label htmlFor="email" className={styles.label}>
               邮箱

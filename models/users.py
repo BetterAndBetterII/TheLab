@@ -2,9 +2,10 @@ import enum
 from datetime import datetime
 
 from passlib.context import CryptContext
-from sqlalchemy import Boolean, Column, DateTime
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy import Enum as SQLAlchemyEnum
-from sqlalchemy import Float, Integer, String
+from sqlalchemy import Float
+from sqlalchemy.orm import relationship
 
 from database import Base
 
@@ -32,9 +33,12 @@ class User(Base):
     full_name = Column(String, nullable=True)
     status = Column(SQLAlchemyEnum(UserStatus), default=UserStatus.PENDING)
     is_superuser = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(
+        DateTime, default=datetime.now, onupdate=datetime.now
+    )
     last_login = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True)
 
     # AI服务配置
     ai_provider = Column(SQLAlchemyEnum(AIProvider), default=AIProvider.OPENAI)
@@ -43,6 +47,13 @@ class User(Base):
     ai_model = Column(String, nullable=True)
     ai_max_tokens = Column(Integer, default=500)
     ai_temperature = Column(Float, default=0.7)
+
+    # 关联到会话
+    sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
+
+    # 添加文档和文件夹的反向关系
+    documents = relationship("Document", back_populates="owner")
+    folders = relationship("Folder", back_populates="owner")
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:

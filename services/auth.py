@@ -39,7 +39,7 @@ class AuthService:
         stored_code = self.redis.get(key)
         if not stored_code:
             return False
-        return stored_code.decode() == code
+        return stored_code == code
 
     def create_access_token(self, data: dict) -> str:
         """创建访问令牌"""

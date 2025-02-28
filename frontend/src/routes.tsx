@@ -2,21 +2,20 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
-import FileList from './pages/FileList';
 import Forum from './pages/Forum';
 import PostDetail from './pages/PostDetail';
 import Email from './pages/Email';
 import Settings from './pages/Settings';
 import Chat from './pages/Chat';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Logout from './pages/Logout';
 import Search from './pages/Search';
 
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const isAuthenticated = !!localStorage.getItem('token');
-  return isAuthenticated ? <Layout>{children}</Layout> : <Navigate to="/login" />;
+  return <Layout>{children}</Layout>;
 };
 
 const AppRoutes: React.FC = () => {
@@ -24,6 +23,7 @@ const AppRoutes: React.FC = () => {
     <Routes>
       {/* Public routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/logout" element={<Logout />} />
 
       {/* Protected routes */}
@@ -32,14 +32,6 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <Home />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/files"
-        element={
-          <ProtectedRoute>
-            <FileList />
           </ProtectedRoute>
         }
       />

@@ -10,7 +10,6 @@ from routers import auth, conversations, documents, folders, forum, settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_tables()
     yield
 
 
