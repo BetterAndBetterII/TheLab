@@ -10,6 +10,8 @@ import Settings from './pages/Settings';
 import Chat from './pages/Chat';
 import Login from './pages/Login';
 import Logout from './pages/Logout';
+import Search from './pages/Search';
+
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -38,6 +40,14 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <FileList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/search"
+        element={
+          <ProtectedRoute>
+            <Search />
           </ProtectedRoute>
         }
       />

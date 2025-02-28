@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styles from './Navbar.module.css';
-import { FiHome, FiMail, FiMessageSquare, FiSettings, FiMenu, FiChevronLeft, FiChevronRight, FiUsers } from 'react-icons/fi';
+import { FiHome, FiMail, FiMessageSquare, FiSettings, FiMenu, FiChevronLeft, FiChevronRight, FiUsers, FiSearch } from 'react-icons/fi';
 
 export default function Navbar() {
   const location = useLocation();
@@ -14,6 +14,7 @@ export default function Navbar() {
   const menuItems = [
     { path: '/', icon: <FiHome size={20} />, label: '主页' },
     { path: '/chat', icon: <FiMessageSquare size={20} />, label: '聊天' },
+    { path: '/search', icon: <FiSearch size={20} />, label: '搜索' },
     { path: '/forum', icon: <FiUsers size={20} />, label: '论坛' },
     { path: '/email', icon: <FiMail size={20} />, label: '邮件' },
     { path: '/settings', icon: <FiSettings size={20} />, label: '设置' },
