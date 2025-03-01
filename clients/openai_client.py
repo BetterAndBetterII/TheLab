@@ -9,36 +9,20 @@ from PIL import Image
 
 from clients.llm_client import LLMClient
 from database import ApiKey
-from models.users import AIProvider, User
 
 
 class OpenAIClient(LLMClient):
-    def __init__(self, user: User = None):
+    def __init__(self, api_key=None, base_url=None, model=None, max_tokens=None, temperature=None):
         """
         初始化OpenAI客户端
-        :param user: 用户对象，包含AI服务配置
         """
-        if user and user.ai_provider == AIProvider.OPENAI:
-            api_key = user.ai_api_key
-            base_url = user.ai_base_url or os.getenv(
-                "OPENAI_API_BASE", "https://api.openai.com/v1"
-            )
-            self.model = user.ai_model or "gpt-4"
-            self.max_tokens = user.ai_max_tokens or 500
-            self.temperature = user.ai_temperature or 0.7
-        else:
-            api_key = os.getenv("OPENAI_API_KEY")
-            base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-            self.model = os.getenv("OPENAI_MODEL", "gpt-4")
-            self.max_tokens = int(os.getenv("OPENAI_MAX_TOKENS", "500"))
-            self.temperature = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
+        self.api_key = api_key if api_key else os.getenv("OPENAI_API_KEY")
+        self.base_url = base_url if base_url else os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+        self.model = model if model else os.getenv("OPENAI_MODEL", "gpt-4")
+        self.max_tokens = max_tokens if max_tokens else int(os.getenv("OPENAI_MAX_TOKENS", "500"))
+        self.temperature = temperature if temperature else float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
 
         super().__init__(api_key, base_url)
-
-        try:
-            self.api_key_model = ApiKey.objects.get(key=self.api_key)
-        except ApiKey.DoesNotExist:
-            self.api_key_model = None
 
         # 创建 OpenAI 模型客户端
         self.client = openai.Client(api_key=self.api_key, base_url=self.base_url)
@@ -74,6 +58,30 @@ class OpenAIClient(LLMClient):
         except Exception as e:
             self.update_api_key_error(str(e))
             return {"error": str(e)}
+        
+    def test_connection(self, standard_model, advanced_model):
+        """
+        测试OpenAI连接是否有效
+        """
+        response = self.client.chat.completions.create(
+            model=standard_model,
+            messages=[
+                {"role": "user", "content": "Hello"}
+            ],
+            max_tokens=500,
+        )
+        if response.choices[0].message.content is None:
+            raise Exception("标准模型测试失败")
+        response = self.client.chat.completions.create(
+            model=advanced_model,
+            messages=[
+                {"role": "user", "content": "Hello"}
+            ],
+            max_tokens=500,
+        )
+        if response.choices[0].message.content is None:
+            raise Exception("高级模型测试失败")
+        return True
 
     def chat_with_image(
         self,

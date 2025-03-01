@@ -9,10 +9,6 @@ class LLMClient(ABC):
     def __init__(self, api_key=None, base_url=None):
         self.api_key = api_key
         self.base_url = base_url
-        try:
-            self.api_key_model = ApiKey.objects.get(key=self.api_key)
-        except ApiKey.DoesNotExist:
-            self.api_key_model = None
 
     @abstractmethod
     def chat_with_text(self, message) -> dict:

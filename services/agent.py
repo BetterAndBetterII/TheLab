@@ -2,7 +2,6 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from clients.gemini_client import GeminiClient
 from clients.openai_client import OpenAIClient
 from database import get_db
 from models.forum import Reply, Topic, TopicCategory
@@ -27,8 +26,6 @@ class ForumAgent:
 
         if self.user.ai_provider == AIProvider.OPENAI:
             return OpenAIClient(user=self.user)
-        elif self.user.ai_provider == AIProvider.GEMINI:
-            return GeminiClient(user=self.user)
         else:
             return OpenAIClient()  # 默认使用OpenAI
 

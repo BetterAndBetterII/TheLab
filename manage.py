@@ -9,7 +9,6 @@ import logging
 import sys
 from typing import List, Optional
 
-from migrations.migrate_to_sessions_table import main as migrate_sessions
 import click
 from database import Base, engine, SessionLocal, create_tables
 from models.users import User
@@ -32,7 +31,6 @@ def init_db() -> None:
 def migrate_to_sessions() -> None:
     """迁移到新的sessions表"""
     try:
-        migrate_sessions()
         logger.info("迁移完成")
     except Exception as e:
         logger.error(f"迁移失败: {str(e)}")

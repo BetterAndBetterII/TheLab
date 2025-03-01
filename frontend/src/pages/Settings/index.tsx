@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import styles from './Settings.module.css';
-import { FiLogOut } from 'react-icons/fi';
+import { FiLogOut, FiAlertCircle } from 'react-icons/fi';
+import { settingsApi } from '../../api';
 
 interface UserSettings {
   email: string;
@@ -13,10 +14,11 @@ interface UserSettings {
   };
   theme: 'light' | 'dark' | 'system';
   language: string;
-  aiKeys: {
-    openai: string;
-    gemini: string;
-    deepseek: string;
+  aiConfig: {
+    apiKey: string;
+    baseUrl: string;
+    standardModel: string;
+    advancedModel: string;
   };
 }
 
@@ -32,16 +34,25 @@ const Settings: React.FC = () => {
     },
     theme: 'system',
     language: 'en',
-    aiKeys: {
-      openai: '',
-      gemini: '',
-      deepseek: '',
+    aiConfig: {
+      apiKey: '',
+      baseUrl: '',
+      standardModel: 'gemini-1.5-flash',
+      advancedModel: 'deepseek-r1',
     },
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
+  const [aiTesting, setAiTesting] = useState(false);
+  const [aiTestPassed, setAiTestPassed] = useState(false);
+  const [tempAiSettings, setTempAiSettings] = useState({
+    apiKey: '',
+    baseUrl: '',
+    standardModel: 'gemini-1.5-flash',
+    advancedModel: 'deepseek-r1',
+  });
 
   useEffect(() => {
     fetchSettings();
@@ -49,13 +60,56 @@ const Settings: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('/api/settings');
-      const data = await response.json();
-      setSettings(data);
+      const fetchedSettings = await settingsApi.getSettings();
+      setSettings({
+        ...fetchedSettings,
+        aiConfig: fetchedSettings.aiConfig || {
+          apiKey: '',
+          baseUrl: '',
+          standardModel: 'gemini-1.5-flash',
+          advancedModel: 'deepseek-r1',
+        },
+      });
+      
+      // 初始化临时AI设置
+      setTempAiSettings({
+        apiKey: fetchedSettings.aiConfig?.apiKey || '',
+        baseUrl: fetchedSettings.aiConfig?.baseUrl || '',
+        standardModel: fetchedSettings.aiConfig?.standardModel || 'gemini-1.5-flash',
+        advancedModel: fetchedSettings.aiConfig?.advancedModel || 'deepseek-r1',
+      });
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      console.error('获取设置失败:', error);
+      setMessage({ 
+        type: 'error', 
+        text: '获取设置失败: ' + (error instanceof Error ? error.message : '未知错误') 
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestAI = async () => {
+    setAiTesting(true);
+    setMessage(null);
+    setAiTestPassed(false);
+    
+    try {
+      await settingsApi.testAISettings({
+        apiKey: tempAiSettings.apiKey,
+        baseUrl: tempAiSettings.baseUrl,
+        standardModel: tempAiSettings.standardModel,
+        advancedModel: tempAiSettings.advancedModel,
+      });
+      
+      setAiTestPassed(true);
+      setMessage({ type: 'success', text: 'AI 设置测试成功！' });
+    } catch (error: any) {
+      setAiTestPassed(false);
+      const errorMessage = error.response?.data?.detail || error.message || '未知错误';
+      setMessage({ type: 'error', text: `测试失败: ${errorMessage}` });
+    } finally {
+      setAiTesting(false);
     }
   };
 
@@ -65,21 +119,24 @@ const Settings: React.FC = () => {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings),
+      await settingsApi.updateSettings({
+        email: settings.email,
+        fullName: settings.fullName,
+        bio: settings.bio,
+        notifications: settings.notifications,
+        theme: settings.theme,
+        language: settings.language,
       });
 
-      if (response.ok) {
-        setMessage({ type: 'success', text: 'Settings saved successfully!' });
-      } else {
-        setMessage({ type: 'error', text: 'Failed to save settings' });
-      }
+      setMessage({ type: 'success', text: '设置保存成功！' });
+      
+      // 更新成功后刷新设置
+      await fetchSettings();
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to save settings' });
+      setMessage({ 
+        type: 'error', 
+        text: '保存设置失败: ' + (error instanceof Error ? error.message : '未知错误') 
+      });
     } finally {
       setSaving(false);
     }
@@ -196,68 +253,113 @@ const Settings: React.FC = () => {
   const renderAISettings = () => (
     <div className={styles.section}>
       <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>AI API 设置</h2>
+        <h2 className={styles.sectionTitle}>AI 设置</h2>
         <p className={styles.sectionDescription}>
-          配置各个 AI 服务的 API Key，请妥善保管您的密钥
+          配置 AI 服务的基本设置，请妥善保管您的密钥
         </p>
       </div>
 
       <div className={styles.form}>
+        {message && message.type === 'error' && (
+          <div className={styles.errorMessage}>
+            <FiAlertCircle className={styles.errorIcon} size={16} />
+            {message.text}
+          </div>
+        )}
+
         <div className={styles.formGroup}>
-          <label htmlFor="openai" className={styles.label}>
-            OpenAI API Key
+          <label htmlFor="apiKey" className={styles.label}>
+            API Key
           </label>
           <input
             type="password"
-            id="openai"
-            value={settings.aiKeys.openai}
+            id="apiKey"
+            value={tempAiSettings.apiKey}
             onChange={(e) =>
-              setSettings((prev) => ({
+              setTempAiSettings(prev => ({
                 ...prev,
-                aiKeys: { ...prev.aiKeys, openai: e.target.value },
+                apiKey: e.target.value,
               }))
             }
             className={styles.input}
-            placeholder="sk-..."
+            placeholder="输入您的 API Key"
           />
         </div>
 
         <div className={styles.formGroup}>
-          <label htmlFor="gemini" className={styles.label}>
-            Gemini API Key
+          <label htmlFor="baseUrl" className={styles.label}>
+            Base URL
           </label>
           <input
-            type="password"
-            id="gemini"
-            value={settings.aiKeys.gemini}
+            type="text"
+            id="baseUrl"
+            value={tempAiSettings.baseUrl}
             onChange={(e) =>
-              setSettings((prev) => ({
+              setTempAiSettings(prev => ({
                 ...prev,
-                aiKeys: { ...prev.aiKeys, gemini: e.target.value },
+                baseUrl: e.target.value,
               }))
             }
             className={styles.input}
-            placeholder="Enter your Gemini API Key"
+            placeholder="输入 API 的基础 URL"
           />
         </div>
 
         <div className={styles.formGroup}>
-          <label htmlFor="deepseek" className={styles.label}>
-            DeepSeek API Key
+          <label htmlFor="standardModel" className={styles.label}>
+            标准模型
           </label>
           <input
-            type="password"
-            id="deepseek"
-            value={settings.aiKeys.deepseek}
+            type="text"
+            id="standardModel"
+            value={tempAiSettings.standardModel}
             onChange={(e) =>
-              setSettings((prev) => ({
+              setTempAiSettings(prev => ({
                 ...prev,
-                aiKeys: { ...prev.aiKeys, deepseek: e.target.value },
+                standardModel: e.target.value,
               }))
             }
             className={styles.input}
-            placeholder="Enter your DeepSeek API Key"
+            placeholder="输入标准模型名称"
           />
+          <p className={styles.hint}>默认: gemini-1.5-flash</p>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="advancedModel" className={styles.label}>
+            高级模型
+          </label>
+          <input
+            type="text"
+            id="advancedModel"
+            value={tempAiSettings.advancedModel}
+            onChange={(e) =>
+              setTempAiSettings(prev => ({
+                ...prev,
+                advancedModel: e.target.value,
+              }))
+            }
+            className={styles.input}
+            placeholder="输入高级模型名称"
+          />
+          <p className={styles.hint}>默认: deepseek-r1</p>
+        </div>
+
+        <div className={styles.buttonGroup}>
+          <button
+            type="button"
+            onClick={handleTestAI}
+            className={`${styles.button} ${styles.testButton}`}
+            disabled={aiTesting || saving}
+          >
+            {aiTesting ? '测试中...' : '测试连接'}
+          </button>
+          
+          {aiTestPassed && (
+            <span className={styles.successBadge}>
+              ✓ 测试通过
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -265,6 +367,11 @@ const Settings: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      {message && (
+        <div className={`${styles.message} ${styles[message.type]}`}>
+          {message.type === 'success' ? '✓' : '⚠'} {message.text}
+        </div>
+      )}
       <div className={styles.header}>
         <h1 className={styles.title}>设置</h1>
         <p className={styles.subtitle}>

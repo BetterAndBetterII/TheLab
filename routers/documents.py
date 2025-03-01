@@ -25,6 +25,7 @@ class FileResponse(BaseModel):
     path: Optional[str] = None
     isFolder: bool
     mimeType: Optional[str]
+    processingStatus: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -137,6 +138,8 @@ async def list_files(
         Document.owner_id,
         Document.folder_id,
         Document.path,
+        Document.mime_type,
+        Document.processing_status
     )
 
     documents = query.all()
@@ -152,6 +155,7 @@ async def list_files(
             path=doc.path,
             isFolder=False,
             mimeType=doc.content_type,
+            processingStatus=doc.processing_status,
         )
         for doc in documents
     ]

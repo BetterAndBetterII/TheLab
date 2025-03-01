@@ -20,6 +20,7 @@ from sqlalchemy import (
     Table,
     Text,
     create_engine,
+    text,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
@@ -43,9 +44,10 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-
 # 导入所有模型以确保它们在创建表时被注册
 from models.users import User
+from models.sessions import Session
+from models.forum import Topic, Reply
 
 
 class ProcessingStatus(enum.Enum):
@@ -86,10 +88,9 @@ class ApiKey(Base):
     __tablename__ = "api_keys"
 
     id = Column(Integer, primary_key=True, index=True)
-    key = Column(String, unique=True, index=True)
+    key = Column(String, unique=True)
     base_url = Column(String, nullable=True)
     api_type = Column(String, nullable=True)
-    model = Column(String, nullable=True)
     name = Column(String)
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
@@ -97,6 +98,11 @@ class ApiKey(Base):
     last_used_at = Column(DateTime, nullable=True)
     last_error_message = Column(Text, nullable=True)
     counter = Column(Integer, default=0)
+
+    # 添加外键关联
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    # 关系
+    user = relationship("User", back_populates="api_keys")
 
 
 class ProcessingRecord(Base):
@@ -140,6 +146,9 @@ class Document(Base):
     translation_pages = Column(JSON, default=dict)
     # 分页关键词，格式：{"1": ["关键词1", "关键词2"], "2": ["关键词3", "关键词4"], ...}
     keywords_pages = Column(JSON, default=dict)
+
+    # thumbnail缩略图
+    thumbnail = Column(LargeBinary, nullable=True)
 
     # 每页字数限制
     page_size = Column(Integer, default=2000)  # 默认每页2000字
@@ -237,8 +246,13 @@ class Message(Base):
 # 创建数据库表
 def create_tables():
     """创建所有数据库表"""
-    # 如果表存在，则不删除
-    Base.metadata.drop_all(bind=engine)  # 删除所有表
+    # 使用 CASCADE 删除所有表及其依赖
+    with engine.connect() as conn:
+        if settings.DATABASE_TYPE == "postgresql":
+            conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
+        else:
+            Base.metadata.drop_all(bind=engine)  # SQLite 使用默认的 drop_all
+
     Base.metadata.create_all(bind=engine)  # 创建所有表
     initialize_database()  # 初始化数据
 

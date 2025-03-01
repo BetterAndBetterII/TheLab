@@ -282,19 +282,112 @@ const FileList: React.FC<FileListProps> = ({
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   };
 
-  const getFileIcon = (type: string) => {
-    switch (type) {
-      case 'document':
-        return '📄';
-      case 'spreadsheet':
-        return '📊';
-      case 'image':
+  const getFileIcon = (file: FileItem) => {
+    if (file.isFolder) {
+      return '📁';
+    }
+    
+    // 根据 MIME 类型判断
+    if (file.mimeType) {
+      if (file.mimeType.startsWith('image/')) {
         return '🖼️';
-      case 'folder':
-        return '📁';
+      }
+      if (file.mimeType.startsWith('video/')) {
+        return '🎥';
+      }
+      if (file.mimeType.startsWith('audio/')) {
+        return '🎵';
+      }
+      if (file.mimeType.includes('pdf')) {
+        return '📑';
+      }
+      if (file.mimeType.includes('word') || file.mimeType.includes('document')) {
+        return '📝';
+      }
+      if (file.mimeType.includes('excel') || file.mimeType.includes('spreadsheet')) {
+        return '📊';
+      }
+      if (file.mimeType.includes('powerpoint') || file.mimeType.includes('presentation')) {
+        return '📊';
+      }
+      if (file.mimeType.includes('zip') || file.mimeType.includes('rar') || file.mimeType.includes('7z')) {
+        return '📦';
+      }
+      if (file.mimeType.includes('text')) {
+        return '📄';
+      }
+    }
+
+    // 根据文件扩展名判断
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    switch (extension) {
+      case 'txt':
+        return '📄';
+      case 'doc':
+      case 'docx':
+        return '📝';
+      case 'xls':
+      case 'xlsx':
+        return '📊';
+      case 'ppt':
+      case 'pptx':
+        return '📊';
+      case 'pdf':
+        return '📑';
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return '🖼️';
+      case 'mp3':
+      case 'wav':
+        return '🎵';
+      case 'mp4':
+      case 'avi':
+      case 'mov':
+        return '🎥';
+      case 'zip':
+      case 'rar':
+      case '7z':
+        return '📦';
       default:
         return '📄';
     }
+  };
+
+  const getProcessingStatusInfo = (status: string | undefined) => {
+    if (!status) return null;
+    
+    let icon = '';
+    let color = '';
+    let progress = 0;
+    
+    switch (status.toLowerCase()) {
+      case 'pending':
+        icon = '⏳';
+        color = 'pending';
+        progress = 0;
+        break;
+      case 'processing':
+        icon = '🔄';
+        color = 'processing';
+        progress = 50;
+        break;
+      case 'completed':
+        icon = '✅';
+        color = 'completed';
+        progress = 100;
+        break;
+      case 'failed':
+        icon = '❌';
+        color = 'failed';
+        progress = 100;
+        break;
+      default:
+        return null;
+    }
+    
+    return { icon, color, progress };
   };
 
   const handleContainerClick = (event: React.MouseEvent) => {
@@ -449,7 +542,7 @@ const FileList: React.FC<FileListProps> = ({
               }}
             >
               <div className={styles.fileIcon}>
-                {getFileIcon(file.type)}
+                {getFileIcon(file)}
               </div>
               <div className={styles.fileInfo}>
                 <div className={styles.fileName}>{file.name}</div>
@@ -457,6 +550,29 @@ const FileList: React.FC<FileListProps> = ({
                   {!file.isFolder && <span>{formatFileSize(file.size)}</span>}
                   <span>•</span>
                   <span>{new Date(file.lastModified).toLocaleString()}</span>
+                  {file.processingStatus && (
+                    <div className={styles.processingStatus}>
+                      <span>•</span>
+                      {(() => {
+                        const statusInfo = getProcessingStatusInfo(file.processingStatus);
+                        if (!statusInfo) return null;
+                        
+                        return (
+                          <>
+                            <span className={styles[statusInfo.color]}>
+                              {statusInfo.icon} {file.processingStatus}
+                            </span>
+                            <div className={styles.progressBar}>
+                              <div 
+                                className={styles.progressFill} 
+                                style={{ width: `${statusInfo.progress}%` }}
+                              />
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className={styles.fileOwner}>{file.owner}</div>

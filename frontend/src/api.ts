@@ -9,6 +9,12 @@ export interface UserSettings {
   };
   theme: 'light' | 'dark' | 'system';
   language: string;
+  aiConfig?: {
+    apiKey: string;
+    baseUrl: string;
+    standardModel: string;
+    advancedModel: string;
+  };
 }
 
 export interface Message {
@@ -59,6 +65,7 @@ export interface FileItem {
   path: string;
   isFolder: boolean;
   mimeType?: string;
+  processingStatus?: string;
 }
 
 export interface FolderTree {
@@ -70,18 +77,10 @@ export interface FolderTree {
 
 // AI设置相关类型定义
 export interface AISettings {
-  provider: 'openai' | 'gemini' | 'deepseek';
-  api_key: string;
-  base_url?: string;
-  model?: string;
-  max_tokens?: number;
-  temperature?: number;
-}
-
-export interface AIKeys {
-  openai: string;
-  gemini: string;
-  deepseek: string;
+  apiKey: string;
+  baseUrl: string;
+  standardModel: string;
+  advancedModel: string;
 }
 
 // API 基础配置
@@ -233,14 +232,26 @@ export const authApi = {
 // 用户设置相关 API
 export const settingsApi = {
   getSettings: async (): Promise<UserSettings> => {
-    return handleRequest(`${BASE_URL}/settings`, {
+    const settings = await handleRequest(`${BASE_URL}/settings`, {
       headers: getAuthHeaders(),
-    });
+    })
+
+    return settings;
   },
 
   updateSettings: async (settings: UserSettings) => {
-    return handleRequest(`${BASE_URL}/settings`, {
+    const { aiConfig, ...basicSettings } = settings;
+    
+    return await handleRequest(`${BASE_URL}/settings`, {
       method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(basicSettings),
+    })
+  },
+
+  testAISettings: async (settings: AISettings) => {
+    return handleRequest(`${BASE_URL}/settings/ai/test`, {
+      method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(settings),
     });
@@ -649,31 +660,6 @@ export const fileApi = {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ fileIds, folderIds, targetFolderId }),
-    });
-  },
-};
-
-// AI设置相关 API
-export const aiApi = {
-  getSettings: async (): Promise<AISettings> => {
-    return handleRequest(`${BASE_URL}/settings/ai`, {
-      headers: getAuthHeaders(),
-    });
-  },
-
-  updateSettings: async (settings: AISettings) => {
-    return handleRequest(`${BASE_URL}/settings/ai`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(settings),
-    });
-  },
-
-  updateKeys: async (keys: AIKeys) => {
-    return handleRequest(`${BASE_URL}/settings/ai/keys`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(keys),
     });
   },
 };

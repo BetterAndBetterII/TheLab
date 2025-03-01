@@ -60,10 +60,3 @@ class Reply(Base):
     topic = relationship("Topic", back_populates="replies")
     user = relationship("User", back_populates="replies")
     parent = relationship("Reply", remote_side=[id], backref="children")
-
-
-# 更新User模型的关系
-from models.users import User
-
-User.topics = relationship("Topic", back_populates="user")
-User.replies = relationship("Reply", back_populates="user")
