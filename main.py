@@ -5,12 +5,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import create_tables
-from routers import auth, conversations, documents, folders, forum, settings
+from routers import auth, conversations, documents, folders, forum, settings, search
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
+    # 清理工作
+    if hasattr(app.state, "document_pipeline"):
+        app.state.document_pipeline.shutdown()
 
 
 app = FastAPI(
@@ -41,6 +48,7 @@ app.include_router(documents.router)  # 文档路由
 app.include_router(folders.router)  # 文件夹路由
 app.include_router(conversations.router)  # 对话路由
 app.include_router(forum.router)  # 论坛路由
+app.include_router(search.router)  # 搜索路由
 app.include_router(settings.router)  # 设置路由
 
 if __name__ == "__main__":

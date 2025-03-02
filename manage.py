@@ -10,7 +10,7 @@ import sys
 from typing import List, Optional
 
 import click
-from database import Base, engine, SessionLocal, create_tables
+from database import Base, engine, SessionLocal, create_tables, create_rag_db
 from models.users import User
 
 # 配置日志
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 def init_db() -> None:
     """初始化数据库"""
     try:
+        create_rag_db()
         create_tables()
         logger.info("数据库初始化完成")
     except Exception as e:

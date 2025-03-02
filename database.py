@@ -23,7 +23,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker, Session
 
 from config import get_settings
 
@@ -199,6 +199,18 @@ class Document(Base):
         """获取指定页的关键词"""
         return self.keywords_pages.get(str(page), [])
 
+class DocumentReadRecord(Base):
+    """文档阅读记录模型类。
+
+    存储用户阅读文档的记录。
+    """
+
+    __tablename__ = "document_read_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    read_at = Column(DateTime, default=datetime.now)
 
 class Conversation(Base):
     """对话模型类。
@@ -241,6 +253,42 @@ class Message(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     conversation = relationship("Conversation", back_populates="messages")
+
+
+def create_rag_db():
+    """创建RAG数据库"""
+    if settings.DATABASE_TYPE == "postgresql":
+        # 首先连接到默认的postgres数据库
+        default_engine = create_engine(
+            f"postgresql://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}"
+            f"@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/postgres"
+        )
+        
+        # 创建数据库（如果不存在）
+        with default_engine.connect() as conn:
+            # 断开可能存在的连接
+            conn.execute(text("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'rag'"))
+            conn.execute(text("commit"))
+            
+            # 创建数据库
+            conn.execute(text("DROP DATABASE IF EXISTS rag"))
+            conn.execute(text("commit"))
+            conn.execute(text("CREATE DATABASE rag"))
+            conn.execute(text("commit"))
+        
+        default_engine.dispose()
+    
+    return engine, SessionLocal
+
+
+def get_rag_db():
+    """获取RAG数据库会话"""
+    _, SessionLocal = create_rag_db()
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 # 创建数据库表

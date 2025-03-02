@@ -70,7 +70,7 @@ async def test_ai_settings(
     """测试AI设置是否有效"""
     try:
         openai_client = OpenAIClient(settings.apiKey, settings.baseUrl)
-        if not openai_client.test_connection(
+        if not await openai_client.test_connection(
             settings.standardModel, settings.advancedModel
         ):
             raise HTTPException(

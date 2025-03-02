@@ -11,7 +11,7 @@ class LLMClient(ABC):
         self.base_url = base_url
 
     @abstractmethod
-    def chat_with_text(self, message) -> dict:
+    async def chat_with_text(self, message) -> dict:
         """
         纯文本对话功能
         :param message: 用户输入的文本消息
@@ -20,7 +20,7 @@ class LLMClient(ABC):
         pass
 
     @abstractmethod
-    def chat_with_image(
+    async def chat_with_image(
         self,
         message,
         image_data,
@@ -35,15 +35,9 @@ class LLMClient(ABC):
         """
         pass
 
-    def update_api_key_usage(self):
-        if not self.api_key_model:
-            return
-        self.api_key_model.counter += 1
-        self.api_key_model.last_used_at = datetime.now()
-        self.api_key_model.save()
+    @abstractmethod
+    async def update_api_key_usage(self): ...
 
-    def update_api_key_error(self, error_message):
-        if not self.api_key_model:
-            return
-        self.api_key_model.last_error_message = error_message
-        self.api_key_model.save() 
+    @abstractmethod
+    async def update_api_key_error(self, error_message): ...
+    

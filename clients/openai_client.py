@@ -8,19 +8,45 @@ import openai
 from PIL import Image
 
 from clients.llm_client import LLMClient
-from database import ApiKey
+from database import ApiKey, get_db
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAIClient(LLMClient):
-    def __init__(self, api_key=None, base_url=None, model=None, max_tokens=None, temperature=None):
+    def __init__(
+        self,
+        api_key=None,
+        base_url=None,
+        model=None,
+        max_tokens=None,
+        temperature=None,
+    ):
         """
         初始化OpenAI客户端
         """
         self.api_key = api_key if api_key else os.getenv("OPENAI_API_KEY")
-        self.base_url = base_url if base_url else os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+        self.base_url = (
+            base_url
+            if base_url
+            else os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+        )
         self.model = model if model else os.getenv("OPENAI_MODEL", "gpt-4")
-        self.max_tokens = max_tokens if max_tokens else int(os.getenv("OPENAI_MAX_TOKENS", "500"))
-        self.temperature = temperature if temperature else float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
+        self.max_tokens = (
+            max_tokens if max_tokens else None
+        )
+        self.temperature = (
+            temperature
+            if temperature
+            else float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
+        )
+
+        # 获取数据库会话
+        self.db = next(get_db())
+        self.api_model = (
+            self.db.query(ApiKey).filter(ApiKey.key == self.api_key).first()
+        )
 
         super().__init__(api_key, base_url)
 
@@ -31,7 +57,7 @@ class OpenAIClient(LLMClient):
         self.text_model = self.model
         self.vision_model = self.model
 
-    def chat_with_text(self, message) -> dict:
+    async def chat_with_text(self, message) -> dict:
         """
         纯文本对话功能
         :param message: 用户输入的文本消息
@@ -40,7 +66,7 @@ class OpenAIClient(LLMClient):
         try:
             messages = [
                 {
-                    "role": "developer",
+                    "role": "system",
                     "content": "You are a helpful assistant",
                 },
                 {"role": "user", "content": message},
@@ -52,38 +78,36 @@ class OpenAIClient(LLMClient):
                 "temperature": self.temperature,
             }
             response = self.client.chat.completions.create(**request_params)
-            self.update_api_key_usage()
-            return {"text": response.choices[0].message.content}
+            await self.update_api_key_usage()
+            result = {"text": response.choices[0].message.content}
+            logger.debug(f"OpenAI 纯文本对话结果: {result}")
+            return result 
 
         except Exception as e:
-            self.update_api_key_error(str(e))
+            await self.update_api_key_error(str(e))
             return {"error": str(e)}
-        
-    def test_connection(self, standard_model, advanced_model):
+
+    async def test_connection(self, standard_model, advanced_model):
         """
         测试OpenAI连接是否有效
         """
         response = self.client.chat.completions.create(
             model=standard_model,
-            messages=[
-                {"role": "user", "content": "Hello"}
-            ],
+            messages=[{"role": "user", "content": "Hello"}],
             max_tokens=500,
         )
         if response.choices[0].message.content is None:
             raise Exception("标准模型测试失败")
         response = self.client.chat.completions.create(
             model=advanced_model,
-            messages=[
-                {"role": "user", "content": "Hello"}
-            ],
+            messages=[{"role": "user", "content": "Hello"}],
             max_tokens=500,
         )
         if response.choices[0].message.content is None:
             raise Exception("高级模型测试失败")
         return True
 
-    def chat_with_image(
+    async def chat_with_image(
         self,
         message,
         image_data,
@@ -137,21 +161,27 @@ class OpenAIClient(LLMClient):
                 "temperature": self.temperature,
             }
             response = self.client.chat.completions.create(**request_params)
-            self.update_api_key_usage()
+            await self.update_api_key_usage()
+            logger.debug(f"OpenAI 图片+文本对话结果: {response.choices[0].message.content}")
             return {"text": response.choices[0].message.content}
         except Exception as e:
-            self.update_api_key_error(str(e))
+            await self.update_api_key_error(str(e))
             return {"error": str(e)}
 
-    def update_api_key_usage(self):
-        if not self.api_key_model:
+    async def update_api_key_usage(self):
+        if not self.api_model:
             return
-        self.api_key_model.counter += 1
-        self.api_key_model.last_used_at = datetime.now()
-        self.api_key_model.save()
+        self.api_model.counter += 1
+        self.api_model.last_used_at = datetime.now()
+        self.db.commit()
 
-    def update_api_key_error(self, error_message):
-        if not self.api_key_model:
+    async def update_api_key_error(self, error_message):
+        if not self.api_model:
             return
-        self.api_key_model.last_error_message = error_message
-        self.api_key_model.save()
+        self.api_model.last_error_message = error_message
+        self.db.commit()
+
+    def __del__(self):
+        """确保在对象被销毁时关闭数据库连接"""
+        if hasattr(self, "db"):
+            self.db.close()

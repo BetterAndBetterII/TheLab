@@ -3,20 +3,23 @@ import hashlib
 import os
 import traceback
 from concurrent.futures.thread import ThreadPoolExecutor
-from datetime import datetime
 
 import dotenv
-from crawlers.base import CrawlerMetadata
-from llama_index.core import (Document, PromptTemplate, QueryBundle,
-                              StorageContext, VectorStoreIndex)
-from llama_index.core.extractors import (KeywordExtractor,
-                                         QuestionsAnsweredExtractor)
+from llama_index.core import (
+    Document,
+    PromptTemplate,
+    QueryBundle,
+    StorageContext,
+    VectorStoreIndex,
+)
+from llama_index.core.extractors import KeywordExtractor, QuestionsAnsweredExtractor
 from llama_index.core.indices.vector_store import VectorIndexRetriever
 from llama_index.core.ingestion import IngestionPipeline
-from llama_index.core.node_parser import (SentenceSplitter,
-                                          SentenceWindowNodeParser)
-from llama_index.core.postprocessor import (MetadataReplacementPostProcessor,
-                                            SimilarityPostprocessor)
+from llama_index.core.node_parser import SentenceSplitter, SentenceWindowNodeParser
+from llama_index.core.postprocessor import (
+    MetadataReplacementPostProcessor,
+    SimilarityPostprocessor,
+)
 from llama_index.core.schema import NodeWithScore
 from llama_index.core.settings import Settings
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
@@ -27,8 +30,10 @@ from llama_index.vector_stores.postgres import PGVectorStore
 from pydantic import BaseModel
 from tqdm import tqdm
 
-from rag.custom.siliconflow_embeddings import SiliconFlowEmbedding
-from rag.models import Knowledge, get_db_session
+from llama_index.embeddings.siliconflow import SiliconFlowEmbedding
+from llama_index.llms.siliconflow import SiliconFlow
+
+from database import Document as DBDocument
 
 # DEBUG日志
 
@@ -36,10 +41,10 @@ from rag.models import Knowledge, get_db_session
 # logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"), override=True)
 
-Settings.llm = OpenAI(
+Settings.llm = SiliconFlow(
     api_key=os.getenv("OPENAI_API_KEY"),
     api_base=os.getenv("OPENAI_BASE_URL"),
-    model="gpt-4o-mini",
+    model="Qwen/Qwen2.5-7B-Instruct",
     max_retries=5,
 )
 Settings.embed_model = SiliconFlowEmbedding(
@@ -59,15 +64,21 @@ class KnowledgeBase:
     sc: StorageContext
     index: VectorStoreIndex
 
-    def __init__(self, pg_docs_uri, pg_vector_uri):
-
+    def __init__(
+        self,
+        pg_docs_uri,
+        pg_vector_uri,
+        schema: str = "public",
+        namespace: str = "default_user",
+    ):
+        hashed_namespace = hashlib.md5(namespace.encode()).hexdigest()
         # 创建一个与 PostgreSQL 数据库交互的键值存储 (PostgresKVStore) 实例，用于存储向量化后的文档
         # 存储向量化的文档（例如嵌入向量）
         self.vector_store = PGVectorStore.from_params(
             connection_string=pg_vector_uri.replace("asyncpg", "psycopg2"),
             async_connection_string=pg_vector_uri,
-            table_name="vector_chatgpt",
-            schema_name="public_vector",
+            table_name=f"{hashed_namespace}_vector",
+            schema_name=schema,
             hybrid_search=True,
             embed_dim=int(os.getenv("EMB_DIMENSIONS", 1536)),
             cache_ok=True,
@@ -76,8 +87,8 @@ class KnowledgeBase:
         # 存储原始的文本文档，供后续检索和使用
         self.doc_store = PostgresDocumentStore.from_uri(
             uri=pg_docs_uri,
-            table_name="docs_chatgpt",
-            schema_name="public_docs",
+            table_name=f"{hashed_namespace}_docs",
+            schema_name=schema,
         )
         # StorageContext负责将文档存储和向量存储集成在一起，为索引操作提供统一的接口
         self.storage_context = StorageContext.from_defaults(
@@ -135,29 +146,35 @@ class KnowledgeBase:
         await self.pipeline.arun(documents=[doc])
         return doc_id
 
-    async def upload_knowledge(self, knowledge: list[Knowledge]):
+    async def upload_document(self, document: DBDocument):
         """
-        上传知识并存储到数据库
+        上传文档并存储到数据库
         """
-        docs = []
-        for obj in knowledge:
-            metadata = CrawlerMetadata(**obj.result_metadata)
-            doc = Document(
-                text=obj.content,
-                id_=obj.raw_content_hash,
-                metadata={
-                    "source": "knowledge",
-                    "title": obj.title,
-                    "url": metadata.url,
-                    "knowledge_source": metadata.source,
-                    "mimetype": obj.mimetype,
-                },
-            )
-            if not obj.raw_content_hash:
-                print(f"Missing raw_content_hash for {obj.title}")
-            docs.append(doc)
-        await self.pipeline.arun(documents=docs, num_workers=15)
-        return [obj.raw_content_hash for obj in knowledge]
+        # 将分页内容拼接为完整的文本
+        text = f"{document.content_pages}\n{document.translation_pages}\n{document.keywords_pages}"
+        # 生成文档ID
+        hash_text = hashlib.md5(text.encode()).hexdigest()
+        doc_id = f"doc_{document.id}_{hash_text}"
+        metadata = {
+            "source": "document",
+            "title": document.filename,
+            "owner": document.owner.email,
+            "url": document.path,
+            "mimetype": document.content_type,
+        }
+
+        # 将文档内容封装为Document对象
+        doc = Document(
+            text=text,
+            id_=doc_id,
+            metadata=metadata,
+            excluded_embed_metadata_keys=["owner"],
+            excluded_llm_metadata_keys=["owner"],
+        )
+
+        # 执行文档注入管道
+        await self.pipeline.arun(documents=[doc])
+        return doc_id
 
     async def upload_files(self, file_paths: list[str]):
         """
@@ -382,87 +399,11 @@ async def upload_text_to_rag(rag, text: str):
         raise e
 
 
-async def upload_knowledge_to_rag(rag, batch_size: int = 32, page_size: int = 128):
-    """
-    上传知识并存储到数据库，使用分页方式获取数据
-    """
-    try:
-        session = get_db_session()
-        offset = 0
-        total_count = session.query(Knowledge).count()
-
-        async def upload_knowledge_batch(knowledge_page, pbar):
-            await rag.upload_knowledge(knowledge=knowledge_page)
-            pbar.update(len(knowledge_page))
-
-        with tqdm(total=total_count) as pbar:
-            while True:
-                # 分页查询
-                knowledge_page = (
-                    session.query(Knowledge).offset(offset).limit(page_size).all()
-                )
-                if not knowledge_page:
-                    break
-
-                # 分批上传当前页的数据
-                tasks = []
-                event_loop = asyncio.get_event_loop()
-                for i in range(0, len(knowledge_page), batch_size):
-                    batch = knowledge_page[i : i + batch_size]
-                    tasks.append(
-                        event_loop.create_task(upload_knowledge_batch(batch, pbar))
-                    )
-                await asyncio.gather(*tasks)
-                offset += page_size
-        print("知识上传成功")
-        return {"message": "知识上传成功"}
-    except Exception as e:
-        traceback.print_exc()
-        raise e
-
-
-def reset_history(rag):
-    """
-    重置对话历史
-    """
-    rag.reset_history()
-    return {"message": "对话历史已重置"}
-
-
 async def run():
     # 初始化 RAG 实例
     PG_DOCS_URI = os.getenv("PG_DOCS_URI")
     PG_VECTOR_URI = os.getenv("PG_VECTOR_URI")
     rag = KnowledgeBase(pg_docs_uri=PG_DOCS_URI, pg_vector_uri=PG_VECTOR_URI)
-    # with open("./README.md", "r", encoding="utf-8") as f:
-    #     text = f.read()
-    # await upload_text_to_rag(rag, text)
-    # print("upload success")
-    # 删除
-    # await rag.remove_all_documents()
-    # 列出
-    # result = await rag.list_documents()
-    # print(result)
-    # 上传文件
-    # files = os.listdir(os.path.join(os.path.dirname(__file__), '../tests/crawled_data'))
-    # files_full_path = [os.path.join(os.path.dirname(__file__), '../tests/crawled_data', file) for file in files]
-    # await rag.upload_files(files_full_path)
-    # 上传知识
-    await upload_knowledge_to_rag(rag)
-    query = "how to connect to vpn?"
-    # query = "刚入学，想了解下啥专业好"
-    await rag.retrieve(query)
-    start_time = datetime.now()
-    nodes = await rag.retrieve(query)
-    print(f"Time elapsed 1: {datetime.now() - start_time}")
-    for node in nodes:
-        print(node.get_text())
-    docs = await rag.query_documents([node.node.ref_doc_id for node in nodes])
-    for doc in docs:
-        print(doc.metadata)
-    result = await query_documents(rag, QueryRequest(query=query, top_k=10))
-    print(result.response)
-    reset_history(rag)
 
 
 if __name__ == "__main__":

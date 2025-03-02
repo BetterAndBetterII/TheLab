@@ -562,12 +562,12 @@ const FileList: React.FC<FileListProps> = ({
                             <span className={styles[statusInfo.color]}>
                               {statusInfo.icon} {file.processingStatus}
                             </span>
-                            <div className={styles.progressBar}>
+                            {file.processingStatus === "processing" && <div className={styles.progressBar}>
                               <div 
                                 className={styles.progressFill} 
                                 style={{ width: `${statusInfo.progress}%` }}
                               />
-                            </div>
+                            </div>}
                           </>
                         );
                       })()}

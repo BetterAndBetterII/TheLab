@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     DATABASE_USER: Optional[str] = None
     DATABASE_PASSWORD: Optional[str] = None
     DATABASE_NAME: str = "app.db"
+    RAG_DATABASE_NAME: str = "rag.db"
 
     # Redis设置
     REDIS_HOST: str = "localhost"
@@ -53,9 +54,10 @@ class Settings(BaseSettings):
 
     # OpenAI设置
     OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-3.5-turbo"
-    OPENAI_MAX_TOKENS: int = 500
-    OPENAI_TEMPERATURE: float = 0.7
+    OPENAI_BASE_URL: str
+    EMBEDDING_API_KEY: str
+    EMBEDDING_BASE_URL: str
+    EMB_DIMENSIONS: int = 1024
 
     @property
     def DATABASE_URL(self) -> str:
@@ -65,6 +67,18 @@ class Settings(BaseSettings):
             return (
                 f"postgresql://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}"
                 f"@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
+            )
+        else:
+            raise ValueError(f"不支持的数据库类型: {self.DATABASE_TYPE}")
+
+    @property
+    def RAG_DATABASE_URL(self) -> str:
+        if self.DATABASE_TYPE == "sqlite":
+            return f"sqlite:///./{self.RAG_DATABASE_NAME}"
+        elif self.DATABASE_TYPE == "postgresql":
+            return (
+                f"postgresql://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}"
+                f"@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.RAG_DATABASE_NAME}"
             )
         else:
             raise ValueError(f"不支持的数据库类型: {self.DATABASE_TYPE}")

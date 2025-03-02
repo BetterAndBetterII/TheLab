@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -7,9 +7,10 @@ import os
 import mimetypes
 import urllib.parse
 
-from database import Document, Folder, get_db
+from database import Document, Folder, get_db, ProcessingStatus, ProcessingRecord, DocumentReadRecord
 from models.users import User
 from services.session import get_current_user
+from pipeline.document_pipeline import DocumentPipeline, get_document_pipeline
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -50,6 +51,70 @@ class BatchMoveRequest(BaseModel):
     targetFolderId: Optional[str]
 
 
+class DocumentSummaryResponse(BaseModel):
+    summaries: Dict[str, Dict[str, str]]
+    total_pages: int
+
+    class Config:
+        from_attributes = True
+
+@router.post("/{documentId}/read")
+async def record_read(
+    documentId: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # 查找现有记录
+    existing_record = db.query(DocumentReadRecord).filter(
+        DocumentReadRecord.document_id == int(documentId),
+        DocumentReadRecord.user_id == current_user.id
+    ).first()
+
+    if existing_record:
+        # 更新现有记录的时间戳
+        existing_record.read_at = datetime.now()
+    else:
+        # 创建新记录
+        db.add(DocumentReadRecord(
+            document_id=int(documentId),
+            user_id=current_user.id,
+        ))
+    
+    db.commit()
+    return {"message": "阅读记录已保存"}
+
+
+@router.get("/read-history")
+async def get_read_history(
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """获取用户的阅读历史记录"""
+    records = db.query(DocumentReadRecord, Document).join(
+        Document, DocumentReadRecord.document_id == Document.id
+    ).filter(
+        DocumentReadRecord.user_id == current_user.id
+    ).order_by(
+        DocumentReadRecord.read_at.desc()
+    ).offset(skip).limit(limit).all()
+
+    return {
+        "records": [
+            {
+                "id": str(record.DocumentReadRecord.id),
+                "document_id": str(record.DocumentReadRecord.document_id),
+                "document_name": record.Document.filename,
+                "read_at": record.DocumentReadRecord.read_at,
+                "document_type": record.Document.mime_type,
+                "document_size": record.Document.file_size,
+            }
+            for record in records
+        ]
+    }
+
+
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
@@ -57,6 +122,7 @@ async def upload_file(
     filename: Optional[str] = Form(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    document_pipeline: DocumentPipeline = Depends(get_document_pipeline),
 ):
     # 验证文件夹
     folder_path = "/"
@@ -84,11 +150,15 @@ async def upload_file(
         path=os.path.join(folder_path, file.filename),  # 构建完整路径
         is_folder=False,
         mime_type=file.content_type,
+        processing_status=ProcessingStatus.PENDING,  # 设置初始状态为待处理
     )
 
     db.add(db_document)
     db.commit()
     db.refresh(db_document)
+
+    # 直接添加到处理队列
+    document_pipeline.add_task(db_document.id)
 
     return FileResponse(
         id=str(db_document.id),
@@ -101,6 +171,7 @@ async def upload_file(
         path=db_document.path,
         isFolder=False,
         mimeType=db_document.content_type,
+        processingStatus=db_document.processing_status,
     )
 
 
@@ -139,7 +210,7 @@ async def list_files(
         Document.folder_id,
         Document.path,
         Document.mime_type,
-        Document.processing_status
+        Document.processing_status,
     )
 
     documents = query.all()
@@ -214,12 +285,12 @@ async def download_file(
     filename = document.filename
     # 使用 RFC 2231/5987 编码方式
     encoded_filename = urllib.parse.quote(filename)
-    
+
     # 设置多种格式的文件名，以确保最大兼容性
     content_disposition = (
-        f'attachment; '
+        f"attachment; "
         f'filename="{filename}"; '  # 普通格式
-        f'filename*=UTF-8\'\'{encoded_filename}'  # RFC 5987 格式
+        f"filename*=UTF-8''{encoded_filename}"  # RFC 5987 格式
     )
 
     # 创建响应
@@ -372,6 +443,13 @@ async def batch_delete_files(
         )
         if document:
             file_ids.append(document.id)
+
+    # 先删除相关的处理记录
+    db.query(ProcessingRecord).filter(
+        ProcessingRecord.document_id.in_(file_ids)
+    ).delete(synchronize_session=False)
+
+    # 然后删除文档
     db.query(Document).filter(Document.id.in_(file_ids)).delete(
         synchronize_session=False
     )
@@ -426,3 +504,41 @@ async def batch_move_files(
 
     db.commit()
     return {"message": "文件已批量移动"}
+
+
+@router.get("/{fileId}/summaries", response_model=DocumentSummaryResponse)
+async def get_document_summaries(
+    fileId: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    document = (
+        db.query(Document)
+        .filter(Document.id == int(fileId), Document.owner_id == current_user.id)
+        .with_entities(
+            Document.content_pages,
+            Document.translation_pages,
+            Document.total_pages,
+            Document.processing_status,
+        )
+        .first()
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="文档未找到")
+
+    # 检查文档是否已经处理完成
+    if document.processing_status != ProcessingStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="文档尚未处理完成")
+
+    # 构建摘要响应
+    summaries = {}
+    for i, content in document.content_pages.items():
+        summaries[str(i)] = {
+            "en": content,
+            "cn": document.translation_pages[str(i)],
+        }
+
+    return DocumentSummaryResponse(
+        summaries=summaries,
+        total_pages=document.total_pages,
+    )

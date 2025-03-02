@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Viewer, Worker } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import { searchPlugin } from '@react-pdf-viewer/search';
@@ -28,6 +28,7 @@ import ChatPanel from './ChatPanel';
 import SummaryPanel from './SummaryPanel';
 import FlowPanel from './FlowPanel';
 import QuizPanel from './QuizPanel';
+import { documentApi } from '../../api';
 
 type TabType = 'notes' | 'summary' | 'chat' | 'flow' | 'quiz';
 
@@ -54,11 +55,13 @@ interface Message {
 
 interface PDFReaderProps {
   pdfUrl: string;
+  documentId: string;
   onPageChange?: (pageNumber: number) => void;
 }
 
 const PDFReader: React.FC<PDFReaderProps> = ({
   pdfUrl,
+  documentId,
   onPageChange,
 }) => {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -71,81 +74,20 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isInputVisible, setIsInputVisible] = useState(false);
-  const [summaryEn, setSummaryEn] = useState<string>(`# Document Summary
-
-## Key Points
-
-1. First important point
-2. Second important point
-3. Third important point
-
-## Mathematical Formulas
-
-The quadratic formula: $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$
-
-Inline math: When $a \\ne 0$, there are two solutions.
-
-## Feature Status
-
-| Feature | Status | Last Update |
-|---------|--------|-------------|
-| GitHub Flavored Markdown | ✅ | 2024-03-15 |
-| Mathematical Formulas | ✅ | 2024-03-14 |
-| Code Highlighting | ✅ | 2024-03-13 |
-| Table Styling | ✅ | 2024-03-12 |
-| Auto Translation | ○ | 2024-03-11 |
-
-## Code Example
-
-\`\`\`python
-def hello_world():
-    print("Hello, World!")
-\`\`\`
-
-> This is a blockquote with **bold** and *italic* text.
-
-Visit our website at <a href="https://example.com" target="_blank">example.com</a>`);
-
-  const [summaryCn, setSummaryCn] = useState<string>(`# 文档摘要
-
-## 要点
-
-1. 第一个重要观点
-2. 第二个重要观点
-3. 第三个重要观点
-
-## 数学公式
-
-二次方程求根公式：$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$
-
-行内公式：当 $a \\ne 0$ 时，方程有两个解。
-
-## 功能状态
-
-| 功能 | 状态 | 最后更新 |
-|------|------|----------|
-| GitHub风格Markdown | ✅ | 2024-03-15 |
-| 数学公式 | ✅ | 2024-03-14 |
-| 代码高亮 | ✅ | 2024-03-13 |
-| 表格样式 | ✅ | 2024-03-12 |
-| 自动翻译 | ○ | 2024-03-11 |
-
-## 代码示例
-
-\`\`\`python
-def hello_world():
-    print("你好，世界！")
-\`\`\`
-
-> 这是一个包含**粗体**和*斜体*的引用块。
-
-访问我们的网站：<a href="https://example.com" target="_blank">example.com</a>`);
+  const [summaryEn, setSummaryEn] = useState<string[]>([]);
+  const [summaryCn, setSummaryCn] = useState<string[]>([]);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState<string>('');
 
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const resizerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const chatInputContainerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    documentApi.recordRead(documentId);
+  }, []);
 
   const [flowData, setFlowData] = useState({
     title: '论文标题',
@@ -168,6 +110,40 @@ def hello_world():
       { text: '低资源场景', type: 'potential' as KeywordType }
     ] as Keyword[]
   });
+
+  // 获取摘要数据
+  const fetchSummaries = async (d: string) => {
+    setIsSummaryLoading(true);
+    setSummaryError('');
+    
+    try {
+      const summaryData = await documentApi.getSummary(d);
+      
+      // 将所有页面的摘要合并成一个完整的摘要
+      const EnSummary: string[] = [];
+      const CnSummary: string[] = [];
+      
+      Object.entries(summaryData.summaries)
+        .sort(([pageA], [pageB]) => parseInt(pageA) - parseInt(pageB))
+        .forEach(([page, summary]) => {
+            EnSummary.push(summary.en);
+            CnSummary.push(summary.cn);
+        });
+      
+      setSummaryEn(EnSummary);
+      setSummaryCn(CnSummary);
+    } catch (error) {
+      console.error('获取摘要失败:', error);
+      setSummaryError('获取摘要失败，请稍后重试');
+    } finally {
+      setIsSummaryLoading(false);
+    }
+  };
+
+  // 组件加载时获取摘要
+  useEffect(() => {
+    fetchSummaries(documentId);
+  }, []);
 
   // 处理拖拽调整
   useEffect(() => {
@@ -467,10 +443,23 @@ def hello_world():
 
         <div className={styles.tabContent}>
           {activeTab === 'summary' && (
-            <SummaryPanel
-              summaryEn={summaryEn}
-              summaryCn={summaryCn}
-            />
+            <>
+              {isSummaryLoading ? (
+                <div className={styles.loadingContainer}>
+                  <span>加载摘要中...</span>
+                </div>
+              ) : summaryError ? (
+                <div className={styles.errorContainer}>
+                  <span>{summaryError}</span>
+                  <button onClick={() => fetchSummaries(documentId)}>重试</button>
+                </div>
+              ) : (
+                <SummaryPanel
+                  summaryEn={summaryEn[currentPage]}
+                  summaryCn={summaryCn[currentPage]}
+                />
+              )}
+            </>
           )}
 
           {activeTab === 'notes' && (
