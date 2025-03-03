@@ -154,27 +154,40 @@ async def chat_stream(
         openai_client = OpenAIClient(
             api_key=current_user.ai_api_key,
             base_url=current_user.ai_base_url,
-            model=current_user.ai_standard_model,
+            model=current_user.ai_advanced_model,
         )
         print(messages)
         cum_content = ""
+        is_reasoning = False
         finish_reason = None
         async for chunk in await openai_client.chat_stream(messages):
             chunk: ChatCompletionChunk
             # 更新最后一条AI消息的内容
-            if chunk.choices[0].delta.content:
-                cum_content += chunk.choices[0].delta.content
+            print(chunk.choices[0])
+            _c = ""
+            if chunk.choices[0].delta.content and chunk.choices[0].delta.content != "":
+                if is_reasoning:
+                    is_reasoning = False
+                    _c += "</think>"
+                _c += chunk.choices[0].delta.content
 
+            if getattr(chunk.choices[0].delta, "reasoning_content", None):
+                if not is_reasoning:
+                    is_reasoning = True
+                    _c += "<think>"
+                _c += chunk.choices[0].delta.reasoning_content
+
+            cum_content += _c
             # 构造 OpenAI 格式的响应
             response = {
                 "id": f"chatcmpl-{conversation.id}",
                 "object": "chat.completion.chunk",
                 "created": int(datetime.now().timestamp()),
-                "model": current_user.ai_standard_model,
+                "model": current_user.ai_advanced_model,
                 "choices": [
                     {
                         "index": 0,
-                        "delta": {"content": chunk.choices[0].delta.content},
+                        "delta": {"content": _c},
                         "finish_reason": chunk.choices[0].finish_reason,
                     }
                 ],

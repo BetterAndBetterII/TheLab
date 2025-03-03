@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { IoMdTime, IoMdClose, IoMdTrash } from 'react-icons/io';
 import styles from './ChatPanel.module.css';
 import ReactMarkdown from 'react-markdown';
@@ -53,6 +53,60 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
   const historyPanelRef = useRef<HTMLDivElement>(null);
+
+  // 缓存正则表达式
+  const THINK_START_END_REGEX = /<think>([\s\S]*?)<\/think>/;
+  const THINK_START_REGEX = /<think>([\s\S]*)/;
+
+  const parseContent = useCallback((content: string) => {
+    // 快速检查是否包含think标签，如果不包含直接返回
+    if (!content.includes("<think>")) {
+        return {thinkProcess: null, response: content, isThinking: false};
+    }
+
+    let thinkProcess = null;
+    let response = content;
+    let isThinking = false;
+
+    // 使用缓存的正则表达式
+    if (content.includes("</think>")) {
+        isThinking = false;
+        const match = content.match(THINK_START_END_REGEX);
+        if (match) {
+            thinkProcess = match[1];
+            // 只有在确实需要处理时才进行字符串操作
+            if (thinkProcess) {
+                thinkProcess = thinkProcess.trim();
+                // 一次性处理所有行，减少循环
+                thinkProcess = thinkProcess.split("\n")
+                    .reduce((acc, line) => {
+                        const trimmed = line.trim();
+                        return trimmed ? acc + (acc ? "\n" : "") + trimmed : acc;
+                    }, "");
+            }
+            response = content.replace(`<think>${match[1]}</think>`, "").trim();
+        }
+    } else {
+        isThinking = true;
+        const match = content.match(THINK_START_REGEX);
+        if (match) {
+            thinkProcess = match[1];
+            if (thinkProcess) {
+                thinkProcess = thinkProcess.trim();
+                // 使用reduce代替map和filter，减少数组操作
+                thinkProcess = thinkProcess.split("\n")
+                    .reduce((acc, line) => {
+                        const trimmed = line.trim();
+                        return trimmed ? acc + (acc ? "\n" : "") + trimmed : acc;
+                    }, "");
+            }
+            response = content.replace(`<think>${match[1]}`, "").trim();
+        }
+    }
+
+    return {thinkProcess, response, isThinking};
+  }, []);
+
 
   // 加载聊天历史
   const loadChatHistory = async () => {
@@ -119,6 +173,26 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const getMessageLength = (messages: ConversationMessage[]) => {
     return messages.length > 0 ? `${messages.length}条消息` : '无消息';
   };
+
+  const assistantMessage = (message: Message) => {
+    const { thinkProcess, response, isThinking } = parseContent(message.content);
+    console.log(thinkProcess, response, isThinking);
+    return (
+      <>
+        {(thinkProcess || isThinking) && 
+          (<div className={styles.thinking}>
+            {thinkProcess}
+          </div>)
+        }
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeKatex, rehypeRaw]}
+        >
+          {response}
+        </ReactMarkdown>
+      </>
+    )
+  }
 
   return (
     <div className={styles.chatPanel}>
@@ -189,12 +263,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               }`}
             >
               {message.type === 'assistant' ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex, rehypeRaw]}
-                >
-                  {message.content}
-                </ReactMarkdown>
+                assistantMessage(message)
               ) : (
                 <div className={`${styles.messageContent}`}>
                   {message.content}

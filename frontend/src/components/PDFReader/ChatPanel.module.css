@@ -326,3 +326,13 @@ code {
   padding: 2px 4px;
   border-radius: 4px;
 }
+
+.thinking {
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  background: #f5f5f5;
+  color: #333;
+  margin-bottom: 12px;
+}
