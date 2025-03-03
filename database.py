@@ -182,6 +182,7 @@ class Document(Base):
         back_populates="document",
         order_by="ProcessingRecord.created_at.desc()",
     )
+    notes = relationship("Note", back_populates="document", cascade="all, delete-orphan")
 
     def get_page_content(self, page: int) -> str:
         """获取指定页的内容"""
@@ -212,6 +213,27 @@ class DocumentReadRecord(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     read_at = Column(DateTime, default=datetime.now)
 
+class Note(Base):
+    """笔记模型类。
+
+    存储用户在文档上添加的笔记。
+    """
+
+    __tablename__ = "notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text, nullable=False)
+    quote = Column(Text)  # 引用的原文内容
+    document_id = Column(Integer, ForeignKey("documents.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    highlight_areas = Column(JSON)  # 存储高亮区域信息
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # 关系
+    document = relationship("Document", back_populates="notes")
+    user = relationship("User", back_populates="notes")
+
 class Conversation(Base):
     """对话模型类。
 
@@ -224,35 +246,15 @@ class Conversation(Base):
     title = Column(String)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    user_id = Column(Integer, ForeignKey("users.id"))  # 添加用户关联
+    messages = Column(JSON, default=list)  # 存储聊天消息的JSON字段
 
     documents = relationship(
         "Document",
         secondary=conversation_documents,
         back_populates="conversations",
     )
-    messages = relationship(
-        "Message", back_populates="conversation", cascade="all, delete-orphan"
-    )
-
-
-class Message(Base):
-    """消息模型类。
-
-    存储对话中的具体消息内容。
-    """
-
-    __tablename__ = "messages"
-
-    id = Column(Integer, primary_key=True, index=True)
-    conversation_id = Column(Integer, ForeignKey("conversations.id"))
-    content = Column(Text)
-    is_ai = Column(Boolean, default=False)
-    position_x = Column(Float)
-    position_y = Column(Float)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-
-    conversation = relationship("Conversation", back_populates="messages")
+    user = relationship("User", back_populates="conversations")  # 添加用户关系
 
 
 def create_rag_db():

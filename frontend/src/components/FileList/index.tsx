@@ -355,39 +355,44 @@ const FileList: React.FC<FileListProps> = ({
     }
   };
 
-  const getProcessingStatusInfo = (status: string | undefined) => {
+  const getProcessingStatusInfo = (status: string | undefined, errorMessage?: string) => {
     if (!status) return null;
     
     let icon = '';
     let color = '';
     let progress = 0;
+    let tooltip = '';
     
     switch (status.toLowerCase()) {
       case 'pending':
         icon = '⏳';
         color = 'pending';
         progress = 0;
+        tooltip = '等待处理';
         break;
       case 'processing':
         icon = '🔄';
         color = 'processing';
         progress = 50;
+        tooltip = '处理中';
         break;
       case 'completed':
         icon = '✅';
         color = 'completed';
         progress = 100;
+        tooltip = '处理完成';
         break;
       case 'failed':
         icon = '❌';
         color = 'failed';
         progress = 100;
+        tooltip = errorMessage || '处理失败';
         break;
       default:
         return null;
     }
     
-    return { icon, color, progress };
+    return { icon, color, progress, tooltip };
   };
 
   const handleContainerClick = (event: React.MouseEvent) => {
@@ -427,6 +432,20 @@ const FileList: React.FC<FileListProps> = ({
         ))}
       </>
     );
+  };
+
+  const handleRetryProcessing = async (fileId: string) => {
+    try {
+      setLoading(true);
+      await fileApi.retryProcessing(fileId);
+      fetchFiles();
+      (window as any).toast.success('已重新开始处理文件');
+    } catch (error) {
+      console.error('Error retrying file processing:', error);
+      (window as any).toast.error('重试处理失败');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -554,12 +573,15 @@ const FileList: React.FC<FileListProps> = ({
                     <div className={styles.processingStatus}>
                       <span>•</span>
                       {(() => {
-                        const statusInfo = getProcessingStatusInfo(file.processingStatus);
+                        const statusInfo = getProcessingStatusInfo(file.processingStatus, file.errorMessage);
                         if (!statusInfo) return null;
                         
                         return (
                           <>
-                            <span className={styles[statusInfo.color]}>
+                            <span 
+                              className={styles[statusInfo.color]} 
+                              title={statusInfo.tooltip}
+                            >
                               {statusInfo.icon} {file.processingStatus}
                             </span>
                             {file.processingStatus === "processing" && <div className={styles.progressBar}>
@@ -587,15 +609,29 @@ const FileList: React.FC<FileListProps> = ({
                   ✏️
                 </button>
                 {!file.isFolder && (
-                  <button
-                    className={styles.iconButton}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(file.id);
-                    }}
-                  >
-                    ⬇️
-                  </button>
+                  <>
+                    <button
+                      className={styles.iconButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownload(file.id);
+                      }}
+                    >
+                      ⬇️
+                    </button>
+                    {file.processingStatus === 'failed' && (
+                      <button
+                        className={styles.iconButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRetryProcessing(file.id);
+                        }}
+                        title="重试处理"
+                      >
+                        🔄
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

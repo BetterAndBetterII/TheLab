@@ -112,6 +112,14 @@ export const fileApi = {
     }
   },
 
+  // 重试处理文件
+  retryProcessing: async (documentId: string): Promise<void> => {
+    return handleRequest(`${BASE_URL}/documents/${documentId}/retry-processing`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+  },
+
   // 删除文件或文件夹
   deleteFile: async (fileId: string) => {
     return handleRequest(`${BASE_URL}/documents/${fileId}`, {

@@ -24,6 +24,7 @@ from llama_index.core.schema import NodeWithScore
 from llama_index.core.settings import Settings
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
 from llama_index.llms.openai import OpenAI
+from llama_index.llms.openai_like import OpenAILike
 from llama_index.postprocessor.siliconflow_rerank import SiliconFlowRerank
 from llama_index.storage.docstore.postgres import PostgresDocumentStore
 from llama_index.vector_stores.postgres import PGVectorStore
@@ -41,11 +42,11 @@ from database import Document as DBDocument
 # logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"), override=True)
 
-Settings.llm = SiliconFlow(
+Settings.llm = OpenAILike(
+    model="Qwen/Qwen2.5-7B-Instruct",
     api_key=os.getenv("OPENAI_API_KEY"),
     api_base=os.getenv("OPENAI_BASE_URL"),
-    model="Qwen/Qwen2.5-7B-Instruct",
-    max_retries=5,
+    is_chat_model=True,
 )
 Settings.embed_model = SiliconFlowEmbedding(
     api_key=os.getenv("EMBEDDING_API_KEY"),
@@ -109,12 +110,12 @@ class KnowledgeBase:
                     window_metadata_key="window",
                     original_text_metadata_key="original_text",
                 ),
-                QuestionsAnsweredExtractor(
-                    questions=3,
-                    num_workers=5,
-                ),
+                # QuestionsAnsweredExtractor(
+                #     questions=3,
+                #     num_workers=5,
+                # ),
                 KeywordExtractor(
-                    keywords=5,
+                    keywords=7,
                     num_workers=5,
                 ),
                 Settings.embed_model,
@@ -173,7 +174,7 @@ class KnowledgeBase:
         )
 
         # 执行文档注入管道
-        await self.pipeline.arun(documents=[doc])
+        await self.pipeline.arun(documents=[doc], num_workers=12)
         return doc_id
 
     async def upload_files(self, file_paths: list[str]):
@@ -404,6 +405,7 @@ async def run():
     PG_DOCS_URI = os.getenv("PG_DOCS_URI")
     PG_VECTOR_URI = os.getenv("PG_VECTOR_URI")
     rag = KnowledgeBase(pg_docs_uri=PG_DOCS_URI, pg_vector_uri=PG_VECTOR_URI)
+    await rag.upload_text("这是一个测试文档", "test_doc")
 
 
 if __name__ == "__main__":

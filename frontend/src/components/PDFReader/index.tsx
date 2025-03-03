@@ -10,6 +10,7 @@ import {
   MessageIcon,
   RenderHighlightContentProps,
   RenderHighlightTargetProps,
+  RenderHighlightsProps,
 } from '@react-pdf-viewer/highlight';
 import { IoMdSend, IoMdChatboxes } from 'react-icons/io';
 
@@ -29,6 +30,8 @@ import SummaryPanel from './SummaryPanel';
 import FlowPanel from './FlowPanel';
 import QuizPanel from './QuizPanel';
 import { documentApi } from '../../api';
+import { conversationApi } from '../../api/conversations';
+import { Message } from './ChatPanel';
 
 type TabType = 'notes' | 'summary' | 'chat' | 'flow' | 'quiz';
 
@@ -44,13 +47,6 @@ interface Note {
   content: string;
   highlightAreas: HighlightArea[];
   quote: string;
-}
-
-interface Message {
-  id: string;
-  content: string;
-  type: 'user' | 'assistant';
-  timestamp: number;
 }
 
 interface PDFReaderProps {
@@ -78,6 +74,11 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const [summaryCn, setSummaryCn] = useState<string[]>([]);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string>('');
+  const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
+  const noteEles: Map<number, HTMLElement> = new Map();
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [showAllNotes, setShowAllNotes] = useState(false);
 
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const resizerRef = useRef<HTMLDivElement>(null);
@@ -85,9 +86,25 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const chatInputContainerRef = useRef<HTMLDivElement>(null);
   
+  // 加载笔记
+  const loadNotes = useCallback(async () => {
+    try {
+      const notesData = await documentApi.getNotes(documentId);
+      setNotes(notesData.map(note => ({
+        id: note.id,
+        content: note.content,
+        quote: note.quote,
+        highlightAreas: note.highlight_areas,
+      })));
+    } catch (error) {
+      console.error('加载笔记失败:', error);
+    }
+  }, [documentId]);
+
   useEffect(() => {
     documentApi.recordRead(documentId);
-  }, []);
+    loadNotes();  // 加载笔记
+  }, [documentId, loadNotes]);
 
   const [flowData, setFlowData] = useState({
     title: '论文标题',
@@ -248,7 +265,15 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
     <div
       className={styles.highlightTarget}
-      onClick={props.toggle}
+      onClick={() => {
+        props.toggle();
+        setTimeout(() => {
+          const noteInput = document.getElementById('note-input');
+          if (noteInput) {
+            noteInput.focus();
+          }
+        }, 100);
+      }}
       title="添加批注"
       style={{
           left: `${props.selectionRegion.left}%`,
@@ -270,27 +295,61 @@ const PDFReader: React.FC<PDFReaderProps> = ({
             position: 'absolute',
             left: `${props.selectionRegion.left}%`,
             top: `${props.selectionRegion.top + props.selectionRegion.height}%`,
-            zIndex: 1,
+            zIndex: 5,
         }}
       >
         <textarea
+          id="note-input"
           placeholder="添加批注..."
           value={currentNote}
           onChange={(e) => setCurrentNote(e.target.value)}
+          onKeyDown={async (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              try {
+                const note = await documentApi.createNote(documentId, {
+                  content: currentNote,
+                  quote: props.selectedText,
+                  highlight_areas: props.highlightAreas,
+                });
+                
+                setNotes([...notes, {
+                  id: note.id,
+                  content: note.content,
+                  quote: note.quote,
+                  highlightAreas: note.highlight_areas,
+                }]);
+                
+                setCurrentNote('');
+                props.cancel();
+              } catch (error) {
+                console.error('保存笔记失败:', error);
+              }
+            }
+          }}
         />
         <div className={styles.highlightButtons}>
           <button
-            onClick={() => {
-              const note: Note = {
-                id: `note-${Date.now()}`,
-                content: currentNote,
-                highlightAreas: props.highlightAreas,
-                quote: props.selectedText,
-              };
-              setNotes([...notes, note]);
-              console.log(notes);
-              setCurrentNote('');
-              props.cancel();
+            onClick={async () => {
+              try {
+                const note = await documentApi.createNote(documentId, {
+                  content: currentNote,
+                  quote: props.selectedText,
+                  highlight_areas: props.highlightAreas,
+                });
+                
+                setNotes([...notes, {
+                  id: note.id,
+                  content: note.content,
+                  quote: note.quote,
+                  highlightAreas: note.highlight_areas,
+                }]);
+                
+                setCurrentNote('');
+                props.cancel();
+              } catch (error) {
+                console.error('保存笔记失败:', error);
+              }
             }}
           >
             保存
@@ -308,50 +367,94 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     );
   };
 
-  const jumpToHighlightArea = (note: Note) => {
-    if (note.highlightAreas?.[0]) {
-      const jumpToPage = note.highlightAreas[0].pageIndex;
-      onPageChange?.(jumpToPage + 1);
+  const jumpToNote = (note: Note) => {
+    if (noteEles.has(Number(note.id))) {
+        noteEles.get(Number(note.id))?.scrollIntoView();
     }
   };
+
+  const renderHighlights = (props: RenderHighlightsProps) => (
+    <div>
+        {notes.map((note) => (
+            <React.Fragment key={note.id}>
+                {note.highlightAreas
+                    .filter((area) => area.pageIndex === props.pageIndex)
+                    .map((area, idx) => (
+                        <div
+                            key={idx}
+                            className={styles.highlightArea}
+                            style={Object.assign(
+                                {},
+                                props.getCssProperties(area, props.rotation),
+                                {
+                                    // background: 'yellow',
+                                    // opacity: 0.4,
+                                    background: 'rgba(255, 255, 0, 0.3)',
+                                    position: 'absolute',
+                                    left: `${area.left}%`,
+                                    top: `${area.top}%`,
+                                    width: `${area.width}%`,
+                                    height: `${area.height}%`,
+                                    zIndex: 2,
+                                }
+                            )}
+                            onClick={() => {
+                              jumpToNote(note);
+                              console.log(note);
+                            }}
+                            ref={(ref): void => {
+                              noteEles.set(Number(note.id), ref as HTMLElement);
+                            }}  // 设置笔记元素的引用
+                        >
+                          <div className={styles.highlightAreaText} style={{
+                            opacity: 1,
+                            zIndex: 6,
+                          }}>{note.content}</div>
+                        </div>
+                    ))}
+            </React.Fragment>
+        ))}
+    </div>
+  );
 
   const highlightPluginInstance = highlightPlugin({
     renderHighlightTarget,
     renderHighlightContent,
-    renderHighlights: (props) => (
-      <div>
-        {notes.map((note) => (
-          <React.Fragment key={note.id}>
-            {note.highlightAreas
-              .filter((area) => area.pageIndex === props.pageIndex)
-              .map((area, index) => (
-                <div
-                  key={index}
-                  className={styles.highlightArea}
-                  style={{
-                    background: 'rgba(255, 255, 0, 0.3)',
-                    position: 'absolute',
-                    left: `${area.left}%`,
-                    top: `${area.top}%`,
-                    width: `${area.width}%`,
-                    height: `${area.height}%`,
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => jumpToHighlightArea(note)}
-                  title={note.content}
-                />
-              ))}
-          </React.Fragment>
-        ))}
-      </div>
-    ),
+    renderHighlights: renderHighlights,
   });
 
+  const { jumpToHighlightArea } = highlightPluginInstance;
+
+  // 创建新对话
+  const createNewConversation = useCallback(async (user_question: string): Promise<number | null> => {
+    try {
+      const conversation = await conversationApi.create(
+        `${user_question}`,
+        [documentId]
+      );
+      if (conversation.id) {
+        setCurrentConversationId(conversation.id);
+        return conversation.id;
+      } else {
+        console.error('创建对话失败:', conversation);
+        return null;
+      }
+    } catch (error) {
+      console.error('创建对话失败:', error);
+      return null;
+    }
+  }, [documentId]);
+
   // 处理消息发送
-  const handleMessageSend = (e: React.FormEvent) => {
+  const handleMessageSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
 
+    // 切换到聊天模式
+    setActiveTab('chat');
+    setIsLoading(true);
+
+    // 发送消息
     const userMessage: Message = {
       id: `msg-${Date.now()}`,
       content: inputValue,
@@ -359,25 +462,87 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       timestamp: Date.now(),
     };
 
+    console.log(userMessage);
+
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
-    setIsLoading(true);
 
-    // 切换到聊天模式
-    setActiveTab('chat');
+    try {
+      // 如果没有当前对话，创建新对话
+      const conversationId = !currentConversationId ? await createNewConversation(userMessage.content) : currentConversationId;
+      if (!conversationId) {
+        console.error('创建对话失败');
+        return;
+      }
+      // 调用聊天 API
+      const response = await conversationApi.chat(
+        conversationId,
+        messages.concat(userMessage).map(msg => ({
+          role: msg.type,
+          content: msg.content,
+        }))
+      );
 
-    // 模拟AI响应
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: `msg-${Date.now()}`,
-        content: `这是对"${inputValue}"的回答。当前在第${currentPage + 1}页。`,
-        type: 'assistant',
-        timestamp: Date.now(),
-      };
+      if (response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
 
-      setMessages(prev => [...prev, aiResponse]);
+        const assistantMessage: Message = {
+          id: `msg-${Date.now() + 1}`,
+          content: '',
+          type: 'assistant',
+          timestamp: Date.now(),
+        };
+
+        console.log(assistantMessage);
+
+        setMessages(prev => [...prev, assistantMessage]);
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(5);
+                if (data.indexOf('[DONE]') !== -1) continue;
+
+                try {
+                  const json = JSON.parse(data);
+                  if (json.error) {
+                    throw new Error(json.error.message);
+                  }
+
+                  const content = json.choices[0]?.delta?.content || '';
+                  if (content) {
+                    setIsLoading(false);
+                    console.log(content);
+                    setMessages(prev => 
+                      prev.map(msg => 
+                        msg.id === assistantMessage.id
+                          ? { ...msg, content: msg.content + content }
+                          : msg
+                      )
+                    );
+                  }
+                } catch (e) {
+                  console.error('解析响应失败:', e);
+                }
+              }
+            }
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    } catch (error) {
+      console.error('发送消息失败:', error);
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -463,43 +628,147 @@ const PDFReader: React.FC<PDFReaderProps> = ({
           )}
 
           {activeTab === 'notes' && (
-            <div className={styles.notesList}>
-              {notes
-                .filter(note => note.highlightAreas.some(area => area.pageIndex === currentPage))
-                .map((note) => (
-                <div
-                  key={note.id}
-                  className={styles.noteItem}
-                  onClick={() => jumpToHighlightArea(note)}
-                >
-                  <div className={styles.noteHeader}>
-                    <span className={styles.pageInfo}>第 {note.highlightAreas[0].pageIndex + 1} 页</span>
-                    <button
-                      className={styles.deleteNote}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setNotes(notes.filter((n) => n.id !== note.id));
-                      }}
+            <>
+              <div className={styles.notesHeader}>
+                <div className={styles.notesFilter}>
+                  <span>显示全部笔记</span>
+                  <label className={styles.toggleSwitch}>
+                    <input
+                      type="checkbox"
+                      checked={showAllNotes}
+                      onChange={(e) => setShowAllNotes(e.target.checked)}
+                    />
+                    <span className={styles.toggleSlider}></span>
+                  </label>
+                </div>
+              </div>
+              <div className={styles.notesList}>
+                {notes
+                  .sort((a, b) => a.highlightAreas[0].pageIndex - b.highlightAreas[0].pageIndex)
+                  .filter(note => showAllNotes || note.highlightAreas.some(area => area.pageIndex === currentPage))
+                  .map((note) => (
+                    <div
+                      key={note.id}
+                      className={styles.noteItem}
+                      onClick={() => jumpToHighlightArea(note.highlightAreas[0])}
                     >
-                      删除
-                    </button>
+                      <div className={styles.noteHeader}>
+                        <span className={styles.pageInfo}>第 {note.highlightAreas[0].pageIndex + 1} 页</span>
+                        <div className={styles.noteActions}>
+                          {editingNoteId === note.id ? (
+                            <>
+                              <button
+                                className={styles.saveNote}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await documentApi.updateNote(documentId, note.id, {
+                                      content: editingContent,
+                                      quote: note.quote,
+                                      highlight_areas: note.highlightAreas,
+                                    });
+                                    setNotes(notes.map((n) => 
+                                      n.id === note.id ? { ...n, content: editingContent } : n
+                                    ));
+                                    setEditingNoteId(null);
+                                    setEditingContent('');
+                                  } catch (error) {
+                                    console.error('更新笔记失败:', error);
+                                  }
+                                }}
+                              >
+                                保存
+                              </button>
+                              <button
+                                className={styles.cancelEdit}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingNoteId(null);
+                                  setEditingContent('');
+                                }}
+                              >
+                                取消
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                className={styles.editNote}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingNoteId(note.id);
+                                  setEditingContent(note.content);
+                                }}
+                              >
+                                编辑
+                              </button>
+                              <button
+                                className={styles.deleteNote}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await documentApi.deleteNote(documentId, note.id);
+                                    setNotes(notes.filter((n) => n.id !== note.id));
+                                  } catch (error) {
+                                    console.error('删除笔记失败:', error);
+                                  }
+                                }}
+                              >
+                                删除
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className={styles.noteQuote}>{note.quote}</div>
+                      {editingNoteId === note.id ? (
+                        <textarea
+                          className={styles.noteEditInput}
+                          value={editingContent}
+                          onChange={(e) => setEditingContent(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          autoFocus
+                        />
+                      ) : (
+                        <div className={styles.noteContent}>{note.content}</div>
+                      )}
+                    </div>
+                  ))}
+                {!showAllNotes && notes.filter(note => note.highlightAreas.some(area => area.pageIndex === currentPage)).length === 0 && (
+                  <div className={styles.emptyNotes}>
+                    当前页面暂无笔记
                   </div>
-                  <div className={styles.noteQuote}>{note.quote}</div>
-                  <div className={styles.noteContent}>{note.content}</div>
-                </div>
-              ))}
-              {notes.filter(note => note.highlightAreas.some(area => area.pageIndex === currentPage)).length === 0 && (
-                <div className={styles.emptyNotes}>
-                  当前页面暂无笔记
-                </div>
-              )}
-            </div>
+                )}
+                {showAllNotes && notes.length === 0 && (
+                  <div className={styles.emptyNotes}>
+                    暂无笔记
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {activeTab === 'chat' && (
             <ChatPanel
               messages={messages}
               isLoading={isLoading}
+              onClearChat={() => {
+                setMessages([]);
+                setCurrentConversationId(null);
+                setIsLoading(false);
+              }}
+              onSelectChat={(id) => {
+                setCurrentConversationId(id);
+                conversationApi.get(id).then(res => {
+                  setMessages(res.messages.map(msg => ({
+                    id: `msg-${Date.now()}`,
+                    content: msg.content,
+                    type: msg.role as 'user' | 'assistant',
+                    timestamp: Date.now(),
+                  })));
+                });
+                setIsLoading(false);
+              }}
             />
           )}
 

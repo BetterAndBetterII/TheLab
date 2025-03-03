@@ -1,4 +1,6 @@
 from typing import Optional
+from datetime import datetime
+import traceback
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -82,20 +84,32 @@ async def test_ai_settings(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在"
                 )
-            api_key_model = ApiKey(
-                key=settings.apiKey,
-                base_url=settings.baseUrl,
-                user_id=current_user.id,
-            )
+            query = db.query(ApiKey).filter(ApiKey.user_id == current_user.id)
+            if query.count() > 1:
+                for api_key_model in query:
+                    db.delete(api_key_model)
+            api_key_model = db.query(ApiKey).filter(ApiKey.user_id == current_user.id).first()
+            if not api_key_model:
+                api_key_model = ApiKey(
+                    key=settings.apiKey,
+                    base_url=settings.baseUrl,
+                    user_id=current_user.id,
+                )
+                db.add(api_key_model)
             current_user.ai_api_key = settings.apiKey
             current_user.ai_base_url = settings.baseUrl
             current_user.ai_standard_model = settings.standardModel
             current_user.ai_advanced_model = settings.advancedModel
-            db.add(api_key_model)
+            api_key_model.key = settings.apiKey
+            api_key_model.base_url = settings.baseUrl
+            api_key_model.created_at = datetime.now()
+            api_key_model.last_used_at = None
+            api_key_model.last_error_message = None
             db.commit()
-            db.refresh(api_key_model)
+            db.refresh(current_user)  # 刷新用户信息
             return {"status": "success", "message": "连接测试成功"}
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=f"连接测试失败: {str(e)}"
         )

@@ -102,6 +102,7 @@ export interface FileItem {
   isFolder: boolean;
   mimeType?: string;
   processingStatus?: string;
+  errorMessage?: string;
 }
 
 export interface FolderTree {
@@ -188,4 +189,19 @@ export interface DocumentSummary {
 export interface DocumentTranslation {
   content: string;
   page: number;
+}
+
+export interface FileApi {
+  getFiles: (folderId?: string | null) => Promise<FileItem[]>;
+  getFolderTree: () => Promise<FolderTree[]>;
+  createFolder: (name: string, parentId?: string | null) => Promise<FileItem>;
+  uploadFile: (file: File, folderId?: string | null) => Promise<FileItem>;
+  downloadFile: (fileId: string) => Promise<void>;
+  renameFile: (fileId: string, data: { newName: string }) => Promise<FileItem>;
+  moveFile: (fileId: string, targetFolderId: string | null) => Promise<FileItem>;
+  deleteFile: (fileId: string) => Promise<void>;
+  batchDeleteFiles: (fileIds: string[]) => Promise<void>;
+  batchDeleteFolders: (folderIds: string[]) => Promise<void>;
+  batchMove: (fileIds: string[], folderIds: string[], targetFolderId: string | null) => Promise<void>;
+  retryProcessing: (fileId: string) => Promise<void>;
 } 

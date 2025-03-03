@@ -66,4 +66,66 @@ export const documentApi = {
       headers: getAuthHeaders(),
     });
   },
+
+  // 创建笔记
+  createNote: async (documentId: string, note: {
+    content: string;
+    quote: string;
+    highlight_areas: any[];
+  }): Promise<{
+    id: string;
+    content: string;
+    quote: string;
+    highlight_areas: any[];
+    created_at: string;
+    updated_at: string;
+  }> => {
+    return handleRequest(`${BASE_URL}/documents/${documentId}/notes`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(note),
+    });
+  },
+
+  // 获取文档的所有笔记
+  getNotes: async (documentId: string): Promise<Array<{
+    id: string;
+    content: string;
+    quote: string;
+    highlight_areas: any[];
+    created_at: string;
+    updated_at: string;
+  }>> => {
+    return handleRequest(`${BASE_URL}/documents/${documentId}/notes`, {
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // 删除笔记
+  deleteNote: async (documentId: string, noteId: string): Promise<void> => {
+    return handleRequest(`${BASE_URL}/documents/${documentId}/notes/${noteId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // 更新笔记
+  updateNote: async (documentId: string, noteId: string, data: {
+    content: string;
+    quote: string;
+    highlight_areas: any[];
+  }): Promise<{
+    id: string;
+    content: string;
+    quote: string;
+    highlight_areas: any[];
+    created_at: string;
+    updated_at: string;
+  }> => {
+    return handleRequest(`${BASE_URL}/documents/${documentId}/notes/${noteId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+  },
 }; 

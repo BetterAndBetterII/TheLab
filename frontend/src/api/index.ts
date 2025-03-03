@@ -7,4 +7,5 @@ export { chatApi } from './chat';
 export { forumApi } from './forum';
 export { fileApi } from './files';
 export { searchApi } from './search';
-export { documentApi } from './documents'; 
+export { documentApi } from './documents';
+export { conversationApi } from './conversations';

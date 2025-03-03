@@ -1,25 +1,78 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { IoMdTime, IoMdClose } from 'react-icons/io';
+import { IoMdTime, IoMdClose, IoMdTrash } from 'react-icons/io';
 import styles from './ChatPanel.module.css';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import { conversationApi } from '../../api/conversations';
 
-interface Message {
+export interface Message {
   id: string;
   content: string;
   type: 'user' | 'assistant';
   timestamp: number;
 }
 
+interface ConversationMessage {
+  role: string;
+  content: string;
+  timestamp: string;
+  finish_reason?: string;
+}
+
+interface ChatHistory {
+  id: number;
+  title: string;
+  messages: ConversationMessage[];
+  documents: Array<{
+    id: number;
+    filename: string;
+  }>;
+  created_at: string;
+  updated_at: string;
+  user_id: number;
+}
+
 interface ChatPanelProps {
   messages: Message[];
   isLoading: boolean;
+  onSelectChat: (id: number) => void;
+  onClearChat?: () => void;
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({
   messages,
   isLoading,
+  onSelectChat,
+  onClearChat
 }) => {
   const [isHistoryVisible, setIsHistoryVisible] = useState(false);
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
+  const historyPanelRef = useRef<HTMLDivElement>(null);
+
+  // 加载聊天历史
+  const loadChatHistory = async () => {
+    try {
+      setIsHistoryLoading(true);
+      const history = await conversationApi.list();
+      setChatHistory(history);
+    } catch (error) {
+      console.error('加载聊天历史失败:', error);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
+  // 当打开历史面板时加载聊天历史
+  useEffect(() => {
+    if (isHistoryVisible) {
+      loadChatHistory();
+    }
+  }, [isHistoryVisible]);
 
   // 自动滚动到底部
   useEffect(() => {
@@ -30,29 +83,42 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         behavior: 'smooth'
       });
     }
-  }, [messages, isLoading]); // 当消息列表或加载状态改变时触发滚动
+  }, [messages, isLoading]);
 
-  // 模拟历史聊天记录数据
-  const chatHistory = [
-    {
-      id: '1',
-      title: '关于量子计算的讨论',
-      date: '2024-03-20',
-      lastMessage: '量子计算机的发展前景如何？'
-    },
-    {
-      id: '2',
-      title: '机器学习算法探讨',
-      date: '2024-03-19',
-      lastMessage: '深度学习在图像识别中的应用'
-    },
-    {
-      id: '3',
-      title: '人工智能伦理问题',
-      date: '2024-03-18',
-      lastMessage: 'AI发展中的伦理边界在哪里？'
-    }
-  ];
+  // 添加点击外部关闭侧边栏的处理函数
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        historyPanelRef.current && 
+        !historyPanelRef.current.contains(event.target as Node) &&
+        isHistoryVisible
+      ) {
+        setIsHistoryVisible(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isHistoryVisible]);
+
+  // 格式化日期
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // 获取最后一条消息
+  const getMessageLength = (messages: ConversationMessage[]) => {
+    return messages.length > 0 ? `${messages.length}条消息` : '无消息';
+  };
 
   return (
     <div className={styles.chatPanel}>
@@ -64,8 +130,19 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         <IoMdTime size={24} />
       </button>
 
+      <button
+        className={styles.clearButton}
+        onClick={() => onClearChat?.()}
+        title="清空对话"
+      >
+        <IoMdTrash size={24} />
+      </button>
+
       {/* 历史记录侧边栏 */}
-      <div className={`${styles.historyPanel} ${isHistoryVisible ? styles.visible : ''}`}>
+      <div 
+        ref={historyPanelRef}
+        className={`${styles.historyPanel} ${isHistoryVisible ? styles.visible : ''}`}
+      >
         <div className={styles.historyHeader}>
           <h3>聊天历史</h3>
           <button
@@ -76,13 +153,23 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           </button>
         </div>
         <div className={styles.historyList}>
-          {chatHistory.map(chat => (
-            <div key={chat.id} className={styles.historyItem}>
-              <h4>{chat.title}</h4>
-              <p>{chat.lastMessage}</p>
-              <span className={styles.date}>{chat.date}</span>
-            </div>
-          ))}
+          {isHistoryLoading ? (
+            <div className={styles.loadingState}>加载中...</div>
+          ) : chatHistory.length === 0 ? (
+            <div className={styles.emptyState}>暂无聊天记录</div>
+          ) : (
+            chatHistory
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .map(chat => (
+              <div key={chat.id} className={styles.historyItem} onClick={() => {
+                onSelectChat(chat.id);
+              }}>
+                <h4>{chat.title.length > 35 ? chat.title.slice(0, 20) + '...' : chat.title}</h4>
+                <p>{getMessageLength(chat.messages)}</p>
+                <span className={styles.date}>{formatDate(chat.created_at)}</span>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -101,17 +188,26 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 message.type === 'user' ? styles.userMessage : styles.assistantMessage
               }`}
             >
-              <div className={styles.messageContent}>{message.content}</div>
+              {message.type === 'assistant' ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex, rehypeRaw]}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              ) : (
+                <div className={`${styles.messageContent}`}>
+                  {message.content}
+                </div>
+              )}
             </div>
           ))
         )}
         {isLoading && (
-          <div className={styles.loadingMessage}>
-            <div className={styles.typingIndicator}>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
+          <div className={styles.typingIndicator}>
+            <span></span>
+            <span></span>
+            <span></span>
           </div>
         )}
       </div>

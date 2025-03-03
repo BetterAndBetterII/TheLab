@@ -7,7 +7,15 @@ import os
 import mimetypes
 import urllib.parse
 
-from database import Document, Folder, get_db, ProcessingStatus, ProcessingRecord, DocumentReadRecord
+from database import (
+    Document,
+    Folder,
+    get_db,
+    ProcessingStatus,
+    ProcessingRecord,
+    DocumentReadRecord,
+    Note,
+)
 from models.users import User
 from services.session import get_current_user
 from pipeline.document_pipeline import DocumentPipeline, get_document_pipeline
@@ -27,6 +35,7 @@ class FileResponse(BaseModel):
     isFolder: bool
     mimeType: Optional[str]
     processingStatus: Optional[str] = None
+    errorMessage: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -58,6 +67,31 @@ class DocumentSummaryResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+class NoteCreate(BaseModel):
+    content: str
+    quote: str
+    highlight_areas: List[dict]
+
+
+class NoteResponse(BaseModel):
+    id: str
+    content: str
+    quote: str
+    highlight_areas: List[dict]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class NoteUpdate(BaseModel):
+    content: str
+    quote: str
+    highlight_areas: List[dict]
+
+
 @router.post("/{documentId}/read")
 async def record_read(
     documentId: str,
@@ -65,21 +99,27 @@ async def record_read(
     current_user: User = Depends(get_current_user),
 ):
     # 查找现有记录
-    existing_record = db.query(DocumentReadRecord).filter(
-        DocumentReadRecord.document_id == int(documentId),
-        DocumentReadRecord.user_id == current_user.id
-    ).first()
+    existing_record = (
+        db.query(DocumentReadRecord)
+        .filter(
+            DocumentReadRecord.document_id == int(documentId),
+            DocumentReadRecord.user_id == current_user.id,
+        )
+        .first()
+    )
 
     if existing_record:
         # 更新现有记录的时间戳
         existing_record.read_at = datetime.now()
     else:
         # 创建新记录
-        db.add(DocumentReadRecord(
-            document_id=int(documentId),
-            user_id=current_user.id,
-        ))
-    
+        db.add(
+            DocumentReadRecord(
+                document_id=int(documentId),
+                user_id=current_user.id,
+            )
+        )
+
     db.commit()
     return {"message": "阅读记录已保存"}
 
@@ -92,13 +132,15 @@ async def get_read_history(
     current_user: User = Depends(get_current_user),
 ):
     """获取用户的阅读历史记录"""
-    records = db.query(DocumentReadRecord, Document).join(
-        Document, DocumentReadRecord.document_id == Document.id
-    ).filter(
-        DocumentReadRecord.user_id == current_user.id
-    ).order_by(
-        DocumentReadRecord.read_at.desc()
-    ).offset(skip).limit(limit).all()
+    records = (
+        db.query(DocumentReadRecord, Document)
+        .join(Document, DocumentReadRecord.document_id == Document.id)
+        .filter(DocumentReadRecord.user_id == current_user.id)
+        .order_by(DocumentReadRecord.read_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     return {
         "records": [
@@ -180,6 +222,7 @@ async def list_files(
     parentId: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    document_pipeline: DocumentPipeline = Depends(get_document_pipeline),
 ):
     query = db.query(Document)
     if parentId is not None:
@@ -211,6 +254,7 @@ async def list_files(
         Document.path,
         Document.mime_type,
         Document.processing_status,
+        Document.error_message,
     )
 
     documents = query.all()
@@ -227,6 +271,7 @@ async def list_files(
             isFolder=False,
             mimeType=doc.content_type,
             processingStatus=doc.processing_status,
+            errorMessage=doc.error_message,
         )
         for doc in documents
     ]
@@ -449,6 +494,11 @@ async def batch_delete_files(
         ProcessingRecord.document_id.in_(file_ids)
     ).delete(synchronize_session=False)
 
+    # 删除阅读记录
+    db.query(DocumentReadRecord).filter(
+        DocumentReadRecord.document_id.in_(file_ids)
+    ).delete(synchronize_session=False)
+
     # 然后删除文档
     db.query(Document).filter(Document.id.in_(file_ids)).delete(
         synchronize_session=False
@@ -541,4 +591,163 @@ async def get_document_summaries(
     return DocumentSummaryResponse(
         summaries=summaries,
         total_pages=document.total_pages,
+    )
+
+
+@router.post("/{fileId}/retry-processing")
+async def retry_processing(
+    fileId: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    document_pipeline: DocumentPipeline = Depends(get_document_pipeline),
+):
+    """重试处理失败的文件"""
+    document = (
+        db.query(Document)
+        .filter(Document.id == int(fileId), Document.owner_id == current_user.id)
+        .first()
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="文档未找到")
+
+    if document.processing_status != ProcessingStatus.FAILED:
+        raise HTTPException(status_code=400, detail="只能重试处理失败的文件")
+
+    # 重置处理状态
+    document.processing_status = ProcessingStatus.PENDING
+    document.error_message = None
+    db.commit()
+
+    # 重新添加到处理队列
+    document_pipeline.add_task(document.id)
+
+    return {"message": "文件已重新加入处理队列"}
+
+
+@router.post("/{documentId}/notes", response_model=NoteResponse)
+async def create_note(
+    documentId: str,
+    note: NoteCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """创建新笔记"""
+    document = (
+        db.query(Document)
+        .filter(Document.id == int(documentId), Document.owner_id == current_user.id)
+        .first()
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="文档未找到")
+
+    db_note = Note(
+        content=note.content,
+        quote=note.quote,
+        highlight_areas=note.highlight_areas,
+        document_id=int(documentId),
+        user_id=current_user.id,
+    )
+    db.add(db_note)
+    db.commit()
+    db.refresh(db_note)
+
+    return NoteResponse(
+        id=str(db_note.id),
+        content=db_note.content,
+        quote=db_note.quote,
+        highlight_areas=db_note.highlight_areas,
+        created_at=db_note.created_at,
+        updated_at=db_note.updated_at,
+    )
+
+
+@router.get("/{documentId}/notes", response_model=List[NoteResponse])
+async def get_document_notes(
+    documentId: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """获取文档的所有笔记"""
+    notes = (
+        db.query(Note)
+        .filter(Note.document_id == int(documentId), Note.user_id == current_user.id)
+        .order_by(Note.created_at.desc())
+        .all()
+    )
+    
+    return [
+        NoteResponse(
+            id=str(note.id),
+            content=note.content,
+            quote=note.quote,
+            highlight_areas=note.highlight_areas,
+            created_at=note.created_at,
+            updated_at=note.updated_at,
+        )
+        for note in notes
+    ]
+
+
+@router.delete("/{documentId}/notes/{noteId}")
+async def delete_note(
+    documentId: str,
+    noteId: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """删除笔记"""
+    note = (
+        db.query(Note)
+        .filter(
+            Note.id == int(noteId),
+            Note.document_id == int(documentId),
+            Note.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not note:
+        raise HTTPException(status_code=404, detail="笔记未找到")
+
+    db.delete(note)
+    db.commit()
+    return {"message": "笔记已删除"}
+
+
+@router.put("/{documentId}/notes/{noteId}", response_model=NoteResponse)
+async def update_note(
+    documentId: str,
+    noteId: str,
+    note: NoteUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """更新笔记"""
+    db_note = (
+        db.query(Note)
+        .filter(
+            Note.id == int(noteId),
+            Note.document_id == int(documentId),
+            Note.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not db_note:
+        raise HTTPException(status_code=404, detail="笔记未找到")
+
+    # 更新笔记内容
+    db_note.content = note.content
+    db_note.quote = note.quote
+    db_note.highlight_areas = note.highlight_areas
+    db_note.updated_at = datetime.now()
+
+    db.commit()
+    db.refresh(db_note)
+
+    return NoteResponse(
+        id=str(db_note.id),
+        content=db_note.content,
+        quote=db_note.quote,
+        highlight_areas=db_note.highlight_areas,
+        created_at=db_note.created_at,
+        updated_at=db_note.updated_at,
     )

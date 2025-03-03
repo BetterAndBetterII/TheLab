@@ -70,6 +70,12 @@ class User(Base):
     topics = relationship("Topic", back_populates="user", cascade="all, delete-orphan")
     replies = relationship("Reply", back_populates="user", cascade="all, delete-orphan")
 
+    # 添加笔记关系
+    notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
+
+    # 添加对话关系
+    conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
+
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         return pwd_context.verify(plain_password, hashed_password)
