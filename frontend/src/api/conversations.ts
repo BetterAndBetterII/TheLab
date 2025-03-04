@@ -1,4 +1,5 @@
 import { BASE_URL, getAuthHeaders, handleRequest } from './config';
+import { QuizData } from '../components/PDFReader/QuizPanel';
 
 interface Message {
   role: string;
@@ -21,6 +22,12 @@ interface Conversation {
   updated_at: string;
   user_id: number;
 }
+
+interface QuizHistory {
+  quiz_history: QuizData[];
+}
+
+type ModelType = 'standard' | 'advanced';
 
 export const conversationApi = {
   // 创建新对话
@@ -61,7 +68,8 @@ export const conversationApi = {
   chat: async (
     conversationId: number,
     messages: { role: string; content: string }[],
-    stream: boolean = true
+    stream: boolean = true,
+    model: ModelType = 'standard' 
   ): Promise<Response> => {
     const response = await fetch(`${BASE_URL}/conversations/${conversationId}/chat`, {
       method: 'POST',
@@ -72,6 +80,7 @@ export const conversationApi = {
       body: JSON.stringify({
         messages,
         stream,
+        model,
       }),
     });
 
@@ -80,5 +89,59 @@ export const conversationApi = {
     }
 
     return response;
+  },
+
+  // 生成文档总结
+  generateFlow: async (documentId: string, stream: boolean = true): Promise<Response> => {
+    const response = await fetch(`${BASE_URL}/conversations/documents/${documentId}/flow`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        stream,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('生成总结请求失败');
+    }
+
+    return response;
+  },
+
+  // 生成文档测验题
+  generateQuiz: async (documentId: string, pageNumber?: number, stream: boolean = true): Promise<Response> => {
+    const response = await fetch(`${BASE_URL}/conversations/documents/${documentId}/quiz`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        page_number: pageNumber,
+        stream,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('生成测验题请求失败');
+    }
+
+    return response;
+  },
+
+  // 获取文档测验历史记录
+  getQuizHistory: async (documentId: string): Promise<QuizHistory> => {
+    const response = await fetch(`${BASE_URL}/conversations/documents/${documentId}/quiz/history`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('获取测验历史记录失败');
+    }
+
+    return response.json();
   },
 }; 

@@ -336,3 +336,25 @@ code {
   color: #333;
   margin-bottom: 12px;
 }
+
+.notes {
+  font-size: 12px;
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #6c757d;
+}
+
+.note {
+  margin-bottom: 0.8rem;
+}
+
+.note:last-child {
+  margin-bottom: 0;
+}
+
+.note strong {
+  color: #495057;
+  margin-right: 0.5rem;
+}

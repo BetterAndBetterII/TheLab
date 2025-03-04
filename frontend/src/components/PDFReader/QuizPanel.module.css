@@ -2,13 +2,12 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 20px;
   height: 100%;
-  overflow-y: auto;
   background: #ffffff;
 }
 
 .header {
+  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -144,7 +143,7 @@
 
 .incorrect .optionLabel {
   background: #f44336;
-  color: white;
+  color: #fff;
 }
 
 .congratulations {
@@ -168,6 +167,24 @@
   }
 }
 
+.emptyState {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.generateButton {
+  padding: 8px 18px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
 @keyframes incorrectAnswer {
   0%, 100% {
     transform: translateX(0);
@@ -180,6 +197,28 @@
   }
 }
 
+.generateButton:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.generateButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loadingState {
+  padding: 20px;
+}
+
+.streamContent {
+  white-space: pre-wrap;
+  font-family: monospace;
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
 @keyframes congratsAppear {
   from {
     opacity: 0;
@@ -189,6 +228,32 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.errorState {
+  padding: 20px;
+  text-align: center;
+}
+
+.errorMessage {
+  color: #721c24;
+  background: #f8d7da;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.explanation {
+  margin-top: 15px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: #e9ecef;
+  border-radius: 6px;
+  color: #495057;
+}
+
+.explanation p {
+  margin: 0;
 }
 
 /* 滚动条样式 */
@@ -208,4 +273,256 @@
 
 .quizPanel::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+
+.typingIndicator {
+  padding: 24px 64px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+}
+
+.typingIndicator span {
+  width: 6px;
+  height: 6px;
+  background: #666;
+  border-radius: 50%;
+  display: inline-block;
+  animation: typing 1s infinite ease-in-out;
+}
+
+.typingIndicator span:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.typingIndicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typingIndicator span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.historyButton {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.historyButton:hover {
+  background-color: #e0e0e0;
+}
+
+.historyPanel .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.historyPanel .closeButton {
+  padding: 0.5rem 1rem;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.historyItem {
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.historyItem:hover {
+  border-color: #007bff;
+  cursor: pointer;
+}
+
+.historyInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.historyInfoContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+}
+
+.historyInfoTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+.historyInfoDetail {
+  margin-top: auto;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.loadButton {
+  padding: 0.5rem 1rem;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.loadButton:hover {
+  background-color: #357abd;
+}
+
+.mainContainer {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
+.quizContainer {
+  flex: 2;
+  min-width: 0;
+}
+
+.historyContainer {
+  flex: 1;
+  height: 100%;
+  width: 100%;
+}
+
+.activeQuizPanel {
+  padding: 20px;
+  height: 100%;
+}
+
+.emptyHistory {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
+}
+
+.historyPanel {
+  width: 100%;
+  height: 100%;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  padding: 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #eee;
+  z-index: 1;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  margin-right: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.backButton:hover {
+  background: #e0e0e0;
+  transform: scale(1.1);
+}
+
+.historyList {
+  padding: 16px;
+}
+
+.historyItem {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+
+.historyItem:hover {
+  transform: translateY(-2px);
+}
+
+.historyInfo span {
+  display: block;
+  color: #666;
+  font-size: 14px;
+}
+
+.loadButton {
+  width: 100%;
+  padding: 8px;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.loadButton:hover {
+  background: #357abd;
+}
+
+.generateButton {
+  padding: 8px 16px;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.generateButton:hover:not(:disabled) {
+  background: #388e3c;
+  transform: translateY(-1px);
+}
+
+.generateButton:disabled {
+  background: #ccc;
+  cursor: not-allowed;
 }

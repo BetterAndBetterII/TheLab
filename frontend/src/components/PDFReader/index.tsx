@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Viewer, Worker } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
-import { searchPlugin } from '@react-pdf-viewer/search';
+import { searchPlugin, RenderHighlightsProps as SearchRenderHighlightsProps, OnHighlightKeyword } from '@react-pdf-viewer/search';
 import { zoomPlugin } from '@react-pdf-viewer/zoom';
 import { pageNavigationPlugin } from '@react-pdf-viewer/page-navigation';
 import {
@@ -13,6 +13,11 @@ import {
   RenderHighlightsProps,
 } from '@react-pdf-viewer/highlight';
 import { IoMdSend, IoMdChatboxes } from 'react-icons/io';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
@@ -22,7 +27,8 @@ import '@react-pdf-viewer/page-navigation/lib/styles/index.css';
 import '@react-pdf-viewer/highlight/lib/styles/index.css';
 
 // 使用CDN地址
-const workerUrl = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+// const workerUrl = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+const workerUrl = '/pdf.worker.min.js';
 
 import styles from './PDFReader.module.css';
 import ChatPanel from './ChatPanel';
@@ -32,10 +38,14 @@ import QuizPanel from './QuizPanel';
 import { documentApi } from '../../api';
 import { conversationApi } from '../../api/conversations';
 import { Message } from './ChatPanel';
+import { FlowData } from './FlowPanel';
+import { QuizData } from './QuizPanel';
 
 type TabType = 'notes' | 'summary' | 'chat' | 'flow' | 'quiz';
 
 type KeywordType = 'disruptive' | 'innovative' | 'potential';
+
+type ModelType = 'standard' | 'advanced';
 
 interface Keyword {
   text: string;
@@ -79,6 +89,11 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
   const [showAllNotes, setShowAllNotes] = useState(false);
+  const [flowData, setFlowData] = useState<FlowData | null>(null);
+  const [currentQuizData, setCurrentQuizData] = useState<QuizData | null>(null);
+  const [quizHistory, setQuizHistory] = useState<QuizData[]>([]);
+  const [currentModel, setCurrentModel] = useState<ModelType>('standard');
+  const recordingNotes = useRef<Map<string, string>>(new Map());  // 记录笔记的关键词
 
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const resizerRef = useRef<HTMLDivElement>(null);
@@ -105,28 +120,6 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     documentApi.recordRead(documentId);
     loadNotes();  // 加载笔记
   }, [documentId, loadNotes]);
-
-  const [flowData, setFlowData] = useState({
-    title: '论文标题',
-    authors: ['作者A', '作者B'],
-    coreContributions: [
-      '创新性地提出了一种新的方法',
-      '实验结果显示性能提升显著',
-      '在多个领域都有潜在应用价值'
-    ],
-    questions: [
-      '方法在某些极端情况下的表现如何？',
-      '计算复杂度是否会影响实际应用？'
-    ],
-    application: '该方法可以应用于自然语言处理、计算机视觉等多个领域，特别是在资源受限的场景下表现出色。',
-    keywords: [
-      { text: '深度学习', type: 'disruptive' as KeywordType },
-      { text: '注意力机制', type: 'innovative' as KeywordType },
-      { text: '迁移学习', type: 'potential' as KeywordType },
-      { text: '模型压缩', type: 'innovative' as KeywordType },
-      { text: '低资源场景', type: 'potential' as KeywordType }
-    ] as Keyword[]
-  });
 
   // 获取摘要数据
   const fetchSummaries = async (d: string) => {
@@ -160,59 +153,6 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   // 组件加载时获取摘要
   useEffect(() => {
     fetchSummaries(documentId);
-  }, []);
-
-  // 处理拖拽调整
-  useEffect(() => {
-    const container = containerRef.current;
-    const resizer = resizerRef.current;
-    const pdfContainer = pdfContainerRef.current;
-
-    if (!container || !resizer || !pdfContainer) return;
-
-    let startX: number;
-    let startWidth: number;
-
-    const startDragging = (e: MouseEvent) => {
-      startX = e.clientX;
-      startWidth = pdfContainer.offsetWidth;
-      setIsDragging(true);
-    };
-
-    const stopDragging = () => {
-      setIsDragging(false);
-      document.removeEventListener('mousemove', onDrag);
-      document.removeEventListener('mouseup', stopDragging);
-    };
-
-    const onDrag = (e: MouseEvent) => {
-      if (!container) return;
-
-      const containerWidth = container.offsetWidth;
-      const newWidth = startWidth + (e.clientX - startX);
-
-      // 限制最小和最大宽度
-      const minWidth = 280;
-      const maxWidth = containerWidth - 280; // 保留笔记面板最小宽度
-
-      const clampedWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
-      const percentage = (clampedWidth / containerWidth) * 100;
-
-      setPdfWidth(`${percentage}%`);
-    };
-
-    const handleMouseDown = (e: MouseEvent) => {
-      e.preventDefault();
-      startDragging(e);
-      document.addEventListener('mousemove', onDrag);
-      document.addEventListener('mouseup', stopDragging);
-    };
-
-    resizer.addEventListener('mousedown', handleMouseDown);
-
-    return () => {
-      resizer.removeEventListener('mousedown', handleMouseDown);
-    };
   }, []);
 
   // 添加鼠标移动监听逻辑
@@ -250,8 +190,90 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     };
   }, [inputValue]);
 
+  // 添加快捷键，Ctrl+Space呼出输入框
+  useEffect(() => {
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === ' ') {
+        e.preventDefault();
+        if (isInputVisible) {
+          inputRef.current?.blur();
+          setIsInputVisible(false);
+        } else {
+          inputRef.current?.focus();
+          setIsInputVisible(true);
+        }
+      }
+    });
+  }, []);
+
+  const saveNote = async (content: string, quote: string, highlightAreas: HighlightArea[]) => {
+    const note = await documentApi.createNote(documentId, {
+      content: content,
+      quote: quote,
+      highlight_areas: highlightAreas,
+    });
+    console.log("保存笔记", note);
+    setNotes(prev => [...prev, {
+      id: note.id,
+      content: note.content,
+      quote: note.quote,
+      highlightAreas: note.highlight_areas,
+    }]);
+  }
+
+  const searchRenderHighlights = (renderProps: SearchRenderHighlightsProps) => {
+    if (recordingNotes.current.size > 0 && renderProps.highlightAreas.length > 0) {
+      console.log("尝试搜索...", renderProps.highlightAreas);
+      Array.from(recordingNotes.current.keys()).forEach((key: string) => {
+        renderProps.highlightAreas.forEach((area) => {
+          const note_ = {
+            content: recordingNotes.current.get(key) || '',
+            highlightAreas: [],
+            quote: key,
+          } as {
+            content: string;
+            highlightAreas: HighlightArea[];
+            quote: string;
+          };
+          if (key === area.keywordStr) {
+            console.log("找到笔记", key, recordingNotes.current.get(key));
+            note_.highlightAreas.push(area);
+          }
+          if (note_.highlightAreas.length > 0 && note_.content.length > 0) {
+            saveNote(note_.content, note_.quote, note_.highlightAreas);
+          }
+          // 清除找到的
+          recordingNotes.current = new Map(
+            Array.from(recordingNotes.current.entries()).filter(([key]) => key !== area.keywordStr)
+          );
+        });
+      });
+    }
+    // 收集笔记
+
+    return (
+      <>
+          {renderProps.highlightAreas.map((area, index) => (
+              <div
+                  key={`${area.pageIndex}-${index}`}
+                  style={{
+                      ...renderProps.getCssProperties(area),
+                      position: 'absolute',
+                  }}
+              >
+              </div>
+          ))}
+      </>
+    )};
+
   const defaultLayoutPluginInstance = defaultLayoutPlugin();
-  const searchPluginInstance = searchPlugin();
+  const searchPluginInstance = searchPlugin({
+    renderHighlights: searchRenderHighlights,
+    onHighlightKeyword: (props: OnHighlightKeyword) => {
+      console.log("高亮关键词", props);
+    }
+  });
+  const { highlight, clearHighlights } = searchPluginInstance;
   const zoomPluginInstance = zoomPlugin();
   const pageNavigationPluginInstance = pageNavigationPlugin();
 
@@ -409,7 +431,12 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                           <div className={styles.highlightAreaText} style={{
                             opacity: 1,
                             zIndex: 6,
-                          }}>{note.content}</div>
+                          }}>{<ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex, rehypeRaw]}
+                          >
+                            {note.content}
+                          </ReactMarkdown>}</div>
                         </div>
                     ))}
             </React.Fragment>
@@ -449,10 +476,19 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const handleMessageSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
+    // 清除高亮
+    clearHighlights();
+    recordingNotes.current.clear();
 
     // 切换到聊天模式
     setActiveTab('chat');
     setIsLoading(true);
+
+    // 用户当前页面的信息
+    const pageRange = 5;
+    const pageStart = Math.max(0, currentPage - pageRange);
+    const pageEnd = Math.min(summaryEn.length, currentPage + pageRange);
+    const currentPageInfo = summaryEn.slice(pageStart, pageEnd).join('\n');
 
     // 发送消息
     const userMessage: Message = {
@@ -461,8 +497,6 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       type: 'user',
       timestamp: Date.now(),
     };
-
-    console.log(userMessage);
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
@@ -477,10 +511,17 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       // 调用聊天 API
       const response = await conversationApi.chat(
         conversationId,
-        messages.concat(userMessage).map(msg => ({
-          role: msg.type,
-          content: msg.content,
-        }))
+        messages.concat({
+            id: `msg-${Date.now()}`,
+            type: 'user',
+            content: `<|SYSTEM_PROMPT|>我正在浏览以下的内容：\n${currentPageInfo}\n\n<|SYSTEM_PROMPT|>${inputValue}`,
+            timestamp: Date.now(),
+          }).map(msg => ({
+            role: msg.type,
+            content: msg.content,
+          })),
+        true,
+        currentModel as ModelType // 传递当前选择的模型
       );
 
       if (response.body) {
@@ -499,6 +540,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
         setMessages(prev => [...prev, assistantMessage]);
 
         try {
+          let cum_content = '';
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -521,6 +563,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                   if (content) {
                     setIsLoading(false);
                     console.log(content);
+                    cum_content += content;
                     setMessages(prev => 
                       prev.map(msg => 
                         msg.id === assistantMessage.id
@@ -534,6 +577,22 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                 }
               }
             }
+          }
+          // 提取笔记，去掉标签
+          const noteRegex = /(?<=<note>).*?(?=<\/note>)/g;
+          const notes = cum_content.match(noteRegex);
+          if (notes) {
+            const notes_ = notes.map(
+              note => note.split(':').length > 2 ? [note.split(':')[0], note.split(':').slice(1).join(':')] : note.split(':')
+            );
+            console.log("笔记", notes_);
+            recordingNotes.current = new Map(notes_.map(note => [note[0], note[1]]));
+            console.log("搜索", Array.from(recordingNotes.current.keys()), recordingNotes.current);
+            
+            highlight(Array.from(recordingNotes.current.keys()));
+            setTimeout(() => {
+              recordingNotes.current.clear();
+            }, 2000);
           }
         } finally {
           setIsLoading(false);
@@ -580,6 +639,17 @@ const PDFReader: React.FC<PDFReaderProps> = ({
           >
             总结
           </button>
+          {/* <button
+            className={`${styles.tab} ${activeTab === 'summary' ? styles.activeTab : ''}`}
+            onClick={() => {
+              recordingNotes.current = new Map([
+                ["unsigned", "没有关键词"],
+              ]);
+              highlight(['unsigned']);
+            }}
+          >
+            搜索 unsigned
+          </button> */}
           <button
             className={`${styles.tab} ${activeTab === 'notes' ? styles.activeTab : ''}`}
             onClick={() => setActiveTab('notes')}
@@ -773,11 +843,23 @@ const PDFReader: React.FC<PDFReaderProps> = ({
           )}
 
           {activeTab === 'flow' && (
-            <FlowPanel {...flowData} />
+            <FlowPanel 
+              documentId={documentId}
+              flowData={flowData}
+              setFlowData={setFlowData}
+            />
           )}
 
           {activeTab === 'quiz' && (
-            <QuizPanel currentPage={currentPage + 1} />
+            <QuizPanel 
+              currentPage={currentPage + 1} 
+              documentId={documentId}
+              currentQuizData={currentQuizData}
+              setCurrentQuizData={setCurrentQuizData}
+              onSelectPage={pageNavigationPluginInstance.jumpToPage}
+              quizHistory={quizHistory}
+              setQuizHistory={setQuizHistory}
+            />
           )}
         </div>
       </div>
@@ -799,16 +881,24 @@ const PDFReader: React.FC<PDFReaderProps> = ({
         className={`${styles.chatInputContainer} ${isInputVisible ? styles.visible : ''}`}
       >
         <form onSubmit={handleMessageSend} className={styles.chatForm}>
+          <button
+            type="button"
+            className={styles.modelToggle}
+            onClick={() => setCurrentModel(prev => prev === 'standard' ? 'advanced' : 'standard')}
+            title={currentModel === 'standard' ? '标准模型' : '高级模型'}
+          >
+            {currentModel === 'standard' ? '🤖' : '🧠'}
+          </button>
           <input
             ref={inputRef}
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onBlur={() => {
-              if (!inputValue.trim()) {
-                setIsInputVisible(false);
-              }
-            }}
+            // onBlur={() => {
+            //   if (!inputValue.trim()) {
+            //     setIsInputVisible(false);
+            //   }
+            // }}
             placeholder="输入消息..."
             className={styles.chatInput}
           />

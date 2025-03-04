@@ -1,11 +1,50 @@
 .flowPanel {
+  padding: 20px;
+  gap: 20px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 20px;
+  align-items: center;
+  justify-content: center;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   height: 100%;
-  overflow-y: auto;
-  background: #ffffff;
+  padding: 40px;
+}
+
+.generateButton {
+  padding: 12px 24px;
+  background: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.generateButton:hover {
+  background: #1557b0;
+}
+
+.generateButton:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.loadingState {
+  padding: 20px;
+}
+
+.streamContent {
+  white-space: pre-wrap;
+  font-family: monospace;
+  line-height: 1.5;
+  color: #333;
 }
 
 .header {
@@ -16,7 +55,7 @@
 
 .title {
   font-size: 24px;
-  font-weight: 600;
+  font-weight: bold;
   color: #333;
   margin-bottom: 12px;
   line-height: 1.4;
@@ -185,4 +224,44 @@
 
 .flowPanel::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+
+.typingIndicator {
+  padding: 48px 64px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+}
+
+.typingIndicator span {
+  width: 6px;
+  height: 6px;
+  background: #666;
+  border-radius: 50%;
+  display: inline-block;
+  animation: typing 1s infinite ease-in-out;
+}
+
+.typingIndicator span:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.typingIndicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typingIndicator span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }

@@ -753,6 +753,35 @@
   background: #1565c0;
 }
 
+.modelToggle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #666;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.modelToggle:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1976d2;
+}
+
+.modelToggle svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* 显示按钮 */
 .showInputButton {
   position: fixed;

@@ -21,9 +21,12 @@ from sqlalchemy import (
     Text,
     create_engine,
     text,
+    inspect,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker, Session
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
 
 from config import get_settings
 
@@ -183,6 +186,14 @@ class Document(Base):
         order_by="ProcessingRecord.created_at.desc()",
     )
     notes = relationship("Note", back_populates="document", cascade="all, delete-orphan")
+    
+    # 总结历史记录，格式：{
+    #     "created": int(datetime.now().timestamp()),
+    #     "summary": "总结内容"
+    # }
+    flow_history = Column(JSON, default=list)
+    # 测验历史记录，格式：[{"page": 1, "questions": [...], "created_at": "2024-03-21T10:00:00"}]
+    quiz_history = Column(JSON, default=list)
 
     def get_page_content(self, page: int) -> str:
         """获取指定页的内容"""
@@ -293,18 +304,57 @@ def get_rag_db():
         db.close()
 
 
-# 创建数据库表
 def create_tables():
-    """创建所有数据库表"""
-    # 使用 CASCADE 删除所有表及其依赖
+    """创建或更新所有数据库表
+    
+    如果表不存在则创建新表，如果表存在则更新表结构以匹配最新的模型定义。
+    """
+    # 创建迁移上下文
     with engine.connect() as conn:
-        if settings.DATABASE_TYPE == "postgresql":
-            conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
-        else:
-            Base.metadata.drop_all(bind=engine)  # SQLite 使用默认的 drop_all
+        # 开始事务
+        trans = conn.begin()
+        try:
+            context = MigrationContext.configure(conn)
+            op = Operations(context)
 
-    Base.metadata.create_all(bind=engine)  # 创建所有表
-    initialize_database()  # 初始化数据
+            # 获取现有表的结构
+            inspector = inspect(engine)
+            existing_tables = inspector.get_table_names()
+
+            if settings.DATABASE_TYPE == "postgresql":
+                # PostgreSQL 数据库，使用 ALTER TABLE 进行表结构更新
+                for table in Base.metadata.sorted_tables:
+                    if table.name not in existing_tables:
+                        # 如果表不存在，创建新表
+                        print(f"创建表 {table.name}")
+                        table.create(engine)
+                    else:
+                        # 如果表存在，更新表结构
+                        existing_columns = {col['name']: col for col in inspector.get_columns(table.name)}
+                        metadata_columns = {col.name: col for col in table.columns}
+                        # 添加新列
+                        for col_name, col in metadata_columns.items():
+                            if col_name not in existing_columns:
+                                print(f"添加列 {col_name}")
+                                try:
+                                    op.add_column(table.name, col)
+                                except Exception as e:
+                                    print(f"添加列 {col_name} 时出错: {str(e)}")
+                print("表结构更新完成")
+            else:
+                # SQLite 数据库，由于 SQLite 限制，使用临时表进行迁移
+                Base.metadata.create_all(bind=engine)
+            
+            # 提交事务
+            trans.commit()
+        except Exception as e:
+            # 回滚事务
+            trans.rollback()
+            print(f"更新表结构时出错: {str(e)}")
+            raise
+
+    # 初始化数据库数据
+    initialize_database()
 
 
 def initialize_database():

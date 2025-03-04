@@ -59,9 +59,23 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const THINK_START_REGEX = /<think>([\s\S]*)/;
 
   const parseContent = useCallback((content: string) => {
+    let notes: Array<{keyword: string, content: string}> = [];
+    // 替换\( \)，\[ \]为$$ $$
+    content = content.replace(/\\\((.*?)\\\)/g, '$$$$1$$').replace(/\\\[(.*?)\\\]/g, '$$$$1$$');
+
+    // 提取笔记，去掉标签
+    const noteRegex = /(?<=<note>).*?(?=<\/note>)/g;
+    const _notes = content.match(noteRegex);
+    content = content.replace(noteRegex, '');
+    if (_notes) {
+      const notes_ = _notes.map(
+        note => note.split(':').length > 2 ? [note.split(':')[0], note.split(':').slice(1).join(':')] : note.split(':')
+      );
+      notes = notes_.map(note => ({keyword: note[0], content: note[1]}));
+    }
     // 快速检查是否包含think标签，如果不包含直接返回
     if (!content.includes("<think>")) {
-        return {thinkProcess: null, response: content, isThinking: false};
+        return {thinkProcess: null, response: content, isThinking: false, notes: notes};
     }
 
     let thinkProcess = null;
@@ -74,10 +88,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         const match = content.match(THINK_START_END_REGEX);
         if (match) {
             thinkProcess = match[1];
-            // 只有在确实需要处理时才进行字符串操作
             if (thinkProcess) {
                 thinkProcess = thinkProcess.trim();
-                // 一次性处理所有行，减少循环
                 thinkProcess = thinkProcess.split("\n")
                     .reduce((acc, line) => {
                         const trimmed = line.trim();
@@ -93,7 +105,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             thinkProcess = match[1];
             if (thinkProcess) {
                 thinkProcess = thinkProcess.trim();
-                // 使用reduce代替map和filter，减少数组操作
                 thinkProcess = thinkProcess.split("\n")
                     .reduce((acc, line) => {
                         const trimmed = line.trim();
@@ -104,7 +115,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         }
     }
 
-    return {thinkProcess, response, isThinking};
+
+    return {thinkProcess, response, isThinking, notes};
   }, []);
 
 
@@ -175,8 +187,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   };
 
   const assistantMessage = (message: Message) => {
-    const { thinkProcess, response, isThinking } = parseContent(message.content);
-    console.log(thinkProcess, response, isThinking);
+    const { thinkProcess, response, isThinking, notes } = parseContent(message.content);
     return (
       <>
         {(thinkProcess || isThinking) && 
@@ -190,6 +201,21 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         >
           {response}
         </ReactMarkdown>
+        {notes && notes.length > 0 && (
+          <div className={styles.notes}>
+            {notes.map((note, index) => (
+              <div key={index} className={styles.note}>
+                <strong>{note.keyword}:</strong>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex, rehypeRaw]}
+                >
+                  {note.content}
+                </ReactMarkdown>
+              </div>
+            ))}
+          </div>
+        )}
       </>
     )
   }
