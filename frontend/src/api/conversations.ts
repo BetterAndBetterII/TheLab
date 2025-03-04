@@ -69,7 +69,7 @@ export const conversationApi = {
     conversationId: number,
     messages: { role: string; content: string }[],
     stream: boolean = true,
-    model: ModelType = 'standard' 
+    model: ModelType = 'standard'
   ): Promise<Response> => {
     const response = await fetch(`${BASE_URL}/conversations/${conversationId}/chat`, {
       method: 'POST',
@@ -144,4 +144,4 @@ export const conversationApi = {
 
     return response.json();
   },
-}; 
+};

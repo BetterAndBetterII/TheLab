@@ -100,7 +100,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const chatInputContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // 加载笔记
   const loadNotes = useCallback(async () => {
     try {
@@ -125,21 +125,21 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const fetchSummaries = async (d: string) => {
     setIsSummaryLoading(true);
     setSummaryError('');
-    
+
     try {
       const summaryData = await documentApi.getSummary(d);
-      
+
       // 将所有页面的摘要合并成一个完整的摘要
       const EnSummary: string[] = [];
       const CnSummary: string[] = [];
-      
+
       Object.entries(summaryData.summaries)
         .sort(([pageA], [pageB]) => parseInt(pageA) - parseInt(pageB))
         .forEach(([page, summary]) => {
             EnSummary.push(summary.en);
             CnSummary.push(summary.cn);
         });
-      
+
       setSummaryEn(EnSummary);
       setSummaryCn(CnSummary);
     } catch (error) {
@@ -334,14 +334,14 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                   quote: props.selectedText,
                   highlight_areas: props.highlightAreas,
                 });
-                
+
                 setNotes([...notes, {
                   id: note.id,
                   content: note.content,
                   quote: note.quote,
                   highlightAreas: note.highlight_areas,
                 }]);
-                
+
                 setCurrentNote('');
                 props.cancel();
               } catch (error) {
@@ -359,14 +359,14 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                   quote: props.selectedText,
                   highlight_areas: props.highlightAreas,
                 });
-                
+
                 setNotes([...notes, {
                   id: note.id,
                   content: note.content,
                   quote: note.quote,
                   highlightAreas: note.highlight_areas,
                 }]);
-                
+
                 setCurrentNote('');
                 props.cancel();
               } catch (error) {
@@ -564,8 +564,8 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                     setIsLoading(false);
                     console.log(content);
                     cum_content += content;
-                    setMessages(prev => 
-                      prev.map(msg => 
+                    setMessages(prev =>
+                      prev.map(msg =>
                         msg.id === assistantMessage.id
                           ? { ...msg, content: msg.content + content }
                           : msg
@@ -588,7 +588,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
             console.log("笔记", notes_);
             recordingNotes.current = new Map(notes_.map(note => [note[0], note[1]]));
             console.log("搜索", Array.from(recordingNotes.current.keys()), recordingNotes.current);
-            
+
             highlight(Array.from(recordingNotes.current.keys()));
             setTimeout(() => {
               recordingNotes.current.clear();
@@ -737,7 +737,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                                       quote: note.quote,
                                       highlight_areas: note.highlightAreas,
                                     });
-                                    setNotes(notes.map((n) => 
+                                    setNotes(notes.map((n) =>
                                       n.id === note.id ? { ...n, content: editingContent } : n
                                     ));
                                     setEditingNoteId(null);
@@ -843,7 +843,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
           )}
 
           {activeTab === 'flow' && (
-            <FlowPanel 
+            <FlowPanel
               documentId={documentId}
               flowData={flowData}
               setFlowData={setFlowData}
@@ -851,8 +851,8 @@ const PDFReader: React.FC<PDFReaderProps> = ({
           )}
 
           {activeTab === 'quiz' && (
-            <QuizPanel 
-              currentPage={currentPage + 1} 
+            <QuizPanel
+              currentPage={currentPage + 1}
               documentId={documentId}
               currentQuizData={currentQuizData}
               setCurrentQuizData={setCurrentQuizData}

@@ -6,27 +6,13 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import (
-    JSON,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    Float,
-    ForeignKey,
-    Integer,
-    LargeBinary,
-    String,
-    Table,
-    Text,
-    create_engine,
-    text,
-    inspect,
-)
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker, Session
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from sqlalchemy import (JSON, Boolean, Column, DateTime, Enum, Float,
+                        ForeignKey, Integer, LargeBinary, String, Table, Text,
+                        create_engine, inspect, text)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session, relationship, sessionmaker
 
 from config import get_settings
 
@@ -47,10 +33,10 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+from models.forum import Reply, Topic
+from models.sessions import Session
 # 导入所有模型以确保它们在创建表时被注册
 from models.users import User
-from models.sessions import Session
-from models.forum import Topic, Reply
 
 
 class ProcessingStatus(enum.Enum):
@@ -185,8 +171,10 @@ class Document(Base):
         back_populates="document",
         order_by="ProcessingRecord.created_at.desc()",
     )
-    notes = relationship("Note", back_populates="document", cascade="all, delete-orphan")
-    
+    notes = relationship(
+        "Note", back_populates="document", cascade="all, delete-orphan"
+    )
+
     # 总结历史记录，格式：{
     #     "created": int(datetime.now().timestamp()),
     #     "summary": "总结内容"
@@ -211,6 +199,7 @@ class Document(Base):
         """获取指定页的关键词"""
         return self.keywords_pages.get(str(page), [])
 
+
 class DocumentReadRecord(Base):
     """文档阅读记录模型类。
 
@@ -223,6 +212,7 @@ class DocumentReadRecord(Base):
     document_id = Column(Integer, ForeignKey("documents.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
     read_at = Column(DateTime, default=datetime.now)
+
 
 class Note(Base):
     """笔记模型类。
@@ -244,6 +234,7 @@ class Note(Base):
     # 关系
     document = relationship("Document", back_populates="notes")
     user = relationship("User", back_populates="notes")
+
 
 class Conversation(Base):
     """对话模型类。
@@ -276,21 +267,25 @@ def create_rag_db():
             f"postgresql://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}"
             f"@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/postgres"
         )
-        
+
         # 创建数据库（如果不存在）
         with default_engine.connect() as conn:
             # 断开可能存在的连接
-            conn.execute(text("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'rag'"))
+            conn.execute(
+                text(
+                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'rag'"
+                )
+            )
             conn.execute(text("commit"))
-            
+
             # 创建数据库
             conn.execute(text("DROP DATABASE IF EXISTS rag"))
             conn.execute(text("commit"))
             conn.execute(text("CREATE DATABASE rag"))
             conn.execute(text("commit"))
-        
+
         default_engine.dispose()
-    
+
     return engine, SessionLocal
 
 
@@ -306,7 +301,7 @@ def get_rag_db():
 
 def create_tables():
     """创建或更新所有数据库表
-    
+
     如果表不存在则创建新表，如果表存在则更新表结构以匹配最新的模型定义。
     """
     # 创建迁移上下文
@@ -330,7 +325,10 @@ def create_tables():
                         table.create(engine)
                     else:
                         # 如果表存在，更新表结构
-                        existing_columns = {col['name']: col for col in inspector.get_columns(table.name)}
+                        existing_columns = {
+                            col["name"]: col
+                            for col in inspector.get_columns(table.name)
+                        }
                         metadata_columns = {col.name: col for col in table.columns}
                         # 添加新列
                         for col_name, col in metadata_columns.items():
@@ -344,7 +342,7 @@ def create_tables():
             else:
                 # SQLite 数据库，由于 SQLite 限制，使用临时表进行迁移
                 Base.metadata.create_all(bind=engine)
-            
+
             # 提交事务
             trans.commit()
         except Exception as e:

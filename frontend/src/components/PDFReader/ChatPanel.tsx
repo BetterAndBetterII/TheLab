@@ -155,7 +155,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        historyPanelRef.current && 
+        historyPanelRef.current &&
         !historyPanelRef.current.contains(event.target as Node) &&
         isHistoryVisible
       ) {
@@ -190,7 +190,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     const { thinkProcess, response, isThinking, notes } = parseContent(message.content);
     return (
       <>
-        {(thinkProcess || isThinking) && 
+        {(thinkProcess || isThinking) &&
           (<div className={styles.thinking}>
             {thinkProcess}
           </div>)
@@ -239,7 +239,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       </button>
 
       {/* 历史记录侧边栏 */}
-      <div 
+      <div
         ref={historyPanelRef}
         className={`${styles.historyPanel} ${isHistoryVisible ? styles.visible : ''}`}
       >

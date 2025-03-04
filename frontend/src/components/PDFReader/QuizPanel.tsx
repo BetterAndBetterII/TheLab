@@ -33,8 +33,8 @@ interface QuizPanelProps {
   onSelectPage: (page: number) => void;
 }
 
-const QuizPanel: React.FC<QuizPanelProps> = ({ 
-  currentPage, 
+const QuizPanel: React.FC<QuizPanelProps> = ({
+  currentPage,
   documentId,
   currentQuizData,
   setCurrentQuizData,
@@ -128,7 +128,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
 
     // 检查是否所有题目都回答正确
     const allAnswered = questions.every(q => showAnswers[q.id] || q.id === questionId);
-    
+
     setShowAnswers(prev => ({
       ...prev,
       [questionId]: true
@@ -214,14 +214,14 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           ) : (
             pageHistory.map((history, index) => (
               <div key={index} className={styles.historyItem}>
-                <div 
+                <div
                   className={styles.historyInfo}
                   onClick={() => handleLoadHistoryQuiz(history)}
                 >
                   <div className={styles.historyInfoContent}>
                     <span className={styles.historyInfoTitle}>{
                       history.questions[0].text.length > 25 ?
-                      history.questions[0].text.slice(0, 25) + '...' : 
+                      history.questions[0].text.slice(0, 25) + '...' :
                       history.questions[0].text
                     }</span>
                     <div className={styles.historyInfoDetail}>
@@ -252,7 +252,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
       return (
         <div className={styles.errorState}>
           <p className={styles.errorMessage}>{error}</p>
-          <button 
+          <button
             className={styles.retryButton}
             onClick={handleGenerateQuiz}
           >
@@ -265,7 +265,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     if (!quizData.questions.length) {
       return (
         <div className={styles.emptyState}>
-          <button 
+          <button
             className={styles.generateButton}
             onClick={handleGenerateQuiz}
             disabled={!documentId || isLoading}

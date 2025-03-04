@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './FlowPanel.module.css';
 import { conversationApi } from '../../api/conversations';
-  
+
 interface Keyword {
   text: string;
   type: 'disruptive' | 'innovative' | 'potential';

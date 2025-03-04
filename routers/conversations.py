@@ -3,9 +3,12 @@
 这个模块包含了所有与对话相关的路由处理器，包括创建对话、发送消息、获取历史记录等功能。
 """
 
-from datetime import datetime
-from typing import List, Optional, AsyncGenerator, Literal
 import json
+import re
+import traceback
+from datetime import datetime
+from typing import AsyncGenerator, List, Literal, Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from openai.types.chat import ChatCompletionChunk
@@ -13,12 +16,10 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
+from clients.openai_client import OpenAIClient
 from database import Conversation, Document, get_db
 from models.users import User
 from services.session import get_current_user
-from clients.openai_client import OpenAIClient
-import traceback
-import re
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
