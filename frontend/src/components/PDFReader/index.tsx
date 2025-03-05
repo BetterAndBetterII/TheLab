@@ -778,6 +778,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                 });
                 setIsLoading(false);
               }}
+              documentId={documentId}
             />
           )}
 

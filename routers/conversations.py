@@ -103,13 +103,19 @@ async def create_conversation(
     return conversation
 
 
-@router.get("", response_model=List[ConversationResponse])
+@router.get("/documents/{document_id}", response_model=List[ConversationResponse])
 async def list_conversations(
+    document_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     conversations = (
-        db.query(Conversation).filter(Conversation.user_id == current_user.id).all()
+        db.query(Conversation)
+        .filter(
+            Conversation.user_id == current_user.id,
+            Conversation.documents.any(Document.id == document_id),
+        )
+        .all()
     )
     result = [
         ConversationResponse(
@@ -220,7 +226,7 @@ async def chat_stream(
                 "advanced": current_user.ai_advanced_model,
             },
         }[settings.GLOBAL_LLM][model]
-        if settings.GLOBAL_LLM == "public":
+        if settings.GLOBAL_LLM == "private":
             openai_client = OpenAIClient(
                 api_key=current_user.ai_api_key,
                 base_url=current_user.ai_base_url,

@@ -12,9 +12,10 @@ from datetime import datetime
 from typing import Dict, Optional
 
 from fastapi import Request
+from sqlalchemy.orm import Session
 
 from config import get_settings
-from database import Document, ProcessingRecord, ProcessingStatus, SessionLocal
+from database import Document, ProcessingRecord, ProcessingStatus, get_db
 from models.users import User
 from prepdocs.config import FileType, Page, Section
 from prepdocs.parse_images import parse_images
@@ -34,16 +35,28 @@ class DocumentPipeline:
         self.task_queue = queue.Queue()
         self.thread_pool = ThreadPoolExecutor(max_workers=max_workers)
         self.is_running = True
-        self.db = SessionLocal()
+        db = next(get_db())
         # 删除之前未完成的任务
-        self.db.query(Document).filter(
+        db.query(Document).filter(
             Document.processing_status == ProcessingStatus.PROCESSING
         ).update({Document.processing_status: ProcessingStatus.FAILED})
-        self.db.commit()
+        db.commit()
+
         # 启动守护线程处理任务
         self.forever_loop = asyncio.new_event_loop()
         self.daemon_thread = threading.Thread(target=self._process_queue, daemon=True)
         self.daemon_thread.start()
+        # 继续处理队列中的任务
+        pending_documents = (
+            db.query(Document)
+            .filter(Document.processing_status == ProcessingStatus.PENDING)
+            .with_entities(Document.id)
+            .all()
+        )
+        for document in pending_documents:
+            self.add_task(document.id)
+
+        db.close()
 
     def _calculate_file_hash(self, file_data: bytes) -> str:
         """计算文件的SHA256哈希值"""
@@ -59,7 +72,9 @@ class DocumentPipeline:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def _should_process_document(self, document: Document, force: bool = False) -> bool:
+    def _should_process_document(
+        self, document: Document, db: Session, force: bool = False
+    ) -> bool:
         """
         检查文档是否需要处理
         :param document: Document对象
@@ -68,11 +83,10 @@ class DocumentPipeline:
         """
         if force:
             return True
-
         file_hash = self._calculate_file_hash(document.file_data)
         # 检查是否存在相同哈希值的处理记录
         existing_record: ProcessingRecord | None = (
-            self.db.query(ProcessingRecord)
+            db.query(ProcessingRecord)
             .filter(
                 ProcessingRecord.file_hash == file_hash,
                 ProcessingRecord.processor_version == self.VERSION,
@@ -96,7 +110,7 @@ class DocumentPipeline:
             document.mime_type = existing_document.mime_type
             document.created_at = existing_document.created_at
             document.updated_at = datetime.now()
-            self.db.commit()
+            db.commit()
             return False
 
         return existing_record is None
@@ -112,19 +126,21 @@ class DocumentPipeline:
         :param force: 是否强制处理
         :return: 是否成功添加任务
         """
-        document = self.db.query(Document).get(document_id)
+        db = next(get_db())
+        document = db.query(Document).get(document_id)
         if not document:
             logger.error(f"文档不存在: {document_id}")
             return False
 
         # 检查是否需要处理
-        if not self._should_process_document(document, force):
+        if not self._should_process_document(document, db, force):
             logger.info(f"文档 {document.filename} 已经处理过，跳过处理")
             return False
 
         # 更新文档状态为待处理
         document.processing_status = ProcessingStatus.PENDING
-        self.db.commit()
+        db.commit()
+        db.close()
 
         # self.task_queue.put(document_id)
         asyncio.run_coroutine_threadsafe(
@@ -133,12 +149,12 @@ class DocumentPipeline:
 
         return True
 
-    def _create_processing_record(self, document: Document):
+    def _create_processing_record(self, document: Document, db: Session):
         """创建处理记录"""
         file_hash = self._calculate_file_hash(document.file_data)
         # 获取最新的处理记录版本号
         latest_record = (
-            self.db.query(ProcessingRecord)
+            db.query(ProcessingRecord)
             .filter(ProcessingRecord.document_id == document.id)
             .order_by(ProcessingRecord.version.desc())
             .first()
@@ -147,18 +163,18 @@ class DocumentPipeline:
         version = (latest_record.version + 1) if latest_record else 1
 
         record = ProcessingRecord(
-            document=document,
             file_hash=file_hash,
             version=version,
             processor_version=self.VERSION,
             processing_config=self._get_processing_config(),
         )
-        self.db.add(record)
-        self.db.commit()
+        db.add(record)
+        db.commit()
 
     def _update_document_status(
         self,
         document: Document,
+        db: Session,
         status: ProcessingStatus,
         processor_msg: Optional[str] = None,
         error_message: Optional[str] = None,
@@ -172,11 +188,12 @@ class DocumentPipeline:
             document.processor = processor_msg
         if status == ProcessingStatus.COMPLETED:
             document.processed_at = datetime.now()
-        self.db.commit()
+        db.commit()
 
     async def _process_document(self, document_id: int):
         """处理单个文档的流水线逻辑"""
-        document = self.db.query(Document).get(document_id)
+        db = next(get_db())
+        document = db.query(Document).get(document_id)
         if not document:
             logger.error(f"文档不存在: {document_id}")
             return
@@ -184,40 +201,53 @@ class DocumentPipeline:
         try:
             # ------------------预处理阶段------------------
             self._update_document_status(
-                document, ProcessingStatus.PROCESSING, processor_msg="预处理阶段..."
+                document,
+                db,
+                ProcessingStatus.PROCESSING,
+                processor_msg="预处理阶段...",
             )
-            document = await self.stage_1(document)
+            document = await self.stage_1(document, db)
             logger.debug(f"预处理阶段完成: {document.filename}")
 
             # ------------------文本提取阶段------------------
             self._update_document_status(
-                document, ProcessingStatus.PROCESSING, processor_msg="文本提取阶段..."
+                document,
+                db,
+                ProcessingStatus.PROCESSING,
+                processor_msg="文本提取阶段...",
             )
-            document = await self.stage_2(document)
+            document = await self.stage_2(document, db)
             logger.debug(f"文本提取阶段完成: {document.filename}")
 
             # ------------------翻译阶段------------------
             self._update_document_status(
-                document, ProcessingStatus.PROCESSING, processor_msg="翻译阶段..."
+                document,
+                db,
+                ProcessingStatus.PROCESSING,
+                processor_msg="翻译阶段...",
             )
-            document = await self.stage_3(document)
+            document = await self.stage_3(document, db)
             logger.debug(f"翻译阶段完成: {document.filename}")
 
             # ------------------保存到知识库阶段------------------
             self._update_document_status(
                 document,
+                db,
                 ProcessingStatus.PROCESSING,
                 processor_msg="保存到知识库阶段...",
             )
-            document = await self.stage_4(document)
+            document = await self.stage_4(document, db)
             logger.debug(f"保存到知识库阶段完成: {document.filename}")
 
             # 创建处理记录
-            self._create_processing_record(document)
+            self._create_processing_record(document, db)
 
             # 完成
             self._update_document_status(
-                document, ProcessingStatus.COMPLETED, processor_msg="处理完成"
+                document,
+                db,
+                ProcessingStatus.COMPLETED,
+                processor_msg="处理完成",
             )
             return document
 
@@ -225,22 +255,17 @@ class DocumentPipeline:
             logger.error(f"处理文档失败: {str(e)}")
             logger.error(traceback.format_exc())
             self._update_document_status(
-                document, ProcessingStatus.FAILED, error_message=str(e)
+                document,
+                db,
+                ProcessingStatus.FAILED,
+                error_message=str(e),
             )
             raise
+        finally:
+            db.close()
 
     def _process_queue(self):
         """守护线程：持续处理队列中的任务"""
-        # while self.is_running:
-        #     try:
-        #         document_id = self.task_queue.get(timeout=1)  # 1秒超时
-        #         # self.thread_pool.submit(self._process_document, document_id)
-        #         asyncio.create_task(self._process_document(document_id))
-        #     except queue.Empty:
-        #         continue  # 队列为空，继续等待
-        #     except Exception as e:
-        #         logger.error(f"处理任务失败: {str(e)}")
-        #         continue
         asyncio.set_event_loop(self.forever_loop)
         self.forever_loop.run_forever()
 
@@ -249,10 +274,9 @@ class DocumentPipeline:
         self.is_running = False
         self.thread_pool.shutdown(wait=True)
         self.daemon_thread.join(timeout=5)
-        self.db.close()
         logger.info("Document Pipeline shutdown complete")
 
-    async def stage_1(self, document: Document) -> Document:
+    async def stage_1(self, document: Document, db: Session) -> Document:
         """预处理阶段：将文档转换为图片"""
         logger.info(f"开始预处理文档: {document.filename}")
 
@@ -290,10 +314,10 @@ class DocumentPipeline:
                 "data": image_data.hex(),  # 将二进制数据转换为hex字符串存储
             }
 
-        self.db.commit()
+        db.commit()
         return document
 
-    async def stage_2(self, document: Document) -> Document:
+    async def stage_2(self, document: Document, db: Session) -> Document:
         """文本提取阶段：将图片转换为文本"""
         logger.info(f"开始提取文档文本: {document.filename}")
 
@@ -335,7 +359,7 @@ class DocumentPipeline:
             logger.debug(f"处理后的content_pages: {document.content_pages}")
 
             # 提交更改
-            self.db.commit()
+            db.commit()
             logger.info(f"文本提取阶段完成，共处理 {len(new_content_pages)} 页")
             return document
 
@@ -344,7 +368,7 @@ class DocumentPipeline:
             logger.error(traceback.format_exc())
             raise
 
-    async def stage_3(self, document: Document) -> Document:
+    async def stage_3(self, document: Document, db: Session) -> Document:
         """翻译阶段：将英文文本翻译为中文"""
         logger.info(f"开始翻译文档: {document.filename}")
 
@@ -368,10 +392,10 @@ class DocumentPipeline:
             new_translation_pages[str(i)] = page.content
         document.translation_pages = new_translation_pages
 
-        self.db.commit()
+        db.commit()
         return document
 
-    async def stage_4(self, document: Document) -> Document:
+    async def stage_4(self, document: Document, db: Session) -> Document:
         """保存阶段：将处理后的内容保存到知识库"""
         logger.info(f"开始保存文档到知识库: {document.filename}")
         if settings.GLOBAL_MODE == "public":

@@ -52,7 +52,7 @@ async def parse_images(section: Section, user: User) -> Section:
 
     async def process_page(page: Page, s: asyncio.Semaphore):
         async with s:
-            if settings.GLOBAL_LLM == "public":
+            if settings.GLOBAL_LLM == "private":
                 openai_client = OpenAIClient(
                     api_key=user.ai_api_key,
                     base_url=user.ai_base_url,

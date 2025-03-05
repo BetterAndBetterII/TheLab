@@ -40,13 +40,15 @@ interface ChatPanelProps {
   isLoading: boolean;
   onSelectChat: (id: number) => void;
   onClearChat?: () => void;
+  documentId: string;
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({
   messages,
   isLoading,
   onSelectChat,
-  onClearChat
+  onClearChat,
+  documentId
 }) => {
   const [isHistoryVisible, setIsHistoryVisible] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
@@ -124,7 +126,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const loadChatHistory = async () => {
     try {
       setIsHistoryLoading(true);
-      const history = await conversationApi.list();
+      const history = await conversationApi.list(documentId);
       setChatHistory(history);
     } catch (error) {
       console.error('加载聊天历史失败:', error);

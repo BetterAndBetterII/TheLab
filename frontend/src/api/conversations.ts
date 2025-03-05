@@ -43,8 +43,8 @@ export const conversationApi = {
   },
 
   // 获取对话列表
-  list: async (): Promise<Conversation[]> => {
-    return handleRequest(`${BASE_URL}/conversations`, {
+  list: async (documentId: string): Promise<Conversation[]> => {
+    return handleRequest(`${BASE_URL}/conversations/documents/${documentId}`, {
       headers: getAuthHeaders(),
     });
   },

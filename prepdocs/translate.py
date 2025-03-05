@@ -33,7 +33,7 @@ async def translate_text(
     """
     多线程翻译文本，保持原始顺序
     """
-    if settings.GLOBAL_LLM == "public":
+    if settings.GLOBAL_LLM == "private":
         openai_client = OpenAIClient(
             api_key=user.ai_api_key,
             base_url=user.ai_base_url,
