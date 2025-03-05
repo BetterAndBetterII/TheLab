@@ -38,19 +38,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 先注册所有 API 路由
-app.include_router(auth.router)  # 用户认证路由
-app.include_router(documents.router)  # 文档路由
-app.include_router(folders.router)  # 文件夹路由
-app.include_router(conversations.router)  # 对话路由
-app.include_router(forum.router)  # 论坛路由
-app.include_router(search.router)  # 搜索路由
-app.include_router(settings.router)  # 设置路由
+# 创建API路由前缀
+api_app = FastAPI(title="API")
 
-# 然后托管静态文件
+# 注册所有 API 路由到 api_app
+api_app.include_router(auth.router)  # 用户认证路由
+api_app.include_router(documents.router)  # 文档路由
+api_app.include_router(folders.router)  # 文件夹路由
+api_app.include_router(conversations.router)  # 对话路由
+api_app.include_router(forum.router)  # 论坛路由
+api_app.include_router(search.router)  # 搜索路由
+api_app.include_router(settings.router)  # 设置路由
+
+# 将API应用挂载到主应用的/api路径下
+app.mount("/api", api_app)
+
+# 托管静态文件
 app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
 
-# 最后处理 SPA 路由
+# 处理 SPA 路由
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
     return FileResponse("frontend/dist/index.html")
