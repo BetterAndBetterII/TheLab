@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Request
-from typing import Any
 import json
+from typing import Any
+
+from fastapi import FastAPI, Request
 
 app = FastAPI()
 

@@ -51,7 +51,7 @@ const PostDetail: React.FC = () => {
     try {
       setSubmitting(true);
       const reply = await forumApi.createReply(id, newComment.trim());
-      
+
       // 更新帖子的回复列表
       setPost(prev => {
         if (!prev) return null;
@@ -60,7 +60,7 @@ const PostDetail: React.FC = () => {
           replies: [...prev.replies, reply]
         };
       });
-      
+
       setNewComment('');
     } catch (error) {
       console.error('Error creating reply:', error);
@@ -159,8 +159,8 @@ const PostDetail: React.FC = () => {
             rows={3}
             disabled={submitting}
           />
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className={styles.submitButton}
             disabled={submitting || !newComment.trim()}
           >

@@ -1,20 +1,20 @@
 import os
+import shutil
+import tempfile
+import zipfile
 from datetime import datetime
+from io import BytesIO
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from config import Settings, get_settings
 from database import Document, Folder, get_db
 from models.users import User
 from services.session import get_current_user
-from config import get_settings, Settings
-import zipfile
-from io import BytesIO
-import shutil
-import tempfile
-from fastapi.responses import StreamingResponse
 
 router = APIRouter(prefix="/folders", tags=["folders"])
 

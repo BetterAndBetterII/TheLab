@@ -1,16 +1,16 @@
-from typing import Optional
-from datetime import datetime
 import traceback
+from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from database import get_db, ApiKey
-from models.users import User
-from services.session import get_current_user
 from clients.openai_client import OpenAIClient
 from config import Settings, get_settings
+from database import ApiKey, get_db
+from models.users import User
+from services.session import get_current_user
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -59,12 +59,16 @@ async def get_settings(
             "email": current_user.notifications["email"],
             "push": current_user.notifications["push"],
         },
-        "aiConfig": {
-            "apiKey": "***",
-            "baseUrl": current_user.ai_base_url or "https://api.openai.com/v1",
-            "standardModel": current_user.ai_standard_model or "gemini-1.5-flash",
-            "advancedModel": current_user.ai_advanced_model or "deepseek-r1",
-        } if settings.GLOBAL_LLM == "private" else {},
+        "aiConfig": (
+            {
+                "apiKey": "***",
+                "baseUrl": current_user.ai_base_url or "https://api.openai.com/v1",
+                "standardModel": current_user.ai_standard_model or "gemini-1.5-flash",
+                "advancedModel": current_user.ai_advanced_model or "deepseek-r1",
+            }
+            if settings.GLOBAL_LLM == "private"
+            else {}
+        ),
         "globalLLM": settings.GLOBAL_LLM,
         "globalMODE": settings.GLOBAL_MODE,
         "isAdmin": current_user.id in [1, 2],
@@ -101,7 +105,9 @@ async def test_ai_settings(
             if query.count() > 1:
                 for api_key_model in query:
                     db.delete(api_key_model)
-            api_key_model = db.query(ApiKey).filter(ApiKey.user_id == current_user.id).first()
+            api_key_model = (
+                db.query(ApiKey).filter(ApiKey.user_id == current_user.id).first()
+            )
             if not api_key_model:
                 api_key_model = ApiKey(
                     key=settings.apiKey,

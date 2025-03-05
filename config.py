@@ -1,7 +1,7 @@
 import os
 from datetime import timedelta
 from functools import lru_cache
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 from pydantic_settings import BaseSettings
 

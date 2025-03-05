@@ -6,8 +6,8 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.users import User
 from models.forum import TopicCategory
+from models.users import User
 from services.forum import ForumService
 from services.session import get_current_user
 
@@ -56,10 +56,10 @@ class ReplyResponse(BaseModel):
     class Config:
         from_attributes = True
 
-    @field_validator('username')
+    @field_validator("username")
     def set_username(cls, v, info):
         if v is None:
-            return 'Unknown User'
+            return "Unknown User"
         return v
 
 
@@ -80,10 +80,10 @@ class TopicResponse(BaseModel):
     class Config:
         from_attributes = True
 
-    @field_validator('username')
+    @field_validator("username")
     def set_username(cls, v, info):
         if v is None:
-            return 'Unknown User'
+            return "Unknown User"
         return v
 
 

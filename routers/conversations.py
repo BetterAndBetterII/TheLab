@@ -17,10 +17,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from clients.openai_client import OpenAIClient
+from config import Settings, get_settings
 from database import Conversation, Document, QuizHistory, get_db
 from models.users import User
 from services.session import get_current_user
-from config import Settings, get_settings
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -660,11 +660,13 @@ async def get_quiz_history(
     if not quiz_histories:
         raise HTTPException(status_code=404, detail="测验历史记录不存在")
 
-    return {"quiz_history": [
-        {
-            "page": qh.quiz_history["page"],
-            "questions": qh.quiz_history["questions"],
-            "created_at": qh.quiz_history["created_at"],
-        }
-        for qh in quiz_histories
-    ]}
+    return {
+        "quiz_history": [
+            {
+                "page": qh.quiz_history["page"],
+                "questions": qh.quiz_history["questions"],
+                "created_at": qh.quiz_history["created_at"],
+            }
+            for qh in quiz_histories
+        ]
+    }

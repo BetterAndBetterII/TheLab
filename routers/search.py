@@ -1,15 +1,16 @@
 # 搜索相关的路由
+import os
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from sqlalchemy.orm import Session
 
 from config import Settings, get_settings
 from database import get_db
-from sqlalchemy.orm import Session
 from models.users import User
-from services.session import get_current_user
 from rag.knowledgebase import KnowledgeBase
-import os
+from services.session import get_current_user
 
 router = APIRouter(prefix="/search", tags=["search"])
 

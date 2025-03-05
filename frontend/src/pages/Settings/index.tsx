@@ -79,7 +79,7 @@ const Settings: React.FC = () => {
         globalMODE: fetchedSettings.globalMODE || 'chat',
         isAdmin: fetchedSettings.isAdmin || false,
       });
-      
+
       // 初始化临时AI设置
       setTempAiSettings({
         apiKey: fetchedSettings.aiConfig?.apiKey || '',
@@ -89,9 +89,9 @@ const Settings: React.FC = () => {
       });
     } catch (error) {
       console.error('获取设置失败:', error);
-      setMessage({ 
-        type: 'error', 
-        text: '获取设置失败: ' + (error instanceof Error ? error.message : '未知错误') 
+      setMessage({
+        type: 'error',
+        text: '获取设置失败: ' + (error instanceof Error ? error.message : '未知错误')
       });
     } finally {
       setLoading(false);
@@ -102,7 +102,7 @@ const Settings: React.FC = () => {
     setAiTesting(true);
     setMessage(null);
     setAiTestPassed(false);
-    
+
     try {
       await settingsApi.testAISettings({
         apiKey: tempAiSettings.apiKey,
@@ -110,7 +110,7 @@ const Settings: React.FC = () => {
         standardModel: tempAiSettings.standardModel,
         advancedModel: tempAiSettings.advancedModel,
       });
-      
+
       setAiTestPassed(true);
       setMessage({ type: 'success', text: 'AI 设置测试成功！' });
     } catch (error: any) {
@@ -138,13 +138,13 @@ const Settings: React.FC = () => {
       });
 
       setMessage({ type: 'success', text: '设置保存成功！' });
-      
+
       // 更新成功后刷新设置
       await fetchSettings();
     } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: '保存设置失败: ' + (error instanceof Error ? error.message : '未知错误') 
+      setMessage({
+        type: 'error',
+        text: '保存设置失败: ' + (error instanceof Error ? error.message : '未知错误')
       });
     } finally {
       setSaving(false);
@@ -369,7 +369,7 @@ const Settings: React.FC = () => {
           >
             {aiTesting ? '测试中...' : '测试连接'}
           </button>
-          
+
           {aiTestPassed && (
             <span className={styles.successBadge}>
               ✓ 测试通过

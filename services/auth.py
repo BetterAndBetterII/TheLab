@@ -3,11 +3,11 @@ import string
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import requests
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from redis import Redis
 from sqlalchemy.orm import Session
-import requests
 
 from config import get_settings
 from models.users import User, UserStatus
@@ -157,13 +157,13 @@ class AuthService:
             )
             response.raise_for_status()
             data = response.json()
-            
+
             if "error" in data:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"GitHub OAuth错误: {data['error_description']}",
                 )
-                
+
             return data["access_token"]
         except requests.RequestException as e:
             raise HTTPException(

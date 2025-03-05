@@ -1,25 +1,20 @@
-from typing import List, Optional, Dict
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Response
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from datetime import datetime
-import os
 import mimetypes
+import os
 import urllib.parse
+from datetime import datetime
+from typing import Dict, List, Optional
 
-from database import (
-    Document,
-    Folder,
-    get_db,
-    ProcessingStatus,
-    ProcessingRecord,
-    DocumentReadRecord,
-    Note,
-)
+from fastapi import (APIRouter, Depends, File, Form, HTTPException, Response,
+                     UploadFile)
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from config import Settings, get_settings
+from database import (Document, DocumentReadRecord, Folder, Note,
+                      ProcessingRecord, ProcessingStatus, get_db)
 from models.users import User
-from services.session import get_current_user
-from config import get_settings, Settings
 from pipeline.document_pipeline import DocumentPipeline, get_document_pipeline
+from services.session import get_current_user
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -708,10 +703,7 @@ async def create_note(
         base_query_document = db.query(Document).filter(
             Document.owner_id == current_user.id
         )
-    document = (
-        base_query_document.filter(Document.id == int(documentId))
-        .first()
-    )
+    document = base_query_document.filter(Document.id == int(documentId)).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
 

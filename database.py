@@ -226,6 +226,7 @@ class QuizHistory(Base):
     document = relationship("Document", back_populates="quiz_history")
     user = relationship("User", back_populates="quiz_history")
 
+
 class DocumentReadRecord(Base):
     """文档阅读记录模型类。
 

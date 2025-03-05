@@ -8,7 +8,7 @@ export const fileApi = {
     if (folderId) {
       params.append('parentId', folderId);
     }
-    
+
     try {
       // 获取文件夹和文件
       const [folders, files] = await Promise.all([
@@ -19,7 +19,7 @@ export const fileApi = {
           headers: getAuthHeaders(),
         })
       ]);
-      
+
       // 合并文件和文件夹列表
       return [...folders, ...files];
     } catch (error) {
@@ -75,17 +75,17 @@ export const fileApi = {
       const response = await fetch(`${BASE_URL}/documents/${fileId}/download`, {
         headers: getAuthHeaders(),
       });
-      
+
       if (!response.ok) {
         throw new Error('下载失败');
       }
 
       const blob = await response.blob();
-      
+
       // 从 Content-Disposition 头中获取文件名
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = '';
-      
+
       if (contentDisposition) {
         // 尝试获取 filename* 参数（RFC 5987）
         const matches = /filename\*=UTF-8''(.+)/i.exec(contentDisposition);
@@ -209,4 +209,4 @@ export const fileApi = {
       body: JSON.stringify({ fileIds, folderIds, targetFolderId }),
     });
   },
-}; 
+};

@@ -1,16 +1,18 @@
 # 解析图片
+import asyncio
 import logging
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from prepdocs.config import FileType, Page, Section
+
 from clients.openai_client import OpenAIClient
 from config import Settings, get_settings
 from models.users import User
-import asyncio
+from prepdocs.config import FileType, Page, Section
 
 logger = logging.getLogger(__name__)
 
 settings: Settings = get_settings()
+
 
 def get_parse_markdown_system_prompt() -> str:
     return """

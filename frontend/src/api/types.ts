@@ -242,4 +242,4 @@ export interface FileApi {
 export interface User {
   id: number;
   username: string;
-} 
+}

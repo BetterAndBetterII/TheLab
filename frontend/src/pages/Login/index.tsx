@@ -98,7 +98,7 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     authApi.getProviders().then(res => {
-      setProviders(res); 
+      setProviders(res);
     });
   }, []);
 
@@ -165,8 +165,8 @@ const Login: React.FC = () => {
 
         <div className={styles.socialButtons}>
           {providers.map(provider => (
-            <button 
-              key={provider.name} 
+            <button
+              key={provider.name}
               className={styles.socialButton}
               onClick={() => window.location.href = provider.url}
             >

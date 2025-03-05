@@ -5,34 +5,28 @@ import traceback
 from concurrent.futures.thread import ThreadPoolExecutor
 
 import dotenv
-from llama_index.core import (
-    Document,
-    PromptTemplate,
-    QueryBundle,
-    StorageContext,
-    VectorStoreIndex,
-)
-from llama_index.core.extractors import KeywordExtractor, QuestionsAnsweredExtractor
+from llama_index.core import (Document, PromptTemplate, QueryBundle,
+                              StorageContext, VectorStoreIndex)
+from llama_index.core.extractors import (KeywordExtractor,
+                                         QuestionsAnsweredExtractor)
 from llama_index.core.indices.vector_store import VectorIndexRetriever
 from llama_index.core.ingestion import IngestionPipeline
-from llama_index.core.node_parser import SentenceSplitter, SentenceWindowNodeParser
-from llama_index.core.postprocessor import (
-    MetadataReplacementPostProcessor,
-    SimilarityPostprocessor,
-)
+from llama_index.core.node_parser import (SentenceSplitter,
+                                          SentenceWindowNodeParser)
+from llama_index.core.postprocessor import (MetadataReplacementPostProcessor,
+                                            SimilarityPostprocessor)
 from llama_index.core.schema import NodeWithScore
 from llama_index.core.settings import Settings
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
+from llama_index.embeddings.siliconflow import SiliconFlowEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.llms.openai_like import OpenAILike
+from llama_index.llms.siliconflow import SiliconFlow
 from llama_index.postprocessor.siliconflow_rerank import SiliconFlowRerank
 from llama_index.storage.docstore.postgres import PostgresDocumentStore
 from llama_index.vector_stores.postgres import PGVectorStore
 from pydantic import BaseModel
 from tqdm import tqdm
-
-from llama_index.embeddings.siliconflow import SiliconFlowEmbedding
-from llama_index.llms.siliconflow import SiliconFlow
 
 from database import Document as DBDocument
 

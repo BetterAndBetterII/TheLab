@@ -1,16 +1,16 @@
 import base64
 import io
+import logging
 import os
 from datetime import datetime
-from typing import Literal, List
-from openai.types.chat import ChatCompletionMessageParam
+from typing import List, Literal
 
 import openai
+from openai.types.chat import ChatCompletionMessageParam
 from PIL import Image
 
 from clients.llm_client import LLMClient
 from database import ApiKey, get_db
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -182,7 +182,6 @@ class OpenAIClient(LLMClient):
             return
         self.api_model.last_error_message = error_message
         self.db.commit()
-
 
     async def chat_stream(self, messages: List[ChatCompletionMessageParam]):
         """

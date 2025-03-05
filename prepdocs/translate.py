@@ -1,11 +1,11 @@
 # 解析英文文档
+import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from prepdocs.config import FileType, Page, Section
-from models.users import User
 from clients.openai_client import OpenAIClient
-import asyncio
 from config import Settings, get_settings
+from models.users import User
+from prepdocs.config import FileType, Page, Section
 
 settings: Settings = get_settings()
 
@@ -75,9 +75,12 @@ async def translate_text(
     #             print(f"翻译页面 {idx + 1} 时发生错误: {str(e)}")
 
     semaphore = asyncio.Semaphore(max_workers)
+
     async def process_page(page: Page):
         async with semaphore:
-            return await process_single_translation(openai_client, page.content, target_language)
+            return await process_single_translation(
+                openai_client, page.content, target_language
+            )
 
     tasks = [process_page(page) for page in section.pages]
     result_section.pages = await asyncio.gather(*tasks)

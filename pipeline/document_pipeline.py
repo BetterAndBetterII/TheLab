@@ -1,27 +1,26 @@
+import asyncio
 import hashlib
 import logging
 import os
 import queue
 import shutil
+import tempfile
 import threading
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Dict, Optional
-import tempfile
-
 
 from fastapi import Request
 
 from config import get_settings
 from database import Document, ProcessingRecord, ProcessingStatus, SessionLocal
+from models.users import User
 from prepdocs.config import FileType, Page, Section
 from prepdocs.parse_images import parse_images
 from prepdocs.parse_page import DocsIngester
 from prepdocs.translate import translate_text
 from rag.knowledgebase import KnowledgeBase
-from models.users import User
-import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -395,8 +394,9 @@ class DocumentPipeline:
 
     def _generate_thumbnail(self, file_path: str) -> bytes:
         """生成缩略图"""
-        from PIL import Image
         import io
+
+        from PIL import Image
 
         # 打开图片
         with Image.open(file_path) as img:

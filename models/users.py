@@ -2,9 +2,9 @@ import enum
 from datetime import datetime
 
 from passlib.context import CryptContext
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, JSON
+from sqlalchemy import JSON, Boolean, Column, DateTime
 from sqlalchemy import Enum as SQLAlchemyEnum
-from sqlalchemy import Float
+from sqlalchemy import Float, Integer, String
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -74,10 +74,14 @@ class User(Base):
     notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
 
     # 添加对话关系
-    conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
+    conversations = relationship(
+        "Conversation", back_populates="user", cascade="all, delete-orphan"
+    )
 
     # 添加QuizHistory关系
-    quiz_history = relationship("QuizHistory", back_populates="user", cascade="all, delete-orphan")
+    quiz_history = relationship(
+        "QuizHistory", back_populates="user", cascade="all, delete-orphan"
+    )
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:

@@ -1,5 +1,3 @@
-from typing import List, Optional
-import random
 import json
 import random
 from typing import List, Optional
@@ -72,7 +70,7 @@ class ForumService:
         """获取主题列表"""
         # 构建基础查询
         base_query = self.db.query(Topic).join(User, Topic.user_id == User.id)
-        
+
         # 添加分类过滤
         if category:
             base_query = base_query.filter(Topic.category == category)
@@ -281,7 +279,7 @@ class ForumService:
             #         },
             #     ],
             # )
-            
+
             # 随机选择一个分类
             categories = list(TopicCategory)
             category = random.choice(categories)
@@ -322,7 +320,6 @@ class ForumService:
             )
             print(generated_content)
             generated_content = json.loads(generated_content)
-
 
             # 获取系统用户（AI用户）
             system_user = self.db.query(User).filter(User.is_superuser == True).first()

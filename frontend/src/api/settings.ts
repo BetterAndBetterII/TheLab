@@ -12,7 +12,7 @@ export const settingsApi = {
 
   updateSettings: async (settings: UpdateUserSettings) => {
     const { aiConfig, ...basicSettings } = settings;
-    
+
     return await handleRequest(`${BASE_URL}/settings`, {
       method: 'PUT',
       headers: getAuthHeaders(),
@@ -27,4 +27,4 @@ export const settingsApi = {
       body: JSON.stringify(settings),
     });
   },
-}; 
+};

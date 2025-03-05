@@ -92,7 +92,7 @@ const FileList: React.FC<FileListProps> = ({
         }
       }
     };
-    
+
     fetchFolderTree();
   }, [operation]);
 
@@ -122,12 +122,12 @@ const FileList: React.FC<FileListProps> = ({
       setLoading(true);
       const response = await fileApi.getFiles(currentFolder);
       setFiles(response);
-      
+
       if (currentFolder) {
         const folderDetails = await fileApi.getFolderDetails(currentFolder);
         const pathItems: FileItem[] = [folderDetails];
         let currentItem = folderDetails;
-        
+
         while (currentItem.parentId) {
           const parentFolder = await fileApi.getFolderDetails(currentItem.parentId);
           pathItems.unshift(parentFolder);
@@ -147,12 +147,12 @@ const FileList: React.FC<FileListProps> = ({
   };
 
   const handleFileSelect = (file: FileItem, event: React.MouseEvent) => {
-    const item: Item = { 
-      id: file.id, 
-      type: file.isFolder ? 'folder' : 'file' as const 
+    const item: Item = {
+      id: file.id,
+      type: file.isFolder ? 'folder' : 'file' as const
     };
     const itemKey = getItemKey(item);
-    
+
     if (event.ctrlKey || event.metaKey) {
       const newSelected = new Set(selectedFiles);
       if (newSelected.has(itemKey)) {
@@ -164,7 +164,7 @@ const FileList: React.FC<FileListProps> = ({
     } else {
       setSelectedFiles(new Set([itemKey]));
     }
-    
+
     if (!file.isFolder) {
       onFileSelect?.(file);
     }
@@ -191,7 +191,7 @@ const FileList: React.FC<FileListProps> = ({
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
-    
+
     try {
       setLoading(true);
       await fileApi.createFolder(newFolderName, currentFolder);
@@ -209,17 +209,17 @@ const FileList: React.FC<FileListProps> = ({
 
   const handleDelete = async () => {
     if (selectedFiles.size === 0) return;
-    
+
     const selectedItems = Array.from(selectedFiles).map(parseItemKey);
     const files = selectedItems.filter(item => item.type === 'file');
     const folders = selectedItems.filter(item => item.type === 'folder');
-    
+
     const message = `确定要删除选中的 ${files.length ? files.length + ' 个文件' : ''}${
       files.length && folders.length ? ' 和 ' : ''
     }${folders.length ? folders.length + ' 个文件夹' : ''}吗？`;
-    
+
     const confirm = window.confirm(message);
-    
+
     if (confirm) {
       try {
         setLoading(true);
@@ -227,7 +227,7 @@ const FileList: React.FC<FileListProps> = ({
           files.length > 0 && fileApi.batchDeleteFiles(files.map(item => item.id)),
           folders.length > 0 && fileApi.batchDeleteFolders(folders.map(item => item.id))
         ].filter(Boolean));
-        
+
         setSelectedFiles(new Set());
         fetchFiles();
         (window as any).toast.success('删除成功');
@@ -242,7 +242,7 @@ const FileList: React.FC<FileListProps> = ({
 
   const handleMove = async (targetFolderId: string | null) => {
     if (selectedFiles.size === 0) return;
-    
+
     try {
       setLoading(true);
       const selectedItems = Array.from(selectedFiles).map(parseItemKey);
@@ -307,7 +307,7 @@ const FileList: React.FC<FileListProps> = ({
     if (a.isFolder !== b.isFolder) {
       return a.isFolder ? -1 : 1;
     }
-    
+
     // 然后按照选择的排序方式排序
     const order = sortOrder === 'asc' ? 1 : -1;
     if (sortBy === 'name') {
@@ -336,7 +336,7 @@ const FileList: React.FC<FileListProps> = ({
     if (file.isFolder) {
       return '📁';
     }
-    
+
     // 根据 MIME 类型判断
     if (file.mimeType) {
       if (file.mimeType.startsWith('image/')) {
@@ -467,20 +467,20 @@ const FileList: React.FC<FileListProps> = ({
   }
 
   return (
-    <div 
-      className={`${styles.container} ${className || ''}`} 
+    <div
+      className={`${styles.container} ${className || ''}`}
       onClick={handleContainerClick}
     >
       <div className={styles.header}>
         <div className={styles.actions}>
-          <button 
+          <button
             className={styles.actionButton}
             onClick={() => setOperation({ type: 'upload' })}
           >
             <span>📤</span>
             上传文件
           </button>
-          <button 
+          <button
             className={styles.actionButton}
             onClick={() => setShowNewFolderDialog(true)}
           >
@@ -489,14 +489,14 @@ const FileList: React.FC<FileListProps> = ({
           </button>
           {selectedFiles.size > 0 && (
             <>
-              <button 
+              <button
                 className={styles.actionButton}
                 onClick={handleDelete}
               >
                 <span>🗑️</span>
                 删除
               </button>
-              <button 
+              <button
                 className={styles.actionButton}
                 onClick={() => setOperation({ type: 'move', fileId: Array.from(selectedFiles)[0] })}
               >
@@ -509,8 +509,8 @@ const FileList: React.FC<FileListProps> = ({
       </div>
 
       <div className={styles.breadcrumb}>
-        <span 
-          className={styles.breadcrumbItem} 
+        <span
+          className={styles.breadcrumbItem}
           onClick={() => setCurrentFolder(null)}
         >
           根目录
@@ -584,17 +584,17 @@ const FileList: React.FC<FileListProps> = ({
                       <span>•</span>
                       {file.processingStatus && (
                         <>
-                          <span 
+                          <span
                             className={styles[
                               file.processingStatus.toLowerCase() as ProcessingStatus
-                            ]} 
+                            ]}
                             title={file.errorMessage || TOOLTIPS[file.processingStatus.toLowerCase() as ProcessingStatus]}
                           >
                             {ICONS[file.processingStatus.toLowerCase() as ProcessingStatus]} {file.processingStatus}
                           </span>
                           {file.processingStatus === "processing" && <div className={styles.progressBar}>
-                            <div 
-                              className={styles.progressFill} 
+                            <div
+                              className={styles.progressFill}
                               style={{ width: `${PROGRESS[file.processingStatus.toLowerCase() as ProcessingStatus]}%` }}
                             />
                           </div>}
@@ -696,8 +696,8 @@ const FileList: React.FC<FileListProps> = ({
                 <span className={styles.folderIcon}>📁</span>
                 <span className={styles.folderName}>根目录</span>
               </div>
-              <FolderTreeView 
-                folders={folderTree} 
+              <FolderTreeView
+                folders={folderTree}
                 level={1}
                 selectedItems={selectedFiles}
               />
@@ -724,4 +724,4 @@ const FileList: React.FC<FileListProps> = ({
   );
 };
 
-export default FileList; 
+export default FileList;
