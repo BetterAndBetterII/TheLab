@@ -14,6 +14,9 @@ import click
 from database import (Base, Document, Folder, ProcessingStatus, SessionLocal,
                       create_rag_db, create_tables, engine)
 from models.users import User
+from pipeline.document_pipeline import get_document_pipeline
+from rag.knowledgebase import KnowledgeBase
+from config import get_settings
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -300,6 +303,46 @@ def migrate_legacy_db():
         if "conn" in locals():
             conn.close()
 
+def ingest_data():
+    """导入数据"""
+    import asyncio
+    import platform
+    
+    async def process_documents(documents, rag):
+        for document in documents:
+            try:
+                await rag.upload_document(document)
+            except Exception as e:
+                logger.error(f"处理文档 {document.filename} 时出错: {str(e)}")
+    
+    async def main():
+        settings = get_settings()
+        if settings.GLOBAL_MODE == "public":
+            namespace = "public"
+        else:
+            raise ValueError("GLOBAL_MODE 必须为 public")
+
+        pg_docs_uri = f"postgresql+asyncpg://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
+        pg_vector_uri = f"postgresql+asyncpg://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
+        rag = KnowledgeBase(
+            pg_docs_uri,
+            pg_vector_uri,
+            "public",
+            namespace,
+        )
+        db = SessionLocal()
+        try:
+            documents = db.query(Document).all()
+            await process_documents(documents, rag)
+            logger.info("导入数据完成")
+        finally:
+            db.close()
+    
+    if platform.system() == 'Windows':
+        # Windows 平台特殊处理
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
+    asyncio.run(main())
 
 @click.group()
 def cli():
@@ -323,6 +366,10 @@ def from_legacy():
     """迁移旧数据库"""
     migrate_legacy_db()
 
+@cli.command()
+def ingest():
+    """导入数据"""
+    ingest_data()
 
 @cli.command()
 @click.option("--username", prompt="用户名", help="超级用户的用户名")
@@ -351,6 +398,10 @@ def main():
     # 从旧数据库迁移命令
     from_legacy_parser = subparsers.add_parser("from-legacy", help="从旧数据库迁移")
     from_legacy_parser.set_defaults(func=migrate_legacy_db)
+
+    # 导入数据命令
+    ingest_parser = subparsers.add_parser("ingest", help="导入数据")
+    ingest_parser.set_defaults(func=ingest_data)
 
     # 迁移到sessions表命令
     migrate_parser = subparsers.add_parser(
