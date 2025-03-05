@@ -50,4 +50,4 @@ EXPOSE 8000
 
 # 设置默认命令
 # uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

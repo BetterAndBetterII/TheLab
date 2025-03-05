@@ -178,7 +178,7 @@ async def github_oauth_callback(
         github_user = auth_service.get_github_user_info(access_token)
 
         # 检查用户是否已存在
-        user = db.query(User).filter(User.email == github_user["email"]).first()
+        user = db.query(User).filter(User.username == github_user["login"]).first()
 
         if not user:
             # 创建新用户
@@ -210,9 +210,11 @@ async def github_oauth_callback(
             max_age=60 * 60 * 24 * settings.SESSION_EXPIRE_DAYS,
             samesite="lax",
         )
+        response.status_code = status.HTTP_302_FOUND
+        response.headers["HX-Redirect"] = "/"
 
         # 重定向到首页
-        return RedirectResponse(url="/")
+        return response
     except HTTPException as e:
         raise e
     except Exception as e:
