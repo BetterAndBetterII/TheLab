@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+import os
 
 from database import create_tables
 from routers import auth, conversations, documents, folders, forum, settings, search
@@ -53,12 +54,17 @@ api_app.include_router(settings.router)  # 设置路由
 # 将API应用挂载到主应用的/api路径下
 app.mount("/api", api_app)
 
-# 托管静态文件
-app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
+# 托管静态资源文件（js/css/images等）
+app.mount("/static", StaticFiles(directory="frontend/dist/static"), name="static")
 
-# 处理 SPA 路由
+# 处理所有其他路由，返回index.html
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
+    # 检查是否存在对应的静态文件
+    static_file = f"frontend/dist/{full_path}"
+    if os.path.isfile(static_file):
+        return FileResponse(static_file)
+    # 否则返回 index.html 以支持客户端路由
     return FileResponse("frontend/dist/index.html")
 
 if __name__ == "__main__":
