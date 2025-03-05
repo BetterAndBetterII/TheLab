@@ -63,6 +63,8 @@ class Settings(BaseSettings):
     # OpenAI设置
     OPENAI_API_KEY: str
     OPENAI_BASE_URL: str
+    LLM_MODEL: str
+    EMBEDDING_MODEL: str
     EMBEDDING_API_KEY: str
     EMBEDDING_BASE_URL: str
     EMB_DIMENSIONS: int = 1024

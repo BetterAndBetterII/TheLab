@@ -37,7 +37,7 @@ from database import Document as DBDocument
 dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"), override=True)
 
 Settings.llm = OpenAILike(
-    model="qwen2.5-instruct",
+    model=os.getenv("LLM_MODEL"),
     api_key=os.getenv("OPENAI_API_KEY"),
     api_base=os.getenv("OPENAI_BASE_URL"),
     is_chat_model=True,
@@ -45,7 +45,7 @@ Settings.llm = OpenAILike(
 Settings.embed_model = SiliconFlowEmbedding(
     api_key=os.getenv("EMBEDDING_API_KEY"),
     api_base=os.getenv("EMBEDDING_BASE_URL"),
-    model="BAAI/bge-m3",
+    model=os.getenv("EMBEDDING_MODEL"),
     timeout=30,
     max_retries=5,
     num_workers=10,
