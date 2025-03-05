@@ -106,7 +106,6 @@ services:
       - "6380:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --requirepass redis
     networks:
       - app_network
 
