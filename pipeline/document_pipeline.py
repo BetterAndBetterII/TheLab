@@ -72,7 +72,7 @@ class DocumentPipeline:
 
         file_hash = self._calculate_file_hash(document.file_data)
         # 检查是否存在相同哈希值的处理记录
-        existing_record = (
+        existing_record: ProcessingRecord | None = (
             self.db.query(ProcessingRecord)
             .filter(
                 ProcessingRecord.file_hash == file_hash,
@@ -80,6 +80,25 @@ class DocumentPipeline:
             )
             .first()
         )
+
+        # 如果存在相同哈希值的处理记录，则不处理
+        if existing_record:
+            existing_document = existing_record.document
+            # 复制处理记录
+            document.processing_status = existing_document.processing_status
+            document.processor = existing_document.processor
+            document.content_pages = existing_document.content_pages
+            document.summary_pages = existing_document.summary_pages
+            document.translation_pages = existing_document.translation_pages
+            document.keywords_pages = existing_document.keywords_pages
+            document.total_pages = existing_document.total_pages
+            document.thumbnail = existing_document.thumbnail
+            document.updated_at = datetime.now()
+            document.mime_type = existing_document.mime_type
+            document.created_at = existing_document.created_at
+            document.updated_at = datetime.now()
+            self.db.commit()
+            return False
 
         return existing_record is None
 
@@ -142,6 +161,7 @@ class DocumentPipeline:
         self,
         document: Document,
         status: ProcessingStatus,
+        processor_msg: Optional[str] = None,
         error_message: Optional[str] = None,
     ):
         """更新文档状态"""
@@ -149,6 +169,8 @@ class DocumentPipeline:
         document.updated_at = datetime.now()
         if error_message:
             document.error_message = error_message
+        if processor_msg:
+            document.processor = processor_msg
         if status == ProcessingStatus.COMPLETED:
             document.processed_at = datetime.now()
         self.db.commit()
@@ -162,19 +184,32 @@ class DocumentPipeline:
 
         try:
             # ------------------预处理阶段------------------
-            self._update_document_status(document, ProcessingStatus.PROCESSING)
+            self._update_document_status(
+                document, ProcessingStatus.PROCESSING, processor_msg="预处理阶段..."
+            )
             document = await self.stage_1(document)
             logger.debug(f"预处理阶段完成: {document.filename}")
 
             # ------------------文本提取阶段------------------
+            self._update_document_status(
+                document, ProcessingStatus.PROCESSING, processor_msg="文本提取阶段..."
+            )
             document = await self.stage_2(document)
             logger.debug(f"文本提取阶段完成: {document.filename}")
 
             # ------------------翻译阶段------------------
+            self._update_document_status(
+                document, ProcessingStatus.PROCESSING, processor_msg="翻译阶段..."
+            )
             document = await self.stage_3(document)
             logger.debug(f"翻译阶段完成: {document.filename}")
 
             # ------------------保存到知识库阶段------------------
+            self._update_document_status(
+                document,
+                ProcessingStatus.PROCESSING,
+                processor_msg="保存到知识库阶段...",
+            )
             document = await self.stage_4(document)
             logger.debug(f"保存到知识库阶段完成: {document.filename}")
 
@@ -182,7 +217,9 @@ class DocumentPipeline:
             self._create_processing_record(document)
 
             # 完成
-            self._update_document_status(document, ProcessingStatus.COMPLETED)
+            self._update_document_status(
+                document, ProcessingStatus.COMPLETED, processor_msg="处理完成"
+            )
             return document
 
         except Exception as e:
@@ -316,8 +353,7 @@ class DocumentPipeline:
         text_section = Section(
             title=document.filename,
             pages=[
-                Page(content=page_data)
-                for page_data in document.content_pages.values()
+                Page(content=page_data) for page_data in document.content_pages.values()
             ],
             file_type=FileType.TEXT,
             filename=document.filename,
@@ -339,6 +375,10 @@ class DocumentPipeline:
     async def stage_4(self, document: Document) -> Document:
         """保存阶段：将处理后的内容保存到知识库"""
         logger.info(f"开始保存文档到知识库: {document.filename}")
+        if settings.GLOBAL_MODE == "public":
+            namespace = "public"
+        else:
+            namespace = document.owner.email
 
         pg_docs_uri = f"postgresql+asyncpg://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
         pg_vector_uri = f"postgresql+asyncpg://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
@@ -346,7 +386,7 @@ class DocumentPipeline:
             pg_docs_uri,
             pg_vector_uri,
             "public",
-            document.owner.email,
+            namespace,
         )
 
         # 为每一页创建知识库条目

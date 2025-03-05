@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from redis import Redis
 from sqlalchemy.orm import Session
+import requests
 
 from config import get_settings
 from models.users import User, UserStatus
@@ -140,3 +141,50 @@ class AuthService:
         db.commit()
         db.refresh(user)
         return user
+
+    def get_github_access_token(self, code: str) -> str:
+        """获取GitHub OAuth访问令牌"""
+        try:
+            response = requests.post(
+                "https://github.com/login/oauth/access_token",
+                headers={"Accept": "application/json"},
+                data={
+                    "client_id": settings.GITHUB_CLIENT_ID,
+                    "client_secret": settings.GITHUB_CLIENT_SECRET,
+                    "code": code,
+                    "redirect_uri": settings.GITHUB_REDIRECT_URI,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            if "error" in data:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"GitHub OAuth错误: {data['error_description']}",
+                )
+                
+            return data["access_token"]
+        except requests.RequestException as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"GitHub OAuth请求失败: {str(e)}",
+            )
+
+    def get_github_user_info(self, token: str) -> dict:
+        """获取GitHub用户信息"""
+        try:
+            response = requests.get(
+                "https://api.github.com/user",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/json",
+                },
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"获取GitHub用户信息失败: {str(e)}",
+            )

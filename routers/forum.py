@@ -2,10 +2,11 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from database import get_db
+from models.users import User
 from models.forum import TopicCategory
 from services.forum import ForumService
 from services.session import get_current_user
@@ -33,11 +34,20 @@ class ReplyCreate(BaseModel):
     enable_agent: Optional[bool] = True
 
 
+class UserResponse(BaseModel):
+    id: int
+    username: str
+
+    class Config:
+        from_attributes = True
+
+
 class ReplyResponse(BaseModel):
     id: int
     content: str
     topic_id: int
-    user_id: Optional[int]
+    user_id: int
+    username: str | None = None
     parent_id: Optional[int]
     is_ai_generated: bool
     created_at: datetime
@@ -46,6 +56,12 @@ class ReplyResponse(BaseModel):
     class Config:
         from_attributes = True
 
+    @field_validator('username')
+    def set_username(cls, v, info):
+        if v is None:
+            return 'Unknown User'
+        return v
+
 
 class TopicResponse(BaseModel):
     id: int
@@ -53,6 +69,7 @@ class TopicResponse(BaseModel):
     content: str
     category: TopicCategory
     user_id: int
+    username: str | None = None
     views: int
     is_pinned: bool
     is_locked: bool
@@ -63,21 +80,29 @@ class TopicResponse(BaseModel):
     class Config:
         from_attributes = True
 
+    @field_validator('username')
+    def set_username(cls, v, info):
+        if v is None:
+            return 'Unknown User'
+        return v
+
 
 # 路由处理函数
 @router.post("/topics", response_model=TopicResponse)
 async def create_topic(
     topic: TopicCreate,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """创建新主题"""
     forum_service = ForumService(db)
     return forum_service.create_topic(
-        user_id=current_user_id,
+        user_id=current_user.id,
+        username=current_user.username,
         title=topic.title,
         content=topic.content,
         category=topic.category,
+        enable_agent=topic.enable_agent,
     )
 
 
@@ -85,7 +110,7 @@ async def create_topic(
 async def list_topics(
     category: Optional[TopicCategory] = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 10,
     db: Session = Depends(get_db),
 ):
     """获取主题列表"""
@@ -105,13 +130,13 @@ async def update_topic(
     topic_id: int,
     topic_update: TopicUpdate,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """更新主题"""
     forum_service = ForumService(db)
     return forum_service.update_topic(
         topic_id=topic_id,
-        user_id=current_user_id,
+        user_id=current_user.id,
         title=topic_update.title,
         content=topic_update.content,
         category=topic_update.category,
@@ -122,11 +147,11 @@ async def update_topic(
 async def delete_topic(
     topic_id: int,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """删除主题"""
     forum_service = ForumService(db)
-    forum_service.delete_topic(topic_id, current_user_id)
+    forum_service.delete_topic(topic_id, current_user.id)
     return {"message": "主题已删除"}
 
 
@@ -135,15 +160,17 @@ async def create_reply(
     topic_id: int,
     reply: ReplyCreate,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """创建回复"""
     forum_service = ForumService(db)
     return forum_service.create_reply(
         topic_id=topic_id,
-        user_id=current_user_id,
+        user_id=current_user.id,
+        username=current_user.username,
         content=reply.content,
         parent_id=reply.parent_id,
+        enable_agent=reply.enable_agent,
     )
 
 
@@ -163,7 +190,7 @@ async def get_topic_replies(
 async def trigger_agent_reply(
     topic_id: int,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """手动触发Agent回复"""
     forum_service = ForumService(db)
@@ -174,3 +201,13 @@ async def trigger_agent_reply(
             detail="Agent回复生成失败",
         )
     return reply
+
+
+@router.post("/generate-ai-topic", response_model=TopicResponse)
+async def generate_ai_topic(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """生成AI推文"""
+    forum_service = ForumService(db)
+    return await forum_service.generate_ai_topic(current_user)

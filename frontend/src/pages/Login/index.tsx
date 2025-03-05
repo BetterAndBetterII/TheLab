@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
 import Loading from '../../components/Loading';
 import { authApi } from '../../api';
+import { FaGithub, FaGoogle } from 'react-icons/fa';
+
+interface Provider {
+  name: string;
+  url: string;
+  client_id: string;
+}
 
 const Login: React.FC = () => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -16,6 +22,12 @@ const Login: React.FC = () => {
     general: '',
   });
   const [loading, setLoading] = useState(false);
+  const [providers, setProviders] = useState<Provider[]>([]);
+
+  const ICON_MAP = {
+    github: <FaGithub />,
+    google: <FaGoogle />,
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -84,6 +96,12 @@ const Login: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    authApi.getProviders().then(res => {
+      setProviders(res); 
+    });
+  }, []);
+
   return (
     <div className={styles.container}>
       <div className={styles.card}>
@@ -146,12 +164,15 @@ const Login: React.FC = () => {
         </div>
 
         <div className={styles.socialButtons}>
-          <button className={styles.socialButton}>
-            <span>谷歌登录</span>
-          </button>
-          <button className={styles.socialButton}>
-            <span>GitHub 登录</span>
-          </button>
+          {providers.map(provider => (
+            <button 
+              key={provider.name} 
+              className={styles.socialButton}
+              onClick={() => window.location.href = provider.url}
+            >
+              <span>{ICON_MAP[provider.name as keyof typeof ICON_MAP]} {provider.name} 登录</span>
+            </button>
+          ))}
         </div>
 
         <div className={styles.footer}>

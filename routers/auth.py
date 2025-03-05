@@ -8,6 +8,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import RedirectResponse
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
@@ -123,6 +124,101 @@ class SessionInfo(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class OAuthCallbackRequest(BaseModel):
+    code: str
+
+
+@router.get("/providers")
+async def get_available_providers():
+    """获取可用的认证提供者"""
+    providers = []
+    if (
+        settings.GITHUB_CLIENT_ID
+        and settings.GITHUB_CLIENT_SECRET
+        and settings.GITHUB_REDIRECT_URI
+    ):
+        providers.append(
+            {
+                "name": "github",
+                "url": f"https://github.com/login/oauth/authorize?client_id={settings.GITHUB_CLIENT_ID}&redirect_uri={settings.GITHUB_REDIRECT_URI}",
+                "client_id": settings.GITHUB_CLIENT_ID,
+            }
+        )
+    if (
+        settings.GOOGLE_CLIENT_ID
+        and settings.GOOGLE_CLIENT_SECRET
+        and settings.GOOGLE_REDIRECT_URI
+    ):
+        providers.append(
+            {
+                "name": "google",
+                "url": f"https://accounts.google.com/o/oauth2/v2/auth?client_id={settings.GOOGLE_CLIENT_ID}&redirect_uri={settings.GOOGLE_REDIRECT_URI}",
+                "client_id": settings.GOOGLE_CLIENT_ID,
+            }
+        )
+    return providers
+
+
+@router.get("/oauth/github/callback")
+async def github_oauth_callback(
+    code: str,
+    response: Response,
+    request_obj: Request,
+    db: Session = Depends(get_db),
+):
+    """处理GitHub OAuth回调"""
+    try:
+        # 获取访问令牌
+        access_token = auth_service.get_github_access_token(code)
+
+        # 获取GitHub用户信息
+        github_user = auth_service.get_github_user_info(access_token)
+
+        # 检查用户是否已存在
+        user = db.query(User).filter(User.email == github_user["email"]).first()
+
+        if not user:
+            # 创建新用户
+            user = User(
+                email=(
+                    github_user["email"]
+                    if github_user["email"]
+                    else f"{github_user['login']}@github-user.com"
+                ),
+                username=github_user["login"],
+                full_name=(
+                    github_user["name"] if github_user["name"] else github_user["login"]
+                ),
+                status=UserStatus.ACTIVE,  # GitHub用户直接激活
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        # 创建会话
+        initial_data = {"registration_completed": True}
+        session_id = session_manager.create_session(
+            db, user, initial_data, request=request_obj
+        )
+        response.set_cookie(
+            key=session_manager.cookie_name,
+            value=session_id,
+            httponly=True,
+            max_age=60 * 60 * 24 * settings.SESSION_EXPIRE_DAYS,
+            samesite="lax",
+        )
+
+        # 重定向到首页
+        return RedirectResponse(url="/")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"GitHub OAuth处理失败: {str(e)}",
+        )
 
 
 @router.post("/register/request-verification")

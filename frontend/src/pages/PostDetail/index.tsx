@@ -1,109 +1,72 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import styles from './PostDetail.module.css';
 import Loading from '../../components/Loading';
-
-interface Comment {
-  id: string;
-  author: string;
-  content: string;
-  createdAt: string;
-  likes: number;
-}
-
-interface Post {
-  id: string;
-  title: string;
-  author: string;
-  content: string;
-  createdAt: string;
-  likes: number;
-  tags: string[];
-  comments: Comment[];
-}
+import { forumApi } from '../../api/forum';
+import type { Post, Reply } from '../../api/types';
 
 const PostDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchPost();
-  }, [id]);
+  // 路径中获取id
+  const id = window.location.pathname.split('/').pop();
 
   const fetchPost = async () => {
+    if (!id) return;
     try {
-      // 模拟从 API 获取帖子详情
-      const mockPost: Post = {
-        id: '1',
-        title: '如何提高工作效率？',
-        author: 'Alice',
-        content: `在当今快节奏的工作环境中，提高工作效率变得越来越重要。以下是一些实用的建议：
-
-1. 合理规划时间
-- 使用番茄工作法
-- 制定每日待办清单
-- 设置任务优先级
-
-2. 保持工作环境整洁
-- 定期整理桌面
-- 文件分类存储
-- 保持通风明亮
-
-3. 善用工具提高效率
-- 项目管理软件
-- 自动化工具
-- 协作平台
-
-希望这些建议对大家有帮助！`,
-        createdAt: '2024-02-27T10:00:00Z',
-        likes: 15,
-        tags: ['效率', '工作', '技巧'],
-        comments: [
-          {
-            id: '1',
-            author: 'Bob',
-            content: '非常实用的建议，特别是番茄工作法确实很有效。',
-            createdAt: '2024-02-27T10:30:00Z',
-            likes: 5,
-          },
-          {
-            id: '2',
-            author: 'Charlie',
-            content: '补充一点，适当的休息也很重要。',
-            createdAt: '2024-02-27T11:00:00Z',
-            likes: 3,
-          },
-        ],
-      };
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setPost(mockPost);
+      setLoading(true);
+      setError(null);
+      const postData = await forumApi.getPost(id);
+      setPost(postData);
     } catch (error) {
       console.error('Error fetching post:', error);
+      setError('加载帖子失败，请稍后重试');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (!id) {
+      navigate('/forum');
+      return;
+    }
+    fetchPost();
+  }, [id, navigate]);
+
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    if (!id || !newComment.trim() || submitting) return;
 
-    const comment: Comment = {
-      id: Date.now().toString(),
-      author: 'You',
-      content: newComment,
-      createdAt: new Date().toISOString(),
-      likes: 0,
-    };
-
-    setPost((prev) => prev ? {
-      ...prev,
-      comments: [...prev.comments, comment],
-    } : null);
-    setNewComment('');
+    try {
+      setSubmitting(true);
+      const reply = await forumApi.createReply(id, newComment.trim());
+      
+      // 更新帖子的回复列表
+      setPost(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          replies: [...prev.replies, reply]
+        };
+      });
+      
+      setNewComment('');
+    } catch (error) {
+      console.error('Error creating reply:', error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -114,13 +77,26 @@ const PostDetail: React.FC = () => {
     );
   }
 
-  if (!post) {
+  if (error || !post) {
     return (
       <div className={styles.container}>
-        <div className={styles.error}>帖子不存在</div>
+        <div className={styles.header}>
+          <Link to="/forum" className={styles.backButton}>
+            ← 返回论坛
+          </Link>
+        </div>
+        <div className={styles.error}>{error || '帖子不存在'}</div>
       </div>
     );
   }
+
+  const categoryNames: Record<string, string> = {
+    general: '综合讨论',
+    technical: '技术交流',
+    question: '问答',
+    sharing: '分享',
+    feedback: '反馈'
+  };
 
   return (
     <div className={styles.container}>
@@ -134,77 +110,96 @@ const PostDetail: React.FC = () => {
         <div className={styles.postHeader}>
           <h1 className={styles.postTitle}>{post.title}</h1>
           <div className={styles.postMeta}>
-            <span className={styles.postAuthor}>{post.author}</span>
+            <span className={styles.postAuthor}>{post.username}</span>
             <span>•</span>
             <span className={styles.postTime}>
-              {new Date(post.createdAt).toLocaleString()}
+              {new Date(post.created_at).toLocaleString()}
             </span>
           </div>
-          <div className={styles.postTags}>
-            {post.tags.map((tag) => (
-              <span key={tag} className={styles.tag}>
-                {tag}
-              </span>
-            ))}
+          <div className={styles.postCategory}>
+            <span className={styles.tag}>
+              {categoryNames[post.category] || post.category}
+            </span>
           </div>
         </div>
 
         <div className={styles.postContent}>
-          {post.content.split('\n\n').map((paragraph, index) => (
+          {/* {post.content.split('\n').map((paragraph, index) => (
             <p key={index}>{paragraph}</p>
-          ))}
+          ))} */}
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeKatex, rehypeRaw]}
+          >
+            {post.content}
+          </ReactMarkdown>
         </div>
 
         <div className={styles.postActions}>
-          <button className={styles.likeButton}>
-            👍 点赞 ({post.likes})
+          <button className={styles.viewsButton}>
+            👁️ 浏览 ({post.views})
           </button>
-          <button className={styles.shareButton}>
-            分享
+          <button className={styles.replyButton}>
+            💬 回复 ({post.replies.length})
           </button>
         </div>
       </article>
 
       <div className={styles.comments}>
         <h2 className={styles.commentsTitle}>
-          评论 ({post.comments.length})
+          回复 ({post.replies.length})
         </h2>
 
         <form onSubmit={handleSubmitComment} className={styles.commentForm}>
           <textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            placeholder="写下你的评论..."
+            placeholder="写下你的回复..."
             className={styles.commentInput}
             rows={3}
+            disabled={submitting}
           />
-          <button type="submit" className={styles.submitButton}>
-            发表评论
+          <button 
+            type="submit" 
+            className={styles.submitButton}
+            disabled={submitting || !newComment.trim()}
+          >
+            {submitting ? '发送中...' : '发表回复'}
           </button>
         </form>
 
         <div className={styles.commentList}>
-          {post.comments.map((comment) => (
-            <div key={comment.id} className={styles.commentItem}>
+          {post.replies.map((reply) => (
+            <div key={reply.id} className={styles.commentItem}>
               <div className={styles.commentHeader}>
                 <span className={styles.commentAuthor}>
-                  {comment.author}
+                  {reply.username}
+                  {reply.is_ai_generated && (
+                    <span className={styles.aiTag}>AI</span>
+                  )}
                 </span>
                 <span className={styles.commentTime}>
-                  {new Date(comment.createdAt).toLocaleString()}
+                  {new Date(reply.created_at).toLocaleString()}
                 </span>
               </div>
-              <p className={styles.commentContent}>{comment.content}</p>
-              <div className={styles.commentActions}>
-                <button className={styles.commentLikeButton}>
-                  👍 ({comment.likes})
-                </button>
-                <button className={styles.commentReplyButton}>
-                  回复
-                </button>
+              <div className={styles.commentContent}>
+                {reply.content.split('\n').map((line, index) => (
+                  <p key={index}>{line}</p>
+                ))}
               </div>
+              {reply.parent_id && (
+                <div className={styles.replyTo}>
+                  回复：{post.replies.find(r => r.id === reply.parent_id)?.username}
+                </div>
+              )}
             </div>
           ))}
+
+          {post.replies.length === 0 && (
+            <div className={styles.noComments}>
+              暂无回复，来说第一句吧
+            </div>
+          )}
         </div>
       </div>
     </div>

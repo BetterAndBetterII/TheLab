@@ -1,5 +1,5 @@
 import { BASE_URL, getAuthHeaders, handleRequest } from './config';
-import type { UserSettings, AISettings } from './types';
+import type { UserSettings, AISettings, UpdateUserSettings } from './types';
 
 export const settingsApi = {
   getSettings: async (): Promise<UserSettings> => {
@@ -10,7 +10,7 @@ export const settingsApi = {
     return settings;
   },
 
-  updateSettings: async (settings: UserSettings) => {
+  updateSettings: async (settings: UpdateUserSettings) => {
     const { aiConfig, ...basicSettings } = settings;
     
     return await handleRequest(`${BASE_URL}/settings`, {

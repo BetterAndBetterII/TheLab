@@ -18,6 +18,7 @@ from database import (
 )
 from models.users import User
 from services.session import get_current_user
+from config import get_settings, Settings
 from pipeline.document_pipeline import DocumentPipeline, get_document_pipeline
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -29,7 +30,7 @@ class FileResponse(BaseModel):
     type: str
     size: int
     lastModified: datetime
-    ownerId: str
+    owner: str
     parentId: Optional[str]
     path: Optional[str] = None
     isFolder: bool
@@ -165,15 +166,16 @@ async def upload_file(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     document_pipeline: DocumentPipeline = Depends(get_document_pipeline),
+    settings: Settings = Depends(get_settings),
 ):
+    if settings.GLOBAL_MODE == "public":
+        base_query_folder = db.query(Folder)
+    else:
+        base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
     # 验证文件夹
     folder_path = "/"
     if folderId:
-        folder = (
-            db.query(Folder)
-            .filter(Folder.id == int(folderId), Folder.owner_id == current_user.id)
-            .first()
-        )
+        folder = base_query_folder.filter(Folder.id == int(folderId)).first()
         if not folder:
             raise HTTPException(status_code=404, detail="文件夹不存在")
         folder_path = folder.path
@@ -208,7 +210,9 @@ async def upload_file(
         type=db_document.content_type,
         size=db_document.file_size,
         lastModified=db_document.updated_at,
-        ownerId=str(db_document.owner_id),
+        owner=str(
+            db.query(User).filter(User.id == db_document.owner_id).first().username
+        ),
         parentId=str(db_document.folder_id) if db_document.folder_id else None,
         path=db_document.path,
         isFolder=False,
@@ -223,11 +227,30 @@ async def list_files(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     document_pipeline: DocumentPipeline = Depends(get_document_pipeline),
+    settings: Settings = Depends(get_settings),
 ):
-    query = db.query(Document)
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
     if parentId is not None:
-        query = query.filter(
-            Document.folder_id == int(parentId), Document.owner_id == current_user.id
+        query = base_query.filter(Document.folder_id == int(parentId)).with_entities(
+            Document.id,
+            Document.filename,
+            Document.content_type,
+            Document.file_size,
+            Document.updated_at,
+            Document.owner_id,
+            Document.folder_id,
+            Document.path,
+            Document.mime_type,
+            Document.processing_status,
+            Document.error_message,
+        )
+    else:
+        # 只返回当前用户的文档
+        query = base_query.filter(
+            Document.folder_id.is_(None) if parentId is None else True,
         ).with_entities(
             Document.id,
             Document.filename,
@@ -237,27 +260,12 @@ async def list_files(
             Document.owner_id,
             Document.folder_id,
             Document.path,
+            Document.mime_type,
+            Document.processing_status,
+            Document.error_message,
         )
 
-    # 只返回当前用户的文档
-    query = query.filter(
-        Document.owner_id == current_user.id,
-        Document.folder_id.is_(None) if parentId is None else True,
-    ).with_entities(
-        Document.id,
-        Document.filename,
-        Document.content_type,
-        Document.file_size,
-        Document.updated_at,
-        Document.owner_id,
-        Document.folder_id,
-        Document.path,
-        Document.mime_type,
-        Document.processing_status,
-        Document.error_message,
-    )
-
-    documents = query.all()
+    documents: List[Document] = query.all()
     return [
         FileResponse(
             id=str(doc.id),
@@ -265,7 +273,7 @@ async def list_files(
             type=doc.content_type,
             size=doc.file_size,
             lastModified=doc.updated_at,
-            ownerId=str(doc.owner_id),
+            owner=str(db.query(User).filter(User.id == doc.owner_id).first().username),
             parentId=str(doc.folder_id) if doc.folder_id else None,
             path=doc.path,
             isFolder=False,
@@ -277,17 +285,49 @@ async def list_files(
     ]
 
 
+@router.get("/{fileId}/processing-status")
+async def get_processing_status(
+    fileId: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+):
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+    document = (
+        base_query.filter(Document.id == int(fileId))
+        .with_entities(
+            Document.processing_status, Document.processor, Document.error_message
+        )
+        .first()
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="文档未找到")
+
+    return {
+        "processing_status": document.processing_status,
+        "error_message": (
+            document.processor
+            if not document.processing_status == ProcessingStatus.FAILED
+            else document.error_message
+        ),
+    }
+
+
 @router.get("/{fileId}", response_model=FileResponse)
 async def get_file_details(
     fileId: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
-    document = (
-        db.query(Document)
-        .filter(Document.id == int(fileId), Document.owner_id == current_user.id)
-        .first()
-    )
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+    document = base_query.filter(Document.id == int(fileId)).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
 
@@ -310,12 +350,13 @@ async def download_file(
     fileId: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
-    document = (
-        db.query(Document)
-        .filter(Document.id == int(fileId), Document.owner_id == current_user.id)
-        .first()
-    )
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+    document = base_query.filter(Document.id == int(fileId)).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
 
@@ -357,12 +398,13 @@ async def get_file_preview(
     fileId: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
-    document = (
-        db.query(Document)
-        .filter(Document.id == int(fileId), Document.owner_id == current_user.id)
-        .first()
-    )
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+    document = base_query.filter(Document.id == int(fileId)).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
 
@@ -376,12 +418,15 @@ async def delete_file(
     fileId: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
-    document = (
-        db.query(Document)
-        .filter(Document.id == int(fileId), Document.owner_id == current_user.id)
-        .first()
-    )
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+    if current_user.id in [1, 2]:
+        base_query = db.query(Document)
+    document = base_query.filter(Document.id == int(fileId)).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
 
@@ -396,12 +441,15 @@ async def rename_file(
     request: RenameFileRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
-    document = (
-        db.query(Document)
-        .filter(Document.id == int(fileId), Document.owner_id == current_user.id)
-        .first()
-    )
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+    if current_user.id in [1, 2]:
+        base_query = db.query(Document)
+    document = base_query.filter(Document.id == int(fileId)).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
 
@@ -417,7 +465,7 @@ async def rename_file(
         type=document.content_type,
         size=document.file_size,
         lastModified=document.updated_at,
-        ownerId=str(document.owner_id),
+        owner=str(db.query(User).filter(User.id == document.owner_id).first().username),
         parentId=str(document.folder_id) if document.folder_id else None,
         path=document.path,
         isFolder=False,
@@ -431,24 +479,22 @@ async def move_file(
     request: MoveFileRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
-    document = (
-        db.query(Document)
-        .filter(Document.id == int(fileId), Document.owner_id == current_user.id)
-        .first()
-    )
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+        base_query_folder = db.query(Folder)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+        base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
+    document = base_query.filter(Document.id == int(fileId)).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
 
     if request.targetFolderId:
-        folder = (
-            db.query(Folder)
-            .filter(
-                Folder.id == int(request.targetFolderId),
-                Folder.owner_id == current_user.id,
-            )
-            .first()
-        )
+        folder = base_query_folder.filter(
+            Folder.id == int(request.targetFolderId)
+        ).first()
         if not folder:
             raise HTTPException(status_code=404, detail="目标文件夹不存在")
         document.folder_id = int(request.targetFolderId)
@@ -464,7 +510,7 @@ async def move_file(
         type=document.content_type,
         size=document.file_size,
         lastModified=document.updated_at,
-        ownerId=str(document.owner_id),
+        owner=str(db.query(User).filter(User.id == document.owner_id).first().username),
         parentId=str(document.folder_id) if document.folder_id else None,
         path=document.path,
         isFolder=False,
@@ -477,12 +523,18 @@ async def batch_delete_files(
     request: BatchDeleteRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+    if current_user.id in [1, 2]:
+        base_query = db.query(Document)
     file_ids = []
     for file_id in request.fileIds:
         document = (
-            db.query(Document)
-            .filter(Document.id == int(file_id), Document.owner_id == current_user.id)
+            base_query.filter(Document.id == int(file_id))
             .with_entities(Document.id)
             .first()
         )
@@ -512,36 +564,39 @@ async def batch_move_files(
     request: BatchMoveRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
-    if request.targetFolderId:
-        folder = (
-            db.query(Folder)
-            .filter(
-                Folder.id == int(request.targetFolderId),
-                Folder.owner_id == current_user.id,
-            )
-            .first()
+    if settings.GLOBAL_MODE == "public":
+        base_query_document = db.query(Document)
+        base_query_folder = db.query(Folder)
+    else:
+        base_query_document = db.query(Document).filter(
+            Document.owner_id == current_user.id
         )
+        base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
+    if current_user.id in [1, 2]:
+        base_query_document = db.query(Document)
+        base_query_folder = db.query(Folder)
+    if request.targetFolderId:
+        folder = base_query_folder.filter(
+            Folder.id == int(request.targetFolderId)
+        ).first()
         if not folder:
             raise HTTPException(status_code=404, detail="目标文件夹不存在")
 
     for file_id in request.fileIds:
         document = (
-            db.query(Document)
-            .filter(Document.id == int(file_id), Document.owner_id == current_user.id)
+            base_query_document.filter(Document.id == int(file_id))
+            .with_entities(Document.id, Document.folder_id)
             .first()
-        ).with_entities(Document.id, Document.folder_id)
+        )
         if document:
             document.folder_id = (
                 int(request.targetFolderId) if request.targetFolderId else None
             )
 
     for folder_id in request.folderIds:
-        folder = (
-            db.query(Folder)
-            .filter(Folder.id == int(folder_id), Folder.owner_id == current_user.id)
-            .first()
-        )
+        folder = base_query_folder.filter(Folder.id == int(folder_id)).first()
 
         if folder:
             # 不能自动到自己里面
@@ -561,10 +616,16 @@ async def get_document_summaries(
     fileId: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
+    if settings.GLOBAL_MODE == "public":
+        base_query_document = db.query(Document)
+    else:
+        base_query_document = db.query(Document).filter(
+            Document.owner_id == current_user.id
+        )
     document = (
-        db.query(Document)
-        .filter(Document.id == int(fileId), Document.owner_id == current_user.id)
+        base_query_document.filter(Document.id == int(fileId))
         .with_entities(
             Document.content_pages,
             Document.translation_pages,
@@ -599,12 +660,19 @@ async def retry_processing(
     fileId: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
     document_pipeline: DocumentPipeline = Depends(get_document_pipeline),
 ):
+    if settings.GLOBAL_MODE == "public":
+        base_query_document = db.query(Document)
+    else:
+        base_query_document = db.query(Document).filter(
+            Document.owner_id == current_user.id
+        )
     """重试处理失败的文件"""
     document = (
-        db.query(Document)
-        .filter(Document.id == int(fileId), Document.owner_id == current_user.id)
+        base_query_document.filter(Document.id == int(fileId))
+        .with_entities(Document.id, Document.processing_status)
         .first()
     )
     if not document:
@@ -613,9 +681,10 @@ async def retry_processing(
     if document.processing_status != ProcessingStatus.FAILED:
         raise HTTPException(status_code=400, detail="只能重试处理失败的文件")
 
-    # 重置处理状态
-    document.processing_status = ProcessingStatus.PENDING
-    document.error_message = None
+    # 直接执行更新
+    base_query_document.filter(
+        Document.id == int(fileId),
+    ).update({"processing_status": ProcessingStatus.PENDING, "error_message": None})
     db.commit()
 
     # 重新添加到处理队列
@@ -630,11 +699,17 @@ async def create_note(
     note: NoteCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
     """创建新笔记"""
+    if settings.GLOBAL_MODE == "public":
+        base_query_document = db.query(Document)
+    else:
+        base_query_document = db.query(Document).filter(
+            Document.owner_id == current_user.id
+        )
     document = (
-        db.query(Document)
-        .filter(Document.id == int(documentId), Document.owner_id == current_user.id)
+        base_query_document.filter(Document.id == int(documentId))
         .first()
     )
     if not document:
@@ -674,7 +749,7 @@ async def get_document_notes(
         .order_by(Note.created_at.desc())
         .all()
     )
-    
+
     return [
         NoteResponse(
             id=str(note.id),

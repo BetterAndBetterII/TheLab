@@ -2,18 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './Forum.module.css';
 import Loading from '../../components/Loading';
-
-interface Post {
-  id: string;
-  title: string;
-  author: string;
-  content: string;
-  createdAt: string;
-  likes: number;
-  comments: number;
-  tags: string[];
-  coverImage?: string;
-}
+import { forumApi } from '../../api/forum';
+import type { Post } from '../../api/types';
 
 const Forum: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -28,38 +18,24 @@ const Forum: React.FC = () => {
   // 分类列表
   const categories = [
     { id: 'all', name: '全部', icon: '📑' },
-    { id: 'tech', name: '技术', icon: '💻' },
-    { id: 'life', name: '生活', icon: '🌟' },
-    { id: 'share', name: '分享', icon: '🎯' },
+    { id: 'general', name: '综合讨论', icon: '💬' },
+    { id: 'technical', name: '技术交流', icon: '💻' },
     { id: 'question', name: '问答', icon: '❓' },
-    { id: 'news', name: '资讯', icon: '📰' },
+    { id: 'sharing', name: '分享', icon: '🎯' },
+    { id: 'feedback', name: '反馈', icon: '📝' },
   ];
 
   const fetchPosts = async (pageNum: number, refresh: boolean = false) => {
     try {
       setLoading(true);
-      // 模拟API请求延迟
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // 模拟获取帖子数据
-      const newPosts: Post[] = Array(10).fill(null).map((_, index) => ({
-        id: pageNum + '-' + index,
-        title: '帖子标题 #' + (pageNum * 10 + index),
-        author: '用户' + Math.floor(Math.random() * 100),
-        content: '这是帖子的内容预览，展示一些基本信息...',
-        createdAt: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
-        likes: Math.floor(Math.random() * 100),
-        comments: Math.floor(Math.random() * 50),
-        tags: ['标签1', '标签2'],
-        coverImage: Math.random() > 0.5 ? 'https://picsum.photos/400/300?random=' + (pageNum * 10 + index) : undefined,
-      }));
+      const newPosts = await forumApi.getPosts(pageNum, activeCategory);
 
       if (refresh) {
         setPosts(newPosts);
       } else {
         setPosts(prev => [...prev, ...newPosts]);
       }
-      setHasMore(pageNum < 5); // 模拟只有5页数据
+      setHasMore(newPosts.length === 10); // 如果返回10条数据，说明可能还有更多
     } catch (error) {
       console.error('Error fetching posts:', error);
     } finally {
@@ -69,9 +45,18 @@ const Forum: React.FC = () => {
   };
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    setPage(1);
-    await fetchPosts(1, true);
+    try {
+      setRefreshing(true);
+      // 先生成一个AI推文
+      // await forumApi.generateAiTopic();
+      // 然后刷新页面
+      setPage(1);
+      await fetchPosts(1, true);
+    } catch (error) {
+      console.error('Error refreshing posts:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const lastPostRef = useCallback((node: HTMLDivElement) => {
@@ -130,31 +115,19 @@ const Forum: React.FC = () => {
               to={'/forum/post/' + post.id}
               className={styles.postCard}
             >
-              {post.coverImage && (
-                <div className={styles.postCover}>
-                  <img src={post.coverImage} alt={post.title} />
-                </div>
-              )}
               <div className={styles.postContent}>
                 <h2 className={styles.postTitle}>{post.title}</h2>
                 <p className={styles.postPreview}>{post.content}</p>
                 <div className={styles.postMeta}>
-                  <span className={styles.postAuthor}>{post.author}</span>
+                  <span className={styles.postAuthor}>{post.username}</span>
                   <span className={styles.postTime}>
-                    {new Date(post.createdAt).toLocaleString()}
+                    {new Date(post.created_at).toLocaleString()}
                   </span>
                 </div>
                 <div className={styles.postFooter}>
-                  <div className={styles.postTags}>
-                    {post.tags.map(tag => (
-                      <span key={tag} className={styles.tag}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
                   <div className={styles.postStats}>
-                    <span>👍 {post.likes}</span>
-                    <span>💬 {post.comments}</span>
+                    <span>👁️ {post.views}</span>
+                    <span>💬 {post.replies.length}</span>
                   </div>
                 </div>
               </div>

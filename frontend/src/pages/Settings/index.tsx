@@ -20,6 +20,9 @@ interface UserSettings {
     standardModel: string;
     advancedModel: string;
   };
+  globalLLM: string;
+  globalMODE: string;
+  isAdmin: boolean;
 }
 
 const Settings: React.FC = () => {
@@ -40,6 +43,9 @@ const Settings: React.FC = () => {
       standardModel: 'gemini-1.5-flash',
       advancedModel: 'deepseek-r1',
     },
+    globalLLM: 'public',
+    globalMODE: 'chat',
+    isAdmin: false,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -69,6 +75,9 @@ const Settings: React.FC = () => {
           standardModel: 'gemini-1.5-flash',
           advancedModel: 'deepseek-r1',
         },
+        globalLLM: fetchedSettings.globalLLM || 'public',
+        globalMODE: fetchedSettings.globalMODE || 'chat',
+        isAdmin: fetchedSettings.isAdmin || false,
       });
       
       // 初始化临时AI设置
@@ -147,6 +156,12 @@ const Settings: React.FC = () => {
       ...prev,
       notifications: { ...prev.notifications, [key]: !prev.notifications[key] },
     }));
+    settingsApi.updateSettings({
+      ...settings,
+      notifications: { ...settings.notifications, [key]: !settings.notifications[key] },
+    });
+
+    setMessage({ type: 'success', text: '设置保存成功！' });
   };
 
   if (loading) {
@@ -397,14 +412,14 @@ const Settings: React.FC = () => {
           >
             🔔 通知设置
           </button>
-          <button
+          {settings.globalLLM === 'private' && <button
             className={`${styles.navItem} ${
               activeTab === 'ai' ? styles.navItemActive : ''
             }`}
             onClick={() => setActiveTab('ai')}
           >
             🤖 AI 设置
-          </button>
+          </button>}
         </nav>
 
         <div className={styles.section}>

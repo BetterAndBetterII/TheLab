@@ -17,9 +17,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from clients.openai_client import OpenAIClient
-from database import Conversation, Document, get_db
+from database import Conversation, Document, QuizHistory, get_db
 from models.users import User
 from services.session import get_current_user
+from config import Settings, get_settings
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -42,6 +43,7 @@ class ChatRequest(BaseModel):
     messages: List[ChatMessage]
     stream: bool = True
     model: str = Literal["standard", "advanced"]
+    add_notes: bool = False
 
 
 class ConversationResponse(BaseModel):
@@ -169,6 +171,11 @@ def clean_messages(messages):
 
 SYSTEM_PROMPT = """<|SYSTEM_PROMPT|>
 你是一个可以帮助用户分析学术论文的助手。
+<|SYSTEM_PROMPT|>
+"""
+
+SYSTEM_PROMPT_NOTE = """<|SYSTEM_PROMPT|>
+你是一个可以帮助用户分析学术论文的助手。
 你可以在答案的结尾使用"<note>keyword:note_content</note>" 帮我记笔记。
 keyword **必须是论文原文中出现的一模一样的关键词**，不要自己造关键词，不要翻译过来。
 例子：
@@ -184,11 +191,15 @@ async def chat_stream(
     model: str,
     db: Session,
     current_user: User,
+    add_notes: bool,
+    settings: Settings,
 ) -> AsyncGenerator[str, None]:
     """生成聊天响应流"""
 
     # 更新对话消息记录
-    messages[-1]["content"] = SYSTEM_PROMPT + messages[-1]["content"]
+    messages[-1]["content"] = (
+        SYSTEM_PROMPT_NOTE if add_notes else SYSTEM_PROMPT
+    ) + messages[-1]["content"]
     new_messages = conversation.messages.copy()
     new_messages.append(
         {
@@ -199,15 +210,28 @@ async def chat_stream(
     )
 
     try:
-        openai_client = OpenAIClient(
-            api_key=current_user.ai_api_key,
-            base_url=current_user.ai_base_url,
-            model=(
-                current_user.ai_standard_model
-                if model == "standard"
-                else current_user.ai_advanced_model
-            ),
-        )
+        model = {
+            "public": {
+                "standard": settings.LLM_STANDARD_MODEL,
+                "advanced": settings.LLM_ADVANCED_MODEL,
+            },
+            "private": {
+                "standard": current_user.ai_standard_model,
+                "advanced": current_user.ai_advanced_model,
+            },
+        }[settings.GLOBAL_LLM][model]
+        if settings.GLOBAL_LLM == "public":
+            openai_client = OpenAIClient(
+                api_key=current_user.ai_api_key,
+                base_url=current_user.ai_base_url,
+                model=model,
+            )
+        else:
+            openai_client = OpenAIClient(
+                api_key=settings.OPENAI_API_KEY,
+                base_url=settings.OPENAI_BASE_URL,
+                model=model,
+            )
         cum_content = ""
         is_reasoning = False
         finish_reason = None
@@ -233,7 +257,7 @@ async def chat_stream(
                 "id": f"chatcmpl-{conversation.id}",
                 "object": "chat.completion.chunk",
                 "created": int(datetime.now().timestamp()),
-                "model": current_user.ai_standard_model,
+                "model": model,
                 "choices": [
                     {
                         "index": 0,
@@ -291,6 +315,7 @@ async def chat(
     request: ChatRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
     """聊天接口"""
     c = (
@@ -307,59 +332,18 @@ async def chat(
     messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
 
     # 如果请求流式响应
-    if request.stream:
-        return StreamingResponse(
-            chat_stream(messages, c, request.model, db, current_user),
-            media_type="text/event-stream",
-        )
-
-    # 如果请求非流式响应
-    try:
-        openai_client = OpenAIClient(
-            api_key=current_user.ai_api_key,
-            base_url=current_user.ai_base_url,
-            model=(
-                current_user.ai_standard_model
-                if request.model == "standard"
-                else current_user.ai_advanced_model
-            ),
-        )
-        response = await openai_client.chat_stream(messages)
-
-        # 保存消息记录
-        c.messages.extend(
-            [
-                {
-                    "role": "user",
-                    "content": messages[-1]["content"],
-                    "timestamp": datetime.now().isoformat(),
-                },
-                {
-                    "role": "assistant",
-                    "content": response.content,
-                    "timestamp": datetime.now().isoformat(),
-                    "finish_reason": response.finish_reason,
-                },
-            ]
-        )
-        db.commit()
-
-        return {
-            "id": f"chatcmpl-{c.id}",
-            "object": "chat.completion",
-            "created": int(datetime.now().timestamp()),
-            "model": "gpt-3.5-turbo",
-            "choices": [
-                {
-                    "index": 0,
-                    "message": {"role": "assistant", "content": response.content},
-                    "finish_reason": response.finish_reason,
-                }
-            ],
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return StreamingResponse(
+        chat_stream(
+            messages,
+            c,
+            request.model,
+            db,
+            current_user,
+            request.add_notes,
+            settings,
+        ),
+        media_type="text/event-stream",
+    )
 
 
 @router.delete("/{conversation_id}")
@@ -421,13 +405,21 @@ async def generate_flow_stream(
     document_id: int,
     db: Session,
     current_user: User,
+    settings: Settings,
 ):
     try:
-        openai_client = OpenAIClient(
-            api_key=current_user.ai_api_key,
-            base_url=current_user.ai_base_url,
-            model=current_user.ai_standard_model,
-        )
+        if settings.GLOBAL_LLM == "private":
+            openai_client = OpenAIClient(
+                api_key=current_user.ai_api_key,
+                base_url=current_user.ai_base_url,
+                model=current_user.ai_standard_model,
+            )
+        else:
+            openai_client = OpenAIClient(
+                api_key=settings.OPENAI_API_KEY,
+                base_url=settings.OPENAI_BASE_URL,
+                model=settings.LLM_STANDARD_MODEL,
+            )
         messages = [
             {"role": "system", "content": FLOW_PROMPT},
             {"role": "user", "content": full_content},
@@ -446,11 +438,11 @@ async def generate_flow_stream(
             "summary": flow_data,
             "created": int(datetime.now().timestamp()),
         }
-        document = (
-            db.query(Document)
-            .filter(Document.id == document_id, Document.owner_id == current_user.id)
-            .first()
-        )
+        if settings.GLOBAL_MODE == "public":
+            base_query = db.query(Document)
+        else:
+            base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+        document = base_query.filter(Document.id == document_id).first()
         if not document:
             raise HTTPException(status_code=404, detail="文档不存在")
         flag_modified(document, "flow_history")
@@ -469,13 +461,14 @@ async def generate_flow(
     stream: bool = True,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
     """生成文档总结"""
-    document = (
-        db.query(Document)
-        .filter(Document.id == document_id, Document.owner_id == current_user.id)
-        .first()
-    )
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+    document = base_query.filter(Document.id == document_id).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档不存在")
     if document.flow_history:
@@ -483,7 +476,11 @@ async def generate_flow(
             id=f"flowcmpl-{document_id}",
             object="flow.completion",
             created=int(datetime.now().timestamp()),
-            model=current_user.ai_standard_model,
+            model=(
+                current_user.ai_standard_model
+                if settings.GLOBAL_LLM == "private"
+                else settings.LLM_STANDARD_MODEL
+            ),
             choices=[
                 {
                     "index": 0,
@@ -502,43 +499,12 @@ async def generate_flow(
         ]
     )
     full_content = f"论文标题: {document.filename} 论文内容: {pages}"
-    messages = [
-        {"role": "system", "content": FLOW_PROMPT},
-        {"role": "user", "content": full_content},
-    ]
 
     # 如果请求流式响应
-    if stream:
-        return StreamingResponse(
-            generate_flow_stream(full_content, document_id, db, current_user),
-            media_type="text/event-stream",
-        )
-
-    # 如果请求非流式响应
-    try:
-        openai_client = OpenAIClient(
-            api_key=current_user.ai_api_key,
-            base_url=current_user.ai_base_url,
-            model=current_user.ai_standard_model,
-        )
-        response = await openai_client.chat(messages)
-
-        return {
-            "id": f"flowcmpl-{document_id}",
-            "object": "flow.completion",
-            "created": int(datetime.now().timestamp()),
-            "model": current_user.ai_standard_model,
-            "choices": [
-                {
-                    "index": 0,
-                    "message": {"role": "assistant", "content": response.content},
-                    "finish_reason": response.finish_reason,
-                }
-            ],
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return StreamingResponse(
+        generate_flow_stream(full_content, document_id, db, current_user, settings),
+        media_type="text/event-stream",
+    )
 
 
 QUIZ_PROMPT = """请你作为一个学术论文测验专家，仔细阅读这篇论文，并按照以下JSON格式生成一个结构化的测验题：
@@ -573,14 +539,22 @@ async def generate_quiz_stream(
     current_user: User,
     document: Document,
     db: Session,
+    settings: Settings,
     page_number: int = None,
 ):
     try:
-        openai_client = OpenAIClient(
-            api_key=current_user.ai_api_key,
-            base_url=current_user.ai_base_url,
-            model=current_user.ai_standard_model,
-        )
+        if settings.GLOBAL_LLM == "private":
+            openai_client = OpenAIClient(
+                api_key=current_user.ai_api_key,
+                base_url=current_user.ai_base_url,
+                model=current_user.ai_standard_model,
+            )
+        else:
+            openai_client = OpenAIClient(
+                api_key=settings.OPENAI_API_KEY,
+                base_url=settings.OPENAI_BASE_URL,
+                model=settings.LLM_STANDARD_MODEL,
+            )
         messages = [
             {"role": "system", "content": QUIZ_PROMPT},
             {"role": "user", "content": full_content},
@@ -595,6 +569,7 @@ async def generate_quiz_stream(
 
         # 解析生成的测验内容并保存到历史记录
         try:
+            print(content)
             quiz_data = json.loads(
                 content.replace("```json", "").replace("```", "").strip()
             )
@@ -603,14 +578,19 @@ async def generate_quiz_stream(
                 "questions": quiz_data["questions"],
                 "created_at": datetime.now().isoformat(),
             }
-            if not document.quiz_history:
-                document.quiz_history = []
-            new_quiz_history = document.quiz_history.copy()
-            new_quiz_history.append(history_entry)
-            flag_modified(document, "quiz_history")
-            document.quiz_history = new_quiz_history
+            # if not document.quiz_history:
+            #     document.quiz_history = []
+            # new_quiz_history = document.quiz_history.copy()
+            # new_quiz_history.append(history_entry)
+            # flag_modified(document, "quiz_history")
+            # document.quiz_history = new_quiz_history
+            quiz_history = QuizHistory(
+                document_id=document.id,
+                user_id=current_user.id,
+                quiz_history=history_entry,
+            )
+            db.add(quiz_history)
             db.commit()
-            db.refresh(document)
         except:
             traceback.print_exc()
 
@@ -626,13 +606,14 @@ async def generate_quiz(
     quiz_request: QuizRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
     """生成文档测验题"""
-    document = (
-        db.query(Document)
-        .filter(Document.id == document_id, Document.owner_id == current_user.id)
-        .first()
-    )
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+    document = base_query.filter(Document.id == document_id).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档不存在")
 
@@ -652,67 +633,13 @@ async def generate_quiz(
         )
 
     # 如果请求流式响应
-    if quiz_request.stream:
-        print("生成测验题流式响应")
-        return StreamingResponse(
-            generate_quiz_stream(
-                content, current_user, document, db, quiz_request.page_number
-            ),
-            media_type="text/event-stream",
-        )
-
-    # 如果请求非流式响应
-    try:
-        openai_client = OpenAIClient(
-            api_key=current_user.ai_api_key,
-            base_url=current_user.ai_base_url,
-            model=current_user.ai_standard_model,
-        )
-        messages = [
-            {"role": "system", "content": QUIZ_PROMPT},
-            {"role": "user", "content": content},
-        ]
-        response = await openai_client.chat(messages)
-
-        # 保存消息记录
-        document.messages.extend(
-            [
-                {"role": "user", "content": content},
-                {"role": "assistant", "content": response.content},
-            ]
-        )
-
-        quiz_data = json.loads(
-            response.content.replace("```json", "").replace("```", "").strip()
-        )
-        history_entry = {
-            "page": quiz_request.page_number,
-            "questions": quiz_data["questions"],
-            "created_at": datetime.now().isoformat(),
-        }
-        new_quiz_history = document.quiz_history.copy()
-        new_quiz_history.append(history_entry)
-        flag_modified(document, "quiz_history")
-        document.quiz_history = new_quiz_history
-        db.commit()
-        db.refresh(document)
-
-        return {
-            "id": f"quizcmpl-{document_id}",
-            "object": "quiz.completion",
-            "created": int(datetime.now().timestamp()),
-            "model": current_user.ai_standard_model,
-            "choices": [
-                {
-                    "index": 0,
-                    "message": {"role": "assistant", "content": response.content},
-                    "finish_reason": response.finish_reason,
-                }
-            ],
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    print("生成测验题流式响应")
+    return StreamingResponse(
+        generate_quiz_stream(
+            content, current_user, document, db, settings, quiz_request.page_number
+        ),
+        media_type="text/event-stream",
+    )
 
 
 @router.get("/documents/{document_id}/quiz/history")
@@ -722,12 +649,22 @@ async def get_quiz_history(
     current_user: User = Depends(get_current_user),
 ):
     """获取文档测验历史记录"""
-    document = (
-        db.query(Document)
-        .filter(Document.id == document_id, Document.owner_id == current_user.id)
-        .first()
+    quiz_histories: QuizHistory = (
+        db.query(QuizHistory)
+        .filter(
+            QuizHistory.document_id == document_id,
+            QuizHistory.user_id == current_user.id,
+        )
+        .all()
     )
-    if not document:
-        raise HTTPException(status_code=404, detail="文档不存在")
+    if not quiz_histories:
+        raise HTTPException(status_code=404, detail="测验历史记录不存在")
 
-    return {"quiz_history": document.quiz_history}
+    return {"quiz_history": [
+        {
+            "page": qh.quiz_history["page"],
+            "questions": qh.quiz_history["questions"],
+            "created_at": qh.quiz_history["created_at"],
+        }
+        for qh in quiz_histories
+    ]}

@@ -1,0 +1,255 @@
+.notesPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #e0e0e0;
+  background: #fff;
+  overflow: hidden;
+}
+
+.notesHeader {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #E5E7EB;
+  position: sticky;
+  top: 0;
+  background-color: #fff;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.notesFilter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4B5563;
+}
+
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.toggleSwitch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #E5E7EB;
+  transition: .3s;
+  border-radius: 20px;
+}
+
+.toggleSlider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .toggleSlider {
+  background-color: #3B82F6;
+}
+
+input:checked + .toggleSlider:before {
+  transform: translateX(16px);
+}
+
+.notesList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+  padding: 16px;
+  position: relative;
+}
+
+/* 美化滚动条 */
+.notesList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notesList::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.notesList::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.notesList::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.noteItem {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.noteItem:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: #1976d2;
+}
+
+.noteHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pageInfo {
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.noteQuote {
+  font-size: 14px;
+  color: #666;
+  background: #f8f9fa;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  border-left: 3px solid #1976d2;
+}
+
+.noteContent {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+}
+
+.noteActions {
+  display: flex;
+  gap: 6px;
+}
+
+.editNote,
+.deleteNote,
+.saveNote,
+.cancelEdit {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 24px;
+}
+
+.editNote {
+  background-color: #10B981;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.editNote:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.deleteNote {
+  background-color: #EF4444;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.deleteNote:hover {
+  background-color: #DC2626;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.saveNote {
+  background-color: #3B82F6;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.saveNote:hover {
+  background-color: #2563EB;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.cancelEdit {
+  background-color: #6B7280;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cancelEdit:hover {
+  background-color: #4B5563;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.editNote:active,
+.deleteNote:active,
+.saveNote:active,
+.cancelEdit:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.noteEditInput {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+  resize: vertical;
+  line-height: 1.6;
+  background-color: #F9FAFB;
+  transition: all 0.2s ease;
+}
+
+.noteEditInput:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background-color: #FFFFFF;
+}
+
+.emptyNotes {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 14px;
+} 

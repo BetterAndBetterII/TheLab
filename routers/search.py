@@ -40,13 +40,17 @@ async def search(
     current_user: User = Depends(get_current_user),
 ):
     try:
+        if settings.GLOBAL_MODE == "public":
+            namespace = "public"
+        else:
+            namespace = str(current_user.email)
         # 初始化 KnowledgeBase
         pg_docs_uri = f"postgresql+asyncpg://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
         pg_vector_uri = f"postgresql+asyncpg://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
         kb = KnowledgeBase(
             pg_docs_uri=pg_docs_uri,
             pg_vector_uri=pg_vector_uri,
-            namespace=str(current_user.email),  # 使用用户ID作为命名空间
+            namespace=namespace,
         )
 
         # 调用检索方法

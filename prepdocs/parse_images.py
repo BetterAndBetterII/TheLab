@@ -4,11 +4,13 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from prepdocs.config import FileType, Page, Section
 from clients.openai_client import OpenAIClient
+from config import Settings, get_settings
 from models.users import User
 import asyncio
 
 logger = logging.getLogger(__name__)
 
+settings: Settings = get_settings()
 
 def get_parse_markdown_system_prompt() -> str:
     return """
@@ -34,11 +36,6 @@ async def parse_images(section: Section, user: User) -> Section:
     :param section: 输入的图片Section
     :return: 文本Section
     """
-    openai_client = OpenAIClient(
-        api_key=user.api_keys[0].key,
-        base_url=user.api_keys[0].base_url,
-        model=user.ai_standard_model,
-    )
 
     result_section = Section(
         title=section.title,
@@ -47,34 +44,30 @@ async def parse_images(section: Section, user: User) -> Section:
         filename=section.filename,
     )
 
-    max_workers = 3
-    # 使用线程池并行处理图片，但保持顺序
-    # with ThreadPoolExecutor(max_workers=max_workers) as executor:
-    #     future_to_index = {
-    #         executor.submit(process_single_page, openai_client, page): idx
-    #         for idx, page in enumerate(section.pages)
-    #     }
-
-    #     for future in as_completed(future_to_index):
-    #         idx = future_to_index[future]
-    #         try:
-    #             result_page = future.result()
-    #             result_section.pages[idx] = result_page  # 使用原始索引存储结果
-    #         except Exception as e:
-    #             logger.error(f"处理页面 {idx + 1} 时发生错误: {str(e)}")
-    #             logger.error(traceback.format_exc())
-    #             # 创建一个包含错误信息的页面
-    #             result_section.pages[idx] = Page(
-    #                 content=f"Error processing page: {str(e)}"
-    #             )
+    max_workers = 5
 
     semaphore = asyncio.Semaphore(max_workers)
+
     async def process_page(page: Page, s: asyncio.Semaphore):
         async with s:
+            if settings.GLOBAL_LLM == "public":
+                openai_client = OpenAIClient(
+                    api_key=user.ai_api_key,
+                    base_url=user.ai_base_url,
+                    model=user.ai_standard_model,
+                )
+            else:
+                openai_client = OpenAIClient(
+                    api_key=settings.OPENAI_API_KEY,
+                    base_url=settings.OPENAI_BASE_URL,
+                    model=settings.LLM_STANDARD_MODEL,
+                )
             return await process_single_page(openai_client, page)
 
     tasks = [process_page(page, semaphore) for page in section.pages]
     result_section.pages = await asyncio.gather(*tasks)
+    # for i, page in enumerate(section.pages):
+    #     result_section.pages[i] = await process_single_page(openai_client, page)
 
     # 移除任何处理失败的页面（None值）
     result_section.pages = [page for page in result_section.pages if page is not None]

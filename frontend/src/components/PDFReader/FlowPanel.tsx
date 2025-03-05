@@ -43,18 +43,6 @@ const FlowPanel: React.FC<FlowPanelProps> = ({
     }
   };
 
-  const handleStreamEnd = () => {
-    setIsLoading(false);
-  };
-
-  const parseFlowData = (content: string) => {
-    // 去除```json```
-    const strippedContent = content.replace('```json', '').replace('```', '');
-    console.log(strippedContent);
-    const data = JSON.parse(strippedContent);
-    setFlowData(data);
-  };
-
   const onGenerate = async () => {
     setIsLoading(true);
     setStreamContent('');
@@ -96,9 +84,12 @@ const FlowPanel: React.FC<FlowPanelProps> = ({
         }
       }
     }
-    handleStreamEnd();
     setIsLoading(false);
-    parseFlowData(content);
+    // 去除```json```
+    const strippedContent = content.replace('```json', '').replace('```', '');
+    console.log(strippedContent);
+    const data = JSON.parse(strippedContent);
+    setFlowData(data);
   };
 
   if (!flowData && !documentId) {
@@ -109,7 +100,7 @@ const FlowPanel: React.FC<FlowPanelProps> = ({
     if (!flowData && !isLoading) {
       onGenerate();
     }
-  }, []);
+  }, [documentId]);
 
   if (isLoading || streamContent && !flowData) {
     return (

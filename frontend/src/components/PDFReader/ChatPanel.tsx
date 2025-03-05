@@ -260,8 +260,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           ) : (
             chatHistory
               .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-              .map(chat => (
-              <div key={chat.id} className={styles.historyItem} onClick={() => {
+              .map((chat, index) => (
+              <div key={index} className={styles.historyItem} onClick={() => {
                 onSelectChat(chat.id);
               }}>
                 <h4>{chat.title.length > 35 ? chat.title.slice(0, 20) + '...' : chat.title}</h4>
@@ -281,9 +281,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             <div className={styles.emptyText}>我可以帮到你吗？</div>
           </div>
         ) : (
-          messages.map((message) => (
+          messages.map((message, index) => (
             <div
-              key={message.id}
+              key={index}
               className={`${styles.message} ${
                 message.type === 'user' ? styles.userMessage : styles.assistantMessage
               }`}

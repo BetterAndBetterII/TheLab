@@ -43,7 +43,7 @@ from database import Document as DBDocument
 dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"), override=True)
 
 Settings.llm = OpenAILike(
-    model="Qwen/Qwen2.5-7B-Instruct",
+    model="qwen2.5-instruct",
     api_key=os.getenv("OPENAI_API_KEY"),
     api_base=os.getenv("OPENAI_BASE_URL"),
     is_chat_model=True,

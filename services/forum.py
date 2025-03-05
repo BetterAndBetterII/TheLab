@@ -1,10 +1,15 @@
-from datetime import datetime
+from typing import List, Optional
+import random
+import json
+import random
 from typing import List, Optional
 
 import openai
 from fastapi import HTTPException, status
+from openai.types.chat import ChatCompletionChunk
 from sqlalchemy.orm import Session
 
+from clients.openai_client import OpenAIClient
 from config import get_settings
 from models.forum import Reply, Topic, TopicCategory
 from models.users import User
@@ -20,13 +25,20 @@ class ForumService:
     def create_topic(
         self,
         user_id: int,
+        username: str,
         title: str,
         content: str,
         category: TopicCategory,
         enable_agent: bool = True,
     ) -> Topic:
         """创建新主题"""
-        topic = Topic(title=title, content=content, category=category, user_id=user_id)
+        topic = Topic(
+            title=title,
+            content=content,
+            category=category,
+            user_id=user_id,
+            username=username,
+        )
         self.db.add(topic)
         self.db.commit()
         self.db.refresh(topic)
@@ -58,28 +70,34 @@ class ForumService:
         page_size: int = 20,
     ) -> List[Topic]:
         """获取主题列表"""
-        query = self.db.query(Topic)
+        # 构建基础查询
+        base_query = self.db.query(Topic).join(User, Topic.user_id == User.id)
+        
+        # 添加分类过滤
         if category:
-            query = query.filter(Topic.category == category)
+            base_query = base_query.filter(Topic.category == category)
 
-        # 先获取置顶的主题
-        pinned = (
-            query.filter(Topic.is_pinned == True)
-            .order_by(Topic.updated_at.desc())
-            .all()
-        )
+        # 获取置顶主题
+        pinned_query = base_query.filter(Topic.is_pinned == True)
+        pinned_topics = pinned_query.order_by(Topic.updated_at.desc()).all()
 
-        # 再获取普通主题
+        # 获取普通主题
+        normal_query = base_query.filter(Topic.is_pinned == False)
         offset = (page - 1) * page_size
-        normal = (
-            query.filter(Topic.is_pinned == False)
-            .order_by(Topic.updated_at.desc())
+        normal_topics = (
+            normal_query.order_by(Topic.updated_at.desc())
             .offset(offset)
             .limit(page_size)
             .all()
         )
 
-        return pinned + normal
+        # 合并结果并确保用户名存在
+        all_topics = pinned_topics + normal_topics
+        for topic in all_topics:
+            if not topic.username and topic.user:
+                topic.username = topic.user.username
+
+        return all_topics
 
     def update_topic(
         self,
@@ -132,6 +150,7 @@ class ForumService:
         self,
         topic_id: int,
         user_id: int,
+        username: str,
         content: str,
         parent_id: Optional[int] = None,
         enable_agent: bool = True,
@@ -163,6 +182,7 @@ class ForumService:
             content=content,
             topic_id=topic_id,
             user_id=user_id,
+            username=username,
             parent_id=parent_id,
         )
 
@@ -243,3 +263,92 @@ class ForumService:
             .limit(page_size)
             .all()
         )
+
+    async def generate_ai_topic(self, current_user: User) -> Topic:
+        """生成AI推文"""
+        try:
+            # 调用OpenAI API生成主题内容
+            # response = openai.ChatCompletion.create(
+            #     model="gpt-3.5-turbo",
+            #     messages=[
+            #         {
+            #             "role": "system",
+            #             "content": "你是一个论坛中的AI用户，需要生成一个有趣的主题帖子。主题应该包含标题和内容。内容应该是有见解的、有趣的或有教育意义的。",
+            #         },
+            #         {
+            #             "role": "user",
+            #             "content": "请生成一个论坛主题帖子，包含标题和内容。主题可以是技术、生活、分享等任意分类。",
+            #         },
+            #     ],
+            # )
+            
+            # 随机选择一个分类
+            categories = list(TopicCategory)
+            category = random.choice(categories)
+
+            openai_client = OpenAIClient(
+                api_key=current_user.ai_api_key,
+                base_url=current_user.ai_base_url,
+                model=current_user.ai_standard_model,
+            )
+            generated_content = ""
+            finish_reason = None
+            POST_PROMPT = f"""
+请生成一个论坛主题帖子，包含标题和内容。
+可以是{category}相关的内容
+标题要吸引人，内容要有趣，有教育意义。
+使用JSON格式输出，格式如下：
+{
+    "title": "标题",
+    "content": "内容",
+    "username": "用户名"
+}
+"""
+            async for chunk in await openai_client.chat_stream(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": POST_PROMPT,
+                    },
+                ],
+            ):
+                chunk: ChatCompletionChunk
+                if chunk.choices[0].delta.content:
+                    generated_content += chunk.choices[0].delta.content
+
+            # 分离标题和内容
+            generated_content = (
+                generated_content.replace("```json", "").replace("```", "").strip()
+            )
+            print(generated_content)
+            generated_content = json.loads(generated_content)
+
+
+            # 获取系统用户（AI用户）
+            system_user = self.db.query(User).filter(User.is_superuser == True).first()
+            if not system_user:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="系统用户不存在",
+                )
+
+            # 创建主题
+            topic = Topic(
+                title=generated_content["title"],
+                content=generated_content["content"],
+                category=category,
+                user_id=system_user.id,
+                username=generated_content["username"],
+            )
+
+            self.db.add(topic)
+            self.db.commit()
+            self.db.refresh(topic)
+
+            return topic
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"生成AI推文失败: {str(e)}",
+            )

@@ -53,7 +53,7 @@ class OpenAIClient(LLMClient):
         self.client = openai.AsyncOpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
-            max_retries=15,
+            max_retries=64,
         )
 
         # 使用相同的模型配置

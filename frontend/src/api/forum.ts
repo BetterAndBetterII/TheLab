@@ -16,22 +16,36 @@ export const forumApi = {
     return response.json();
   },
 
+  getPosts: async (page: number = 1, category: string = 'all'): Promise<Post[]> => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: '10',
+    });
+    if (category !== 'all') {
+      params.append('category', category);
+    }
+    const response = await fetch(`${BASE_URL}/forum/topics?${params}`, {
+      headers: getAuthHeaders(),
+    });
+    return response.json();
+  },
+
   getPost: async (postId: string): Promise<Post> => {
-    const response = await fetch(`${BASE_URL}/forum/posts/${postId}`, {
+    const response = await fetch(`${BASE_URL}/forum/topics/${postId}`, {
       headers: getAuthHeaders(),
     });
     return response.json();
   },
 
   getReplies: async (postId: string): Promise<Reply[]> => {
-    const response = await fetch(`${BASE_URL}/forum/posts/${postId}/replies`, {
+    const response = await fetch(`${BASE_URL}/forum/topics/${postId}/replies`, {
       headers: getAuthHeaders(),
     });
     return response.json();
   },
 
   createReply: async (postId: string, content: string) => {
-    const response = await fetch(`${BASE_URL}/forum/posts/${postId}/replies`, {
+    const response = await fetch(`${BASE_URL}/forum/topics/${postId}/replies`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ content }),
@@ -58,6 +72,14 @@ export const forumApi = {
 
   unlikePost: async (postId: string) => {
     const response = await fetch(`${BASE_URL}/forum/posts/${postId}/unlike`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return response.json();
+  },
+
+  generateAiTopic: async () => {
+    const response = await fetch(`${BASE_URL}/forum/generate-ai-topic`, {
       method: 'POST',
       headers: getAuthHeaders(),
     });

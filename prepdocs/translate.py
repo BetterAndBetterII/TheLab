@@ -5,6 +5,9 @@ from prepdocs.config import FileType, Page, Section
 from models.users import User
 from clients.openai_client import OpenAIClient
 import asyncio
+from config import Settings, get_settings
+
+settings: Settings = get_settings()
 
 
 def get_translate_system_prompt(target_language: str) -> str:
@@ -30,11 +33,18 @@ async def translate_text(
     """
     多线程翻译文本，保持原始顺序
     """
-    openai_client = OpenAIClient(
-        api_key=user.api_keys[0].key,
-        base_url=user.api_keys[0].base_url,
-        model=user.ai_standard_model,
-    )
+    if settings.GLOBAL_LLM == "public":
+        openai_client = OpenAIClient(
+            api_key=user.ai_api_key,
+            base_url=user.ai_base_url,
+            model=user.ai_standard_model,
+        )
+    else:
+        openai_client = OpenAIClient(
+            api_key=settings.OPENAI_API_KEY,
+            base_url=settings.OPENAI_BASE_URL,
+            model=settings.LLM_STANDARD_MODEL,
+        )
 
     result_section = Section(
         title=section.title,

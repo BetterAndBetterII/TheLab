@@ -48,7 +48,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [showHistory, setShowHistory] = useState(true); // 默认显示历史记录
+  const [showHistory, setShowHistory] = useState(!currentQuizData); // 默认显示历史记录
 
   useEffect(() => {
     loadQuizHistory();
@@ -182,163 +182,145 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     onSelectPage(historyEntry.page - 1);
   };
 
-  // 渲染历史记录面板
-  const renderHistoryPanel = () => {
-    const pageHistory = quizHistory
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .sort((a, b) => a.page - b.page);
-
-    return (
-      <div className={styles.historyPanel}>
-        <div className={styles.header}>
-          <h2>历史测验</h2>
-          <button
-            className={styles.generateButton}
-            onClick={handleGenerateQuiz}
-            disabled={isLoading}
-          >
-            生成新测验
-          </button>
-        </div>
-        <div className={styles.historyList}>
-          {pageHistory.length === 0 ? (
-            <div className={styles.emptyHistory}>
-              {isLoadingHistory ? <div className={styles.loadingState}>
-                <div className={styles.typingIndicator}>
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </div> : <p>暂无历史测验记录</p>}
+  return (
+    <div className={styles.mainContainer}>
+      {!showHistory ? (
+        <div className={styles.quizContainer}>
+          {error ? (
+            <div className={styles.errorState}>
+              <p className={styles.errorMessage}>{error}</p>
+              <button className={styles.retryButton} onClick={handleGenerateQuiz}>
+                重试
+              </button>
+            </div>
+          ) : !currentQuizData?.questions.length ? (
+            <div className={styles.emptyState}>
+              <button
+                className={styles.generateButton}
+                onClick={handleGenerateQuiz}
+                disabled={!documentId || isLoading}
+              >
+                生成测验题
+              </button>
             </div>
           ) : (
-            pageHistory.map((history, index) => (
-              <div key={index} className={styles.historyItem}>
-                <div
-                  className={styles.historyInfo}
-                  onClick={() => handleLoadHistoryQuiz(history)}
-                >
-                  <div className={styles.historyInfoContent}>
-                    <span className={styles.historyInfoTitle}>{
-                      history.questions[0].text.length > 25 ?
-                      history.questions[0].text.slice(0, 25) + '...' :
-                      history.questions[0].text
-                    }</span>
-                    <div className={styles.historyInfoDetail}>
-                      <span>第 {history.page} 页</span>
-                      <span>创建时间: {new Date(history.created_at).toLocaleString()}</span>
-                      <span>题目数量: {history.questions.length}</span>
-                    </div>
-                  </div>
+            <div className={styles.activeQuizPanel}>
+              <div className={styles.header}>
+                <div className={styles.backButton} onClick={() => setShowHistory(true)}>
+                  <IoIosArrowBack />
                 </div>
+                <h2 className={styles.pageTitle}>第 {currentQuizData.page} 页测验</h2>
+                <button
+                  className={styles.retryButton}
+                  onClick={handleRetry}
+                  disabled={!Object.keys(showAnswers).length}
+                >
+                  重新作答
+                </button>
               </div>
-            ))
-          )}
-          {isLoading && <div className={styles.loadingState}>
-            <div className={styles.typingIndicator}>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          </div>}
-        </div>
-      </div>
-    );
-  };
-
-  // 渲染当前测验面板
-  const renderQuizPanel = (quizData: QuizData) => {
-    if (error) {
-      return (
-        <div className={styles.errorState}>
-          <p className={styles.errorMessage}>{error}</p>
-          <button
-            className={styles.retryButton}
-            onClick={handleGenerateQuiz}
-          >
-            重试
-          </button>
-        </div>
-      );
-    }
-
-    if (!quizData.questions.length) {
-      return (
-        <div className={styles.emptyState}>
-          <button
-            className={styles.generateButton}
-            onClick={handleGenerateQuiz}
-            disabled={!documentId || isLoading}
-          >
-            生成测验题
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <div className={styles.activeQuizPanel}>
-        <div className={styles.header}>
-          <div className={styles.backButton} onClick={() => setShowHistory(true)}>
-            <IoIosArrowBack />
-          </div>
-          <h2 className={styles.pageTitle}>第 {quizData.page} 页测验</h2>
-          <button
-            className={styles.retryButton}
-            onClick={handleRetry}
-            disabled={!Object.keys(showAnswers).length}
-          >
-            重新作答
-          </button>
-        </div>
-        <div className={styles.questions}>
-          {quizData.questions.map((question) => (
-            <div key={question.id} className={styles.questionCard}>
-              <h3 className={styles.questionText}>{question.text}</h3>
-              <div className={styles.options}>
-                {question.options.map((option) => (
-                  <button
-                    key={option.id}
-                    className={getOptionClassName(quizData.questions, question.id, option.id)}
-                    onClick={() => handleOptionSelect(quizData.questions, question.id, option.id)}
-                    disabled={showAnswers[question.id]}
-                  >
-                    <span className={styles.optionLabel}>{option.id.toUpperCase()}</span>
-                    <span className={styles.optionText}>{option.text}</span>
-                  </button>
+              <div className={styles.questions}>
+                {currentQuizData.questions.map((question) => (
+                  <div key={question.id} className={styles.questionCard}>
+                    <h3 className={styles.questionText}>{question.text}</h3>
+                    <div className={styles.options}>
+                      {question.options.map((option) => (
+                        <button
+                          key={option.id}
+                          className={getOptionClassName(currentQuizData.questions, question.id, option.id)}
+                          onClick={() => handleOptionSelect(currentQuizData.questions, question.id, option.id)}
+                          disabled={showAnswers[question.id]}
+                        >
+                          <span className={styles.optionLabel}>{option.id.toUpperCase()}</span>
+                          <span className={styles.optionText}>{option.text}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {showAnswers[question.id] && (
+                      <div className={styles.explanation}>
+                        <p>{question.explanation}</p>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
-              {showAnswers[question.id] && (
-                <div className={styles.explanation}>
-                  <p>{question.explanation}</p>
+              {allCorrect && (
+                <div className={styles.congratulations}>
+                  🎉 恭喜你全部回答正确！
                 </div>
               )}
             </div>
-          ))}
+          )}
         </div>
-        {allCorrect && (
-          <div className={styles.congratulations}>
-            🎉 恭喜你全部回答正确！
+      ) : (
+        <div className={styles.historyContainer}>
+          <div className={styles.historyPanel}>
+            <div className={styles.header}>
+              <h2>历史测验</h2>
+              <button
+                className={styles.generateButton}
+                onClick={handleGenerateQuiz}
+                disabled={isLoading}
+              >
+                生成新测验
+              </button>
+            </div>
+            <div className={styles.historyList}>
+              {quizHistory.length === 0 ? (
+                <div className={styles.emptyHistory}>
+                  {isLoadingHistory ? (
+                    <div className={styles.loadingState}>
+                      <div className={styles.typingIndicator}>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p>暂无历史测验记录</p>
+                  )}
+                </div>
+              ) : (
+                quizHistory
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .sort((a, b) => a.page - b.page)
+                  .map((history, index) => (
+                    <div key={index} className={styles.historyItem}>
+                      <div
+                        className={styles.historyInfo}
+                        onClick={() => handleLoadHistoryQuiz(history)}
+                      >
+                        <div className={styles.historyInfoContent}>
+                          <span className={styles.historyInfoTitle}>
+                            {history.questions[0].text.length > 25
+                              ? history.questions[0].text.slice(0, 25) + '...'
+                              : history.questions[0].text}
+                          </span>
+                          <div className={styles.historyInfoDetail}>
+                            <span>第 {history.page} 页</span>
+                            <span>创建时间: {new Date(history.created_at).toLocaleString()}</span>
+                            <span>题目数量: {history.questions.length}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              {isLoading && (
+                <div className={styles.loadingState}>
+                  <div className={styles.typingIndicator}>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-    );
-  };
-
-  // 主渲染
-  return (
-    <div className={styles.mainContainer}>
-      {!showHistory ? <div className={styles.quizContainer}>
-        {renderQuizPanel(currentQuizData || {
-          questions: [],
-          page: 0,
-          created_at: ''
-        })}
-      </div> : <div className={styles.historyContainer}>
-        {renderHistoryPanel()}
-      </div>}
+        </div>
+      )}
     </div>
   );
 };
+
 
 export default QuizPanel;

@@ -165,11 +165,13 @@
 
 .tabsContainer {
   display: flex;
+  width: 100%;
   border-bottom: 1px solid #e0e0e0;
   background: #f5f5f5;
 }
 
 .tab {
+  flex: 1;
   padding: 12px 24px;
   border: none;
   background: none;
@@ -230,9 +232,10 @@
 .tabContent {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
-  padding-top: 0px;
   position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Tab切换动画 */
@@ -258,7 +261,6 @@
   }
 }
 
-.notesList,
 .chatContainer,
 .flowContainer,
 .quizContainer {
@@ -274,173 +276,6 @@
   color: #999;
   font-size: 14px;
   animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.notesPanel h3 {
-  margin: 0 0 16px 0;
-  font-size: 16px;
-  color: #333;
-  padding-bottom: 8px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.notesList {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-  flex: 1;
-  padding-top: 16px;
-  padding-right: 8px;  /* 为滚动条预留空间 */
-}
-
-/* 美化滚动条 */
-.notesList::-webkit-scrollbar {
-  width: 6px;
-}
-
-.notesList::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.notesList::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.notesList::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-.noteItem {
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.noteItem:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-color: #1976d2;
-}
-
-.noteHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.pageInfo {
-  font-size: 12px;
-  color: #666;
-  background: #f5f5f5;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.noteQuote {
-  font-size: 14px;
-  color: #666;
-  background: #f8f9fa;
-  padding: 8px;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  border-left: 3px solid #1976d2;
-}
-
-.noteContent {
-  font-size: 14px;
-  color: #333;
-  line-height: 1.5;
-}
-
-.deleteNote {
-  padding: 4px 8px;
-  background: transparent;
-  border: none;
-  color: #dc3545;
-  cursor: pointer;
-  font-size: 12px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.deleteNote:hover {
-  background: #fff5f5;
-}
-
-.emptyNotes {
-  text-align: center;
-  padding: 20px;
-  color: #666;
-  background: #f8f9fa;
-  border-radius: 8px;
-  font-size: 14px;
-}
-
-.toggleButton {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%) translateX(-100%);
-  writing-mode: vertical-rl;
-  padding: 10px 5px;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-right: none;
-  cursor: pointer;
-  border-radius: 4px 0 0 4px;
-}
-
-.notesInput {
-  margin-bottom: 20px;
-}
-
-.notesInput textarea {
-  width: 100%;
-  min-height: 100px;
-  padding: 10px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  margin-bottom: 10px;
-  resize: vertical;
-}
-
-.notesInput button {
-  width: 100%;
-  padding: 8px;
-  background: #1976d2;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.notesInput button:hover {
-  background: #1565c0;
-}
-
-.noteItem p {
-  margin: 0 0 5px 0;
-}
-
-.noteItem small {
-  color: #666;
-  font-size: 0.8em;
 }
 
 .annotationLayer {
@@ -702,7 +537,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   transition: bottom 0.3s ease;
   z-index: 1000;
-  width: 500px;
+  width: 40rem;
   max-width: 90vw;
 }
 
@@ -762,24 +597,65 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
+  padding: 2px;
+  font-size: 36px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   gap: 4px;
   color: #666;
   font-size: 16px;
+  position: relative;
   transition: all 0.2s ease;
 }
 
 .modelToggle:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #1976d2;
+  background: #f0f0f0;
+}
+
+.modelToggle::before {
+  content: attr(title);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.modelToggle::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
 }
 
 .modelToggle svg {
   width: 16px;
   height: 16px;
+}
+
+.modelToggle:hover::before,
+.modelToggle:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }
 
 /* 显示按钮 */
@@ -843,171 +719,4 @@
 
 .errorContainer button:hover {
   background-color: #1565c0;
-}
-
-.noteActions {
-  display: flex;
-  gap: 6px;
-}
-
-.editNote,
-.deleteNote,
-.saveNote,
-.cancelEdit {
-  padding: 4px 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  color: white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 48px;
-  height: 24px;
-}
-
-.editNote {
-  background-color: #10B981;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.editNote:hover {
-  background-color: #059669;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.deleteNote {
-  background-color: #EF4444;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.deleteNote:hover {
-  background-color: #DC2626;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.saveNote {
-  background-color: #3B82F6;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.saveNote:hover {
-  background-color: #2563EB;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.cancelEdit {
-  background-color: #6B7280;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.cancelEdit:hover {
-  background-color: #4B5563;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.editNote:active,
-.deleteNote:active,
-.saveNote:active,
-.cancelEdit:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.noteEditInput {
-  width: 100%;
-  min-height: 80px;
-  padding: 12px;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  margin-top: 8px;
-  font-size: 14px;
-  resize: vertical;
-  line-height: 1.6;
-  background-color: #F9FAFB;
-  transition: all 0.2s ease;
-}
-
-.noteEditInput:focus {
-  outline: none;
-  border-color: #3B82F6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  background-color: #FFFFFF;
-}
-
-.notesHeader {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 12px 16px;
-  padding-top: 0px;
-  border-bottom: 1px solid #E5E7EB;
-  position: sticky;
-  top: 0px;
-  background-color: #fff;
-  z-index: 10;
-  margin: 0 -16px;  /* 抵消父元素的 padding */
-  padding: 12px 16px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.notesFilter {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #4B5563;
-}
-
-.toggleSwitch {
-  position: relative;
-  display: inline-block;
-  width: 36px;
-  height: 20px;
-}
-
-.toggleSwitch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggleSlider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #E5E7EB;
-  transition: .3s;
-  border-radius: 20px;
-}
-
-.toggleSlider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 2px;
-  bottom: 2px;
-  background-color: white;
-  transition: .3s;
-  border-radius: 50%;
-}
-
-input:checked + .toggleSlider {
-  background-color: #3B82F6;
-}
-
-input:checked + .toggleSlider:before {
-  transform: translateX(16px);
 }

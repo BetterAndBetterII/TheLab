@@ -181,7 +181,14 @@ class Document(Base):
     # }
     flow_history = Column(JSON, default=list)
     # 测验历史记录，格式：[{"page": 1, "questions": [...], "created_at": "2024-03-21T10:00:00"}]
-    quiz_history = Column(JSON, default=list)
+    # quiz_history = Column(JSON, default=list)
+
+    # 测验历史记录
+    quiz_history = relationship(
+        "QuizHistory",
+        back_populates="document",
+        cascade="all, delete-orphan",
+    )
 
     def get_page_content(self, page: int) -> str:
         """获取指定页的内容"""
@@ -199,6 +206,25 @@ class Document(Base):
         """获取指定页的关键词"""
         return self.keywords_pages.get(str(page), [])
 
+
+class QuizHistory(Base):
+    """测验历史记录模型类。
+
+    存储用户测验的历史记录。
+    """
+
+    __tablename__ = "quiz_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    quiz_history = Column(JSON, default=list)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # 关系
+    document = relationship("Document", back_populates="quiz_history")
+    user = relationship("User", back_populates="quiz_history")
 
 class DocumentReadRecord(Base):
     """文档阅读记录模型类。

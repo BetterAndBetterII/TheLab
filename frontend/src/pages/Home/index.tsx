@@ -32,17 +32,17 @@ const Home: React.FC = () => {
 
       const activities: RecentActivity[] = [
         ...messages.slice(0, 3).map((message: Message) => ({
-          id: message.id,
+          id: message.id.toString(),
           type: 'message' as const,
           title: message.subject,
           date: message.createdAt,
           link: `/email`,
         })),
         ...posts.slice(0, 3).map((post: Post) => ({
-          id: post.id,
+          id: post.id.toString(),
           type: 'post' as const,
           title: post.title,
-          date: post.createdAt,
+          date: post.created_at,
           link: `/forum/post/${post.id}`,
         })),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -91,7 +91,7 @@ const Home: React.FC = () => {
 
       <div className={styles.content}>
         {/* 文件管理器 */}
-        <div className={styles.fileManager}>
+        <div className={styles.fileManager} style={{ width: '100%' }}>
           <FileList
             onFileSelect={handleFileSelect}
             className={styles.fileList}
@@ -99,7 +99,7 @@ const Home: React.FC = () => {
         </div>
 
         {/* 最近活动 */}
-        <div className={styles.recentActivities}>
+        {/* <div className={styles.recentActivities}>
           <h2 className={styles.sectionTitle}>最近活动</h2>
           <div className={styles.activityGrid}>
             {recentActivities.map((activity) => (
@@ -114,7 +114,7 @@ const Home: React.FC = () => {
               </Link>
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

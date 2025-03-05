@@ -32,6 +32,30 @@ const parseItemKey = (key: string): Item => {
   return { type: type as 'file' | 'folder', id };
 };
 
+type ProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+const TOOLTIPS: Record<ProcessingStatus, string> = {
+  'pending': '等待处理',
+  'processing': '处理中',
+  'completed': '处理完成',
+  'failed': '处理失败',
+};
+
+// 同样修改其他常量对象
+const ICONS: Record<ProcessingStatus, string> = {
+  'pending': '⏳',
+  'processing': '🔄',
+  'completed': '✅',
+  'failed': '❌',
+};
+
+const PROGRESS: Record<ProcessingStatus, number> = {
+  'pending': 0,
+  'processing': 50,
+  'completed': 100,
+  'failed': 100,
+};
+
 const FileList: React.FC<FileListProps> = ({
   onFileSelect,
   onFolderChange,
@@ -71,6 +95,27 @@ const FileList: React.FC<FileListProps> = ({
     
     fetchFolderTree();
   }, [operation]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      updateProcessingStatus();
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [files]);
+
+  const updateProcessingStatus = async () => {
+    const targetFiles = files.filter(file => file.processingStatus === 'pending' || file.processingStatus === 'processing')
+      .filter(file => file.isFolder === false)
+    if (targetFiles.length === 0) return;
+    const statuses = await Promise.all(targetFiles.map(async (file) => {
+      const status = await fileApi.getProcessingStatus(file.id);
+      return { ...file, ...status };
+    }));
+    setFiles(prevFiles => prevFiles.map(file => {
+      const status = statuses.find(status => status.id === file.id);
+      return status ? { ...file, processingStatus: status.processing_status, errorMessage: status.error_message } : file;
+    }));
+  };
 
   const fetchFiles = async () => {
     try {
@@ -233,14 +278,19 @@ const FileList: React.FC<FileListProps> = ({
     }
   };
 
-  const handleDownload = async (fileId: string) => {
+  const handleDownload = async (fileId: string, isFolder: boolean) => {
+    (window as any).toast.info("文件正在下载中...");
     try {
-      await fileApi.downloadFile(fileId);
-      (window as any).toast.success('下载成功');
+      if (isFolder) {
+        await fileApi.downloadFolder(fileId);
+      } else {
+        await fileApi.downloadFile(fileId);
+      }
     } catch (error) {
       console.error('Error downloading file:', error);
       (window as any).toast.error('下载失败');
     }
+    (window as any).toast.success('下载成功');
   };
 
   const handleSort = (key: 'name' | 'date') => {
@@ -353,46 +403,6 @@ const FileList: React.FC<FileListProps> = ({
       default:
         return '📄';
     }
-  };
-
-  const getProcessingStatusInfo = (status: string | undefined, errorMessage?: string) => {
-    if (!status) return null;
-    
-    let icon = '';
-    let color = '';
-    let progress = 0;
-    let tooltip = '';
-    
-    switch (status.toLowerCase()) {
-      case 'pending':
-        icon = '⏳';
-        color = 'pending';
-        progress = 0;
-        tooltip = '等待处理';
-        break;
-      case 'processing':
-        icon = '🔄';
-        color = 'processing';
-        progress = 50;
-        tooltip = '处理中';
-        break;
-      case 'completed':
-        icon = '✅';
-        color = 'completed';
-        progress = 100;
-        tooltip = '处理完成';
-        break;
-      case 'failed':
-        icon = '❌';
-        color = 'failed';
-        progress = 100;
-        tooltip = errorMessage || '处理失败';
-        break;
-      default:
-        return null;
-    }
-    
-    return { icon, color, progress, tooltip };
   };
 
   const handleContainerClick = (event: React.MouseEvent) => {
@@ -572,27 +582,24 @@ const FileList: React.FC<FileListProps> = ({
                   {file.processingStatus && (
                     <div className={styles.processingStatus}>
                       <span>•</span>
-                      {(() => {
-                        const statusInfo = getProcessingStatusInfo(file.processingStatus, file.errorMessage);
-                        if (!statusInfo) return null;
-                        
-                        return (
-                          <>
-                            <span 
-                              className={styles[statusInfo.color]} 
-                              title={statusInfo.tooltip}
-                            >
-                              {statusInfo.icon} {file.processingStatus}
-                            </span>
-                            {file.processingStatus === "processing" && <div className={styles.progressBar}>
-                              <div 
-                                className={styles.progressFill} 
-                                style={{ width: `${statusInfo.progress}%` }}
-                              />
-                            </div>}
-                          </>
-                        );
-                      })()}
+                      {file.processingStatus && (
+                        <>
+                          <span 
+                            className={styles[
+                              file.processingStatus.toLowerCase() as ProcessingStatus
+                            ]} 
+                            title={file.errorMessage || TOOLTIPS[file.processingStatus.toLowerCase() as ProcessingStatus]}
+                          >
+                            {ICONS[file.processingStatus.toLowerCase() as ProcessingStatus]} {file.processingStatus}
+                          </span>
+                          {file.processingStatus === "processing" && <div className={styles.progressBar}>
+                            <div 
+                              className={styles.progressFill} 
+                              style={{ width: `${PROGRESS[file.processingStatus.toLowerCase() as ProcessingStatus]}%` }}
+                            />
+                          </div>}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -608,17 +615,17 @@ const FileList: React.FC<FileListProps> = ({
                 >
                   ✏️
                 </button>
+                <button
+                  className={styles.iconButton}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload(file.id, file.isFolder);
+                  }}
+                >
+                  ⬇️
+                </button>
                 {!file.isFolder && (
                   <>
-                    <button
-                      className={styles.iconButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownload(file.id);
-                      }}
-                    >
-                      ⬇️
-                    </button>
                     {file.processingStatus === 'failed' && (
                       <button
                         className={styles.iconButton}

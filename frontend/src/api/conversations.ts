@@ -69,7 +69,8 @@ export const conversationApi = {
     conversationId: number,
     messages: { role: string; content: string }[],
     stream: boolean = true,
-    model: ModelType = 'standard'
+    model: ModelType = 'standard',
+    add_notes: boolean = false
   ): Promise<Response> => {
     const response = await fetch(`${BASE_URL}/conversations/${conversationId}/chat`, {
       method: 'POST',
@@ -81,6 +82,7 @@ export const conversationApi = {
         messages,
         stream,
         model,
+        add_notes,
       }),
     });
 

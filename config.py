@@ -1,7 +1,7 @@
 import os
 from datetime import timedelta
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Literal
 
 from pydantic_settings import BaseSettings
 
@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     SESSION_COOKIE_NAME: str = "session_id"
     SESSION_EXPIRE_DAYS: int = 7
 
+    # OAuth2 设置
+    GITHUB_CLIENT_ID: Optional[str] = None
+    GITHUB_CLIENT_SECRET: Optional[str] = None
+    GITHUB_REDIRECT_URI: Optional[str] = None
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: Optional[str] = None
+
     # JWT设置（保留用于API访问）
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
@@ -58,6 +66,12 @@ class Settings(BaseSettings):
     EMBEDDING_API_KEY: str
     EMBEDDING_BASE_URL: str
     EMB_DIMENSIONS: int = 1024
+    LLM_STANDARD_MODEL: str
+    LLM_ADVANCED_MODEL: str
+
+    # 全局模式
+    GLOBAL_MODE: Literal["public", "private"] = "public"
+    GLOBAL_LLM: Literal["public", "private"] = "public"
 
     @property
     def DATABASE_URL(self) -> str:

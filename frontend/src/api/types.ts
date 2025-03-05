@@ -15,6 +15,27 @@ export interface UserSettings {
     standardModel: string;
     advancedModel: string;
   };
+  globalLLM: string;
+  globalMODE: string;
+  isAdmin: boolean;
+}
+
+export interface UpdateUserSettings {
+  email: string;
+  fullName: string;
+  bio: string;
+  notifications: {
+    email: boolean;
+    push: boolean;
+  };
+  theme: 'light' | 'dark' | 'system';
+  language: string;
+  aiConfig?: {
+    apiKey: string;
+    baseUrl: string;
+    standardModel: string;
+    advancedModel: string;
+  };
 }
 
 // 消息相关类型
@@ -54,24 +75,36 @@ export interface EnhancementType {
 
 // 论坛相关类型
 export interface Post {
-  id: string;
+  id: number;
   title: string;
   content: string;
-  author: string;
-  createdAt: string;
+  category: 'general' | 'technical' | 'question' | 'sharing' | 'feedback';
+  user_id: number;
+  views: number;
+  is_pinned: boolean;
+  is_locked: boolean;
+  created_at: string;
+  updated_at: string;
+  username: string;
+  replies: Reply[];
 }
 
 export interface Reply {
-  id: string;
+  id: number;
   content: string;
-  author: string;
-  createdAt: string;
+  topic_id: number;
+  user_id: number;
+  parent_id?: number;
+  is_ai_generated: boolean;
+  created_at: string;
+  updated_at: string;
+  username: string;
 }
 
 export interface Category {
   id: string;
   name: string;
-  description: string;
+  icon: string;
 }
 
 export interface ForumPost extends Post {
@@ -204,4 +237,9 @@ export interface FileApi {
   batchDeleteFolders: (folderIds: string[]) => Promise<void>;
   batchMove: (fileIds: string[], folderIds: string[], targetFolderId: string | null) => Promise<void>;
   retryProcessing: (fileId: string) => Promise<void>;
+}
+
+export interface User {
+  id: number;
+  username: string;
 } 

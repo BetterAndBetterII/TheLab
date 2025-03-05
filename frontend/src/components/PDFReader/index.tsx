@@ -40,24 +40,11 @@ import { conversationApi } from '../../api/conversations';
 import { Message } from './ChatPanel';
 import { FlowData } from './FlowPanel';
 import { QuizData } from './QuizPanel';
+import NotesPanel, { Note } from './NotesPanel';
 
 type TabType = 'notes' | 'summary' | 'chat' | 'flow' | 'quiz';
 
-type KeywordType = 'disruptive' | 'innovative' | 'potential';
-
 type ModelType = 'standard' | 'advanced';
-
-interface Keyword {
-  text: string;
-  type: KeywordType;
-}
-
-interface Note {
-  id: string;
-  content: string;
-  highlightAreas: HighlightArea[];
-  quote: string;
-}
 
 interface PDFReaderProps {
   pdfUrl: string;
@@ -93,6 +80,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const [currentQuizData, setCurrentQuizData] = useState<QuizData | null>(null);
   const [quizHistory, setQuizHistory] = useState<QuizData[]>([]);
   const [currentModel, setCurrentModel] = useState<ModelType>('standard');
+  const [addNotes, setAddNotes] = useState(false);
   const recordingNotes = useRef<Map<string, string>>(new Map());  // 记录笔记的关键词
 
   const pdfContainerRef = useRef<HTMLDivElement>(null);
@@ -204,6 +192,59 @@ const PDFReader: React.FC<PDFReaderProps> = ({
         }
       }
     });
+  }, []);
+
+  // 处理拖拽调整
+  useEffect(() => {
+    const container = containerRef.current;
+    const resizer = resizerRef.current;
+    const pdfContainer = pdfContainerRef.current;
+
+    if (!container || !resizer || !pdfContainer) return;
+
+    let startX: number;
+    let startWidth: number;
+
+    const startDragging = (e: MouseEvent) => {
+      startX = e.clientX;
+      startWidth = pdfContainer.offsetWidth;
+      setIsDragging(true);
+    };
+
+    const stopDragging = () => {
+      setIsDragging(false);
+      document.removeEventListener('mousemove', onDrag);
+      document.removeEventListener('mouseup', stopDragging);
+    };
+
+    const onDrag = (e: MouseEvent) => {
+      if (!container) return;
+
+      const containerWidth = container.offsetWidth;
+      const newWidth = startWidth + (e.clientX - startX);
+
+      // 限制最小和最大宽度
+      const minWidth = 280;
+      const maxWidth = containerWidth - 280; // 保留笔记面板最小宽度
+
+      const clampedWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
+      const percentage = (clampedWidth / containerWidth) * 100;
+
+      setPdfWidth(`${percentage}%`);
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      e.preventDefault();
+      startDragging(e);
+      document.addEventListener('mousemove', onDrag);
+      document.addEventListener('mouseup', stopDragging);
+    };
+
+    resizer.addEventListener('mousedown', handleMouseDown);
+
+    return () => {
+      resizer.removeEventListener('mousedown', handleMouseDown);
+    };
   }, []);
 
   const saveNote = async (content: string, quote: string, highlightAreas: HighlightArea[]) => {
@@ -521,7 +562,8 @@ const PDFReader: React.FC<PDFReaderProps> = ({
             content: msg.content,
           })),
         true,
-        currentModel as ModelType // 传递当前选择的模型
+        currentModel as ModelType,
+        addNotes
       );
 
       if (response.body) {
@@ -699,122 +741,19 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
           {activeTab === 'notes' && (
             <>
-              <div className={styles.notesHeader}>
-                <div className={styles.notesFilter}>
-                  <span>显示全部笔记</span>
-                  <label className={styles.toggleSwitch}>
-                    <input
-                      type="checkbox"
-                      checked={showAllNotes}
-                      onChange={(e) => setShowAllNotes(e.target.checked)}
-                    />
-                    <span className={styles.toggleSlider}></span>
-                  </label>
-                </div>
-              </div>
-              <div className={styles.notesList}>
-                {notes
-                  .sort((a, b) => a.highlightAreas[0].pageIndex - b.highlightAreas[0].pageIndex)
-                  .filter(note => showAllNotes || note.highlightAreas.some(area => area.pageIndex === currentPage))
-                  .map((note) => (
-                    <div
-                      key={note.id}
-                      className={styles.noteItem}
-                      onClick={() => jumpToHighlightArea(note.highlightAreas[0])}
-                    >
-                      <div className={styles.noteHeader}>
-                        <span className={styles.pageInfo}>第 {note.highlightAreas[0].pageIndex + 1} 页</span>
-                        <div className={styles.noteActions}>
-                          {editingNoteId === note.id ? (
-                            <>
-                              <button
-                                className={styles.saveNote}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    await documentApi.updateNote(documentId, note.id, {
-                                      content: editingContent,
-                                      quote: note.quote,
-                                      highlight_areas: note.highlightAreas,
-                                    });
-                                    setNotes(notes.map((n) =>
-                                      n.id === note.id ? { ...n, content: editingContent } : n
-                                    ));
-                                    setEditingNoteId(null);
-                                    setEditingContent('');
-                                  } catch (error) {
-                                    console.error('更新笔记失败:', error);
-                                  }
-                                }}
-                              >
-                                保存
-                              </button>
-                              <button
-                                className={styles.cancelEdit}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingNoteId(null);
-                                  setEditingContent('');
-                                }}
-                              >
-                                取消
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                className={styles.editNote}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingNoteId(note.id);
-                                  setEditingContent(note.content);
-                                }}
-                              >
-                                编辑
-                              </button>
-                              <button
-                                className={styles.deleteNote}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    await documentApi.deleteNote(documentId, note.id);
-                                    setNotes(notes.filter((n) => n.id !== note.id));
-                                  } catch (error) {
-                                    console.error('删除笔记失败:', error);
-                                  }
-                                }}
-                              >
-                                删除
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className={styles.noteQuote}>{note.quote}</div>
-                      {editingNoteId === note.id ? (
-                        <textarea
-                          className={styles.noteEditInput}
-                          value={editingContent}
-                          onChange={(e) => setEditingContent(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          autoFocus
-                        />
-                      ) : (
-                        <div className={styles.noteContent}>{note.content}</div>
-                      )}
-                    </div>
-                  ))}
-                {!showAllNotes && notes.filter(note => note.highlightAreas.some(area => area.pageIndex === currentPage)).length === 0 && (
-                  <div className={styles.emptyNotes}>
-                    当前页面暂无笔记
-                  </div>
-                )}
-                {showAllNotes && notes.length === 0 && (
-                  <div className={styles.emptyNotes}>
-                    暂无笔记
-                  </div>
-                )}
-              </div>
+              <NotesPanel
+                notes={notes}
+                setNotes={setNotes}
+                showAllNotes={showAllNotes}
+                setShowAllNotes={setShowAllNotes}
+                currentPage={currentPage}
+                jumpToHighlightArea={jumpToHighlightArea}
+                editingNoteId={editingNoteId}
+                setEditingNoteId={setEditingNoteId}
+                editingContent={editingContent}
+                setEditingContent={setEditingContent}
+                documentId={documentId}
+              />
             </>
           )}
 
@@ -888,6 +827,14 @@ const PDFReader: React.FC<PDFReaderProps> = ({
             title={currentModel === 'standard' ? '标准模型' : '高级模型'}
           >
             {currentModel === 'standard' ? '🤖' : '🧠'}
+          </button>
+          <button
+            type="button"
+            className={styles.modelToggle}
+            onClick={() => setAddNotes(prev => !prev)}
+            title={addNotes ? '自动添加笔记' : '不自动添加笔记'}
+          >
+            {addNotes ? '🗒️' : '💭'}
           </button>
           <input
             ref={inputRef}

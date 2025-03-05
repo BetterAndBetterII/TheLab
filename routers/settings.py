@@ -10,6 +10,7 @@ from database import get_db, ApiKey
 from models.users import User
 from services.session import get_current_user
 from clients.openai_client import OpenAIClient
+from config import Settings, get_settings
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -34,6 +35,9 @@ class AISettingsResponse(BaseModel):
     bio: str | None = None
     notifications: dict
     aiConfig: dict
+    globalLLM: str
+    globalMODE: str
+    isAdmin: bool
 
     class Config:
         from_attributes = True
@@ -42,6 +46,7 @@ class AISettingsResponse(BaseModel):
 @router.get("", response_model=AISettingsResponse)
 async def get_settings(
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
     """获取用户的设置"""
     if not current_user:
@@ -59,7 +64,10 @@ async def get_settings(
             "baseUrl": current_user.ai_base_url or "https://api.openai.com/v1",
             "standardModel": current_user.ai_standard_model or "gemini-1.5-flash",
             "advancedModel": current_user.ai_advanced_model or "deepseek-r1",
-        },
+        } if settings.GLOBAL_LLM == "private" else {},
+        "globalLLM": settings.GLOBAL_LLM,
+        "globalMODE": settings.GLOBAL_MODE,
+        "isAdmin": current_user.id in [1, 2],
     }
 
 
@@ -70,6 +78,11 @@ async def test_ai_settings(
     current_user: User = Depends(get_current_user),
 ):
     """测试AI设置是否有效"""
+    if settings.GLOBAL_LLM == "public":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="公共模式下无法测试AI设置",
+        )
     try:
         openai_client = OpenAIClient(settings.apiKey, settings.baseUrl)
         if not await openai_client.test_connection(
@@ -146,8 +159,14 @@ async def update_ai_settings(
     settings: AISettings,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    global_settings: Settings = Depends(get_settings),
 ):
     """更新用户的AI设置"""
+    if global_settings.GLOBAL_LLM == "public":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="公共模式下无法更新AI设置",
+        )
     if not current_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
 

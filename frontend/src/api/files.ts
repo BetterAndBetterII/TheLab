@@ -28,6 +28,13 @@ export const fileApi = {
     }
   },
 
+  // 获取文件处理状态
+  getProcessingStatus: async (fileId: string): Promise<{ id: string; processing_status: string; error_message: string }> => {
+    return handleRequest(`${BASE_URL}/documents/${fileId}/processing-status`, {
+      headers: getAuthHeaders(),
+    });
+  },
+
   // 获取文件夹树结构
   getFolderTree: async (): Promise<FolderTree[]> => {
     return handleRequest(`${BASE_URL}/folders/tree`, {
@@ -106,6 +113,16 @@ export const fileApi = {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+    } catch (error) {
+      console.error('下载文件失败:', error);
+      throw error;
+    }
+  },
+
+  // 下载文件夹
+  downloadFolder: async (folderId: string) => {
+    try {
+      window.open(`${BASE_URL}/folders/${folderId}/download`, '_blank');
     } catch (error) {
       console.error('下载文件失败:', error);
       throw error;

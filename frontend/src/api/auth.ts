@@ -2,6 +2,13 @@ import { BASE_URL, getAuthHeaders, handleRequest } from './config';
 import type { LoginRequest, UserResponse, VerificationConfirmRequest, SessionInfo } from './types';
 
 export const authApi = {
+  // 获取认证提供者
+  getProviders: async () => {
+    return handleRequest(`${BASE_URL}/auth/providers`, {
+      headers: getAuthHeaders(),
+    });
+  },
+
   // 请求验证码
   requestVerification: async (email: string) => {
     return handleRequest(`${BASE_URL}/auth/register/request-verification`, {

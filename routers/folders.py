@@ -9,6 +9,12 @@ from sqlalchemy.orm import Session
 from database import Document, Folder, get_db
 from models.users import User
 from services.session import get_current_user
+from config import get_settings, Settings
+import zipfile
+from io import BytesIO
+import shutil
+import tempfile
+from fastapi.responses import StreamingResponse
 
 router = APIRouter(prefix="/folders", tags=["folders"])
 
@@ -19,7 +25,7 @@ class FileResponse(BaseModel):
     type: str
     size: int
     lastModified: datetime
-    ownerId: str
+    owner: str
     parentId: Optional[str]
     path: Optional[str] = None
     isFolder: bool
@@ -37,6 +43,7 @@ class FolderCreate(BaseModel):
 class FolderUpdate(BaseModel):
     name: str
 
+
 class BatchDeleteRequest(BaseModel):
     folderIds: List[str]
 
@@ -46,17 +53,17 @@ async def create_folder(
     folder_data: FolderCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
+    if settings.GLOBAL_MODE == "public":
+        base_query_folder = db.query(Folder)
+    else:
+        base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
     # 构建文件夹路径
     if folder_data.parentId:
-        parent = (
-            db.query(Folder)
-            .filter(
-                Folder.id == int(folder_data.parentId),
-                Folder.owner_id == current_user.id,
-            )
-            .first()
-        )
+        parent = base_query_folder.filter(
+            Folder.id == int(folder_data.parentId)
+        ).first()
         if not parent:
             raise HTTPException(status_code=404, detail="父文件夹不存在")
         path = os.path.join(parent.path, folder_data.name)
@@ -64,11 +71,7 @@ async def create_folder(
         path = f"/{folder_data.name}"
 
     # 检查路径是否已存在
-    existing = (
-        db.query(Folder)
-        .filter(Folder.path == path, Folder.owner_id == current_user.id)
-        .first()
-    )
+    existing = base_query_folder.filter(Folder.path == path).first()
     if existing:
         raise HTTPException(status_code=400, detail="该路径已存在")
 
@@ -91,7 +94,7 @@ async def create_folder(
         type="folder",
         size=0,
         lastModified=folder.updated_at,
-        ownerId=str(folder.owner_id),
+        owner=str(db.query(User).filter(User.id == folder.owner_id).first().username),
         parentId=str(folder.parent_id) if folder.parent_id else None,
         path=folder.path,
         isFolder=True,
@@ -104,16 +107,18 @@ async def list_folders(
     parentId: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
-    query = db.query(Folder)
+    if settings.GLOBAL_MODE == "public":
+        base_query_folder = db.query(Folder)
+    else:
+        base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
+    query = base_query_folder
     if parentId is not None:
         query = query.filter(Folder.parent_id == int(parentId))
 
     # 只返回当前用户的文件夹
-    query = query.filter(
-        Folder.owner_id == current_user.id,
-        Folder.parent_id.is_(None) if parentId is None else True
-    )
+    query = query.filter(Folder.parent_id.is_(None) if parentId is None else True)
 
     folders = query.all()
     return [
@@ -123,7 +128,9 @@ async def list_folders(
             type="folder",
             size=0,
             lastModified=folder.updated_at,
-            ownerId=str(folder.owner_id),
+            owner=str(
+                db.query(User).filter(User.id == folder.owner_id).first().username
+            ),
             parentId=str(folder.parent_id) if folder.parent_id else None,
             path=folder.path,
             isFolder=True,
@@ -137,9 +144,14 @@ async def list_folders(
 async def get_folder_tree(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
+    if settings.GLOBAL_MODE == "public":
+        base_query_folder = db.query(Folder)
+    else:
+        base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
     # 获取所有文件夹
-    folders = db.query(Folder).filter(Folder.owner_id == current_user.id).all()
+    folders = base_query_folder.all()
 
     # 构建树结构
     def build_tree(parent_id: Optional[int] = None):
@@ -163,12 +175,13 @@ async def update_folder(
     folder_data: FolderUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
-    folder = (
-        db.query(Folder)
-        .filter(Folder.id == int(folderId), Folder.owner_id == current_user.id)
-        .first()
-    )
+    if settings.GLOBAL_MODE == "public":
+        base_query_folder = db.query(Folder)
+    else:
+        base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
+    folder = base_query_folder.filter(Folder.id == int(folderId)).first()
     if not folder:
         raise HTTPException(status_code=404, detail="文件夹不存在")
 
@@ -177,11 +190,7 @@ async def update_folder(
     new_path = os.path.join(os.path.dirname(old_path), folder_data.name)
 
     # 检查新路径是否已存在
-    existing = (
-        db.query(Folder)
-        .filter(Folder.path == new_path, Folder.owner_id == current_user.id)
-        .first()
-    )
+    existing = base_query_folder.filter(Folder.path == new_path).first()
     if existing and existing.id != int(folderId):
         raise HTTPException(status_code=400, detail="该路径已存在")
 
@@ -190,9 +199,7 @@ async def update_folder(
     folder.path = new_path
 
     # 更新子文件夹路径
-    for subfolder in db.query(Folder).filter(
-        Folder.path.startswith(old_path + "/"), Folder.owner_id == current_user.id
-    ):
+    for subfolder in base_query_folder.filter(Folder.path.startswith(old_path + "/")):
         subfolder.path = subfolder.path.replace(old_path, new_path, 1)
 
     db.commit()
@@ -204,7 +211,7 @@ async def update_folder(
         type="folder",
         size=0,
         lastModified=folder.updated_at,
-        ownerId=str(folder.owner_id),
+        owner=str(db.query(User).filter(User.id == folder.owner_id).first().username),
         parentId=str(folder.parent_id) if folder.parent_id else None,
         path=folder.path,
         isFolder=True,
@@ -217,31 +224,29 @@ async def delete_folder(
     folderId: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
-    folder = (
-        db.query(Folder)
-        .filter(Folder.id == int(folderId), Folder.owner_id == current_user.id)
-        .first()
-    )
+    if settings.GLOBAL_MODE == "public":
+        base_query_folder = db.query(Folder)
+        base_query_document = db.query(Document)
+    else:
+        base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
+        base_query_document = db.query(Document).filter(
+            Document.owner_id == current_user.id
+        )
+    if current_user.id in [1, 2]:
+        base_query_folder = db.query(Folder)
+        base_query_document = db.query(Document)
+    folder = base_query_folder.filter(Folder.id == int(folderId)).first()
     if not folder:
         raise HTTPException(status_code=404, detail="文件夹不存在")
 
     # 检查是否有子文件夹
-    if (
-        db.query(Folder)
-        .filter(Folder.parent_id == int(folderId), Folder.owner_id == current_user.id)
-        .first()
-    ):
+    if base_query_folder.filter(Folder.parent_id == int(folderId)).first():
         raise HTTPException(status_code=400, detail="文件夹不为空，请先删除子文件夹")
 
     # 检查是否有文档
-    if (
-        db.query(Document)
-        .filter(
-            Document.folder_id == int(folderId), Document.owner_id == current_user.id
-        )
-        .first()
-    ):
+    if base_query_document.filter(Document.folder_id == int(folderId)).first():
         raise HTTPException(status_code=400, detail="文件夹不为空，请先删除文档")
 
     db.delete(folder)
@@ -254,36 +259,50 @@ async def batch_delete_folders(
     request: BatchDeleteRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
+    if settings.GLOBAL_MODE == "public":
+        base_query_folder = db.query(Folder)
+        base_query_document = db.query(Document)
+    else:
+        base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
+        base_query_document = db.query(Document).filter(
+            Document.owner_id == current_user.id
+        )
+    if current_user.id in [1, 2]:
+        base_query_folder = db.query(Folder)
+        base_query_document = db.query(Document)
     folder_ids = []
     for folderId in request.folderIds:
-        folder = (
-            db.query(Folder)
-            .filter(Folder.id == int(folderId), Folder.owner_id == current_user.id)
-            .first()
-        )
+        folder = base_query_folder.filter(Folder.id == int(folderId)).first()
         if not folder:
             raise HTTPException(status_code=404, detail="文件夹不存在")
         folder_ids.append(folder.id)
-    
+
     # 先删除文件夹下的所有文档
-    db.query(Document).filter(Document.folder_id.in_(folder_ids)).delete(synchronize_session=False)
+    base_query_document.filter(Document.folder_id.in_(folder_ids)).delete(
+        synchronize_session=False
+    )
     # 然后删除文件夹
-    db.query(Folder).filter(Folder.id.in_(folder_ids)).delete(synchronize_session=False)
+    base_query_folder.filter(Folder.id.in_(folder_ids)).delete(
+        synchronize_session=False
+    )
     db.commit()
     return {"message": "文件夹已删除"}
+
 
 @router.get("/{folderId}", response_model=FileResponse)
 async def get_folder(
     folderId: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
-    folder = (
-        db.query(Folder)
-        .filter(Folder.id == int(folderId), Folder.owner_id == current_user.id)
-        .first()
-    )
+    if settings.GLOBAL_MODE == "public":
+        base_query_folder = db.query(Folder)
+    else:
+        base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
+    folder = base_query_folder.filter(Folder.id == int(folderId)).first()
     if not folder:
         raise HTTPException(status_code=404, detail="文件夹不存在")
 
@@ -293,9 +312,56 @@ async def get_folder(
         type="folder",
         size=0,
         lastModified=folder.updated_at,
-        ownerId=str(folder.owner_id),
+        owner=str(db.query(User).filter(User.id == folder.owner_id).first().username),
         parentId=str(folder.parent_id) if folder.parent_id else None,
         path=folder.path,
         isFolder=True,
         mimeType=None,
+    )
+
+
+@router.get("/{folderId}/download")
+async def download_folder(
+    folderId: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+):
+    if settings.GLOBAL_MODE == "public":
+        base_query_folder = db.query(Folder)
+        base_query_document = db.query(Document)
+    else:
+        base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
+        base_query_document = db.query(Document).filter(
+            Document.owner_id == current_user.id
+        )
+    folder = base_query_folder.filter(Folder.id == int(folderId)).first()
+    if not folder:
+        raise HTTPException(status_code=404, detail="文件夹不存在")
+    # 获取文件夹下的所有文件
+    files: List[Document] = base_query_document.filter(
+        Document.folder_id == int(folderId)
+    ).all()
+
+    tmp_folder = tempfile.mkdtemp()
+    for file in files:
+        file_path = os.path.join(tmp_folder, file.filename)
+        with open(file_path, "wb") as f:
+            f.write(file.file_data)
+    # 将文件夹和文件打包成zip
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+        for file in files:
+            zip_file.write(f"{tmp_folder}/{file.filename}", file.filename)
+    zip_buffer.seek(0)
+    # 删除临时文件夹
+    shutil.rmtree(tmp_folder)
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename={folder.name}.zip",
+            "Content-Length": str(zip_buffer.getbuffer().nbytes),
+            "Access-Control-Expose-Headers": "Content-Disposition",  # 允许前端访问此头
+        },
     )
