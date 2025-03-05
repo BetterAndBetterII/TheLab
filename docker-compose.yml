@@ -87,7 +87,7 @@ services:
       - app_network
 
   db:
-    image: ankane/pgvector:latest
+    image: pgvector/pgvector:pg17
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -95,14 +95,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - app_network
 
   redis:
     image: redis:7-alpine
+    command: redis-server --requirepass redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     command: redis-server --requirepass redis
