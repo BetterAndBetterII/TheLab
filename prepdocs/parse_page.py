@@ -21,7 +21,7 @@ class DocsIngester:
         self.supported_formats = {"pdf", "docx", "pptx"}
 
     def _convert_to_pdf_with_libreoffice(self, input_file: str) -> str:
-        """使用 LibreOffice 将文档转换为 PDF"""
+        """使用 LibreOffice 将文档转换为 PDF."""
         output_pdf = os.path.join(self.temp_dir, f"{uuid.uuid4()}.pdf")
         try:
             # 使用 LibreOffice 进行转换
@@ -55,7 +55,7 @@ class DocsIngester:
             raise
 
     def process_document(self, file_path: str, title: str) -> Section:
-        """处理文档并返回Section对象"""
+        """处理文档并返回Section对象."""
         file_path = Path(file_path)
         if not file_path.exists():
             raise FileNotFoundError(f"文件不存在: {file_path}")
@@ -81,11 +81,14 @@ class DocsIngester:
 
         # 创建并返回Section对象
         return Section(
-            title=title, pages=pages, file_type=FileType.IMAGE, filename=title
+            title=title,
+            pages=pages,
+            file_type=FileType.IMAGE,
+            filename=title,
         )
 
     def _process_pdf(self, file_path: Path) -> list[str]:
-        """处理 PDF 文件，返回图片路径列表"""
+        """处理 PDF 文件，返回图片路径列表."""
         images = convert_from_path(file_path)
         image_paths = []
 
@@ -97,6 +100,6 @@ class DocsIngester:
         return image_paths
 
     def cleanup(self):
-        """清理临时文件"""
+        """清理临时文件."""
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)

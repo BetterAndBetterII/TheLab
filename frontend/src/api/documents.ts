@@ -24,7 +24,7 @@ export const documentApi = {
     const queryParams = new URLSearchParams();
     if (params.skip !== undefined) queryParams.append('skip', params.skip.toString());
     if (params.limit !== undefined) queryParams.append('limit', params.limit.toString());
-    
+
     return handleRequest(`${BASE_URL}/documents/read-history?${queryParams.toString()}`, {
       headers: getAuthHeaders(),
     });
@@ -128,4 +128,4 @@ export const documentApi = {
       body: JSON.stringify(data),
     });
   },
-}; 
+};

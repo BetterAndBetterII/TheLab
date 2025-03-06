@@ -10,4 +10,4 @@ __pycache__
 .idea
 .vscode
 
-tmp/persist/
+tmp/

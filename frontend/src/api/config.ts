@@ -13,7 +13,7 @@ export const getAuthHeaders = () => {
 export async function handleRequest(url: string, options: RequestInit = {}) {
   try {
     const response = await fetch(url, options);
-    
+
     // 处理401和403错误
     if (response.status === 401 || response.status === 403) {
       // 清除本地存储的token
@@ -36,4 +36,4 @@ export async function handleRequest(url: string, options: RequestInit = {}) {
     }
     throw new Error('请求失败');
   }
-} 
+}

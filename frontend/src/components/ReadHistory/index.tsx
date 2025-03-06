@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { List, Empty, Spin, message, Tooltip } from 'antd';
-import { 
-  FileTextOutlined, 
-  ClockCircleOutlined, 
+import {
+  FileTextOutlined,
+  ClockCircleOutlined,
   FileZipOutlined,
   FilePdfOutlined,
   FileWordOutlined,
@@ -39,13 +39,13 @@ const ReadHistory: React.FC = () => {
         skip: pageNum * pageSize,
         limit: pageSize,
       });
-      
+
       if (pageNum === 0) {
         setRecords(response.records);
       } else {
         setRecords([...records, ...response.records]);
       }
-      
+
       setHasMore(response.records.length === pageSize);
     } catch (error) {
       message.error('获取阅读历史失败');
@@ -74,7 +74,7 @@ const ReadHistory: React.FC = () => {
     const date = new Date(time);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
-    
+
     if (diff < 60 * 1000) return '刚刚';
     if (diff < 60 * 60 * 1000) {
       const minutes = Math.floor(diff / (60 * 1000));
@@ -88,7 +88,7 @@ const ReadHistory: React.FC = () => {
       const days = Math.floor(diff / (24 * 60 * 60 * 1000));
       return `${days}天前`;
     }
-    
+
     return date.toLocaleDateString('zh-CN', {
       year: 'numeric',
       month: 'long',
@@ -183,4 +183,4 @@ const ReadHistory: React.FC = () => {
   );
 };
 
-export default ReadHistory; 
+export default ReadHistory;

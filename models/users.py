@@ -4,7 +4,7 @@ from datetime import datetime
 from passlib.context import CryptContext
 from sqlalchemy import JSON, Boolean, Column, DateTime
 from sqlalchemy import Enum as SQLAlchemyEnum
-from sqlalchemy import Float, Integer, String
+from sqlalchemy import Integer, String
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -56,7 +56,9 @@ class User(Base):
 
     # 关联到会话
     sessions = relationship(
-        "Session", back_populates="user", cascade="all, delete-orphan"
+        "Session",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     # 添加文档和文件夹的反向关系
@@ -75,12 +77,16 @@ class User(Base):
 
     # 添加对话关系
     conversations = relationship(
-        "Conversation", back_populates="user", cascade="all, delete-orphan"
+        "Conversation",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     # 添加QuizHistory关系
     quiz_history = relationship(
-        "QuizHistory", back_populates="user", cascade="all, delete-orphan"
+        "QuizHistory",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     @staticmethod

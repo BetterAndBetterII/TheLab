@@ -20,13 +20,11 @@ class AuthService:
         self.redis = redis_client
 
     def generate_verification_code(self) -> str:
-        """生成数字验证码"""
-        return "".join(
-            random.choices(string.digits, k=settings.VERIFICATION_CODE_LENGTH)
-        )
+        """生成数字验证码."""
+        return "".join(random.choices(string.digits, k=settings.VERIFICATION_CODE_LENGTH))
 
     def save_verification_code(self, email: str, code: str) -> None:
-        """保存验证码到Redis"""
+        """保存验证码到Redis."""
         key = f"verification_code:{email}"
         self.redis.setex(
             key,
@@ -35,7 +33,7 @@ class AuthService:
         )
 
     def verify_code(self, email: str, code: str) -> bool:
-        """验证验证码"""
+        """验证验证码."""
         key = f"verification_code:{email}"
         stored_code = self.redis.get(key)
         if not stored_code:
@@ -43,11 +41,9 @@ class AuthService:
         return stored_code == code
 
     def create_access_token(self, data: dict) -> str:
-        """创建访问令牌"""
+        """创建访问令牌."""
         to_encode = data.copy()
-        expire = datetime.now(timezone.utc) + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        )
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         to_encode.update({"exp": expire})
         return jwt.encode(
             to_encode,
@@ -56,11 +52,9 @@ class AuthService:
         )
 
     def create_refresh_token(self, data: dict) -> str:
-        """创建刷新令牌"""
+        """创建刷新令牌."""
         to_encode = data.copy()
-        expire = datetime.now(timezone.utc) + timedelta(
-            days=settings.REFRESH_TOKEN_EXPIRE_DAYS
-        )
+        expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         to_encode.update({"exp": expire})
         return jwt.encode(
             to_encode,
@@ -69,7 +63,7 @@ class AuthService:
         )
 
     def verify_token(self, token: str) -> dict:
-        """验证令牌"""
+        """验证令牌."""
         try:
             payload = jwt.decode(
                 token,
@@ -83,10 +77,8 @@ class AuthService:
                 detail="无效的认证凭据",
             )
 
-    def authenticate_user(
-        self, db: Session, email: str, password: str
-    ) -> Optional[User]:
-        """验证用户凭据"""
+    def authenticate_user(self, db: Session, email: str, password: str) -> Optional[User]:
+        """验证用户凭据."""
         user = db.query(User).filter(User.email == email).first()
         if not user or not User.verify_password(password, user.hashed_password):
             return None
@@ -100,7 +92,7 @@ class AuthService:
         password: str,
         full_name: Optional[str] = None,
     ) -> User:
-        """注册新用户"""
+        """注册新用户."""
         # 检查邮箱是否已存在
         if db.query(User).filter(User.email == email).first():
             raise HTTPException(
@@ -130,11 +122,12 @@ class AuthService:
         return user
 
     def activate_user(self, db: Session, user_id: int) -> User:
-        """激活用户账号"""
+        """激活用户账号."""
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="用户不存在",
             )
 
         user.status = UserStatus.ACTIVE
@@ -143,7 +136,7 @@ class AuthService:
         return user
 
     def get_github_access_token(self, code: str) -> str:
-        """获取GitHub OAuth访问令牌"""
+        """获取GitHub OAuth访问令牌."""
         try:
             response = requests.post(
                 "https://github.com/login/oauth/access_token",
@@ -172,7 +165,7 @@ class AuthService:
             )
 
     def get_github_user_info(self, token: str) -> dict:
-        """获取GitHub用户信息"""
+        """获取GitHub用户信息."""
         try:
             response = requests.get(
                 "https://api.github.com/user",

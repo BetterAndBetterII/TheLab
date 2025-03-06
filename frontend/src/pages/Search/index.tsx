@@ -8,7 +8,7 @@ export default function Search() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
-  
+
   // 搜索选项
   const [searchMode, setSearchMode] = useState<'hybrid' | 'text_search' | 'sparse'>('hybrid');
   const [topK, setTopK] = useState(10);
@@ -72,8 +72,8 @@ export default function Search() {
             <div className={styles.searchOptions}>
               <div className={styles.optionGroup}>
                 <label>搜索模式:</label>
-                <select 
-                  value={searchMode} 
+                <select
+                  value={searchMode}
                   onChange={(e) => setSearchMode(e.target.value as typeof searchMode)}
                   className={styles.select}
                 >
@@ -135,9 +135,9 @@ export default function Search() {
                         {(result.score * 100).toFixed(1)}% 相关
                       </div>
                     </div>
-                    
+
                     <p>{truncateText(result.text)}</p>
-                    
+
                     <div className={styles.resultFooter}>
                       <div className={styles.resultMeta}>
                         {result.metadata.source && (
@@ -146,7 +146,7 @@ export default function Search() {
                           </span>
                         )}
                       </div>
-                      <a 
+                      <a
                         href={`/chat/${result.doc_id}`}
                         className={styles.sourceLink}
                         target="_blank"

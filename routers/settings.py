@@ -1,6 +1,5 @@
 import traceback
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -48,9 +47,12 @@ async def get_settings(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    """获取用户的设置"""
+    """获取用户的设置."""
     if not current_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在",
+        )
     return {
         "email": current_user.email,
         "fullName": current_user.full_name,
@@ -81,7 +83,7 @@ async def test_ai_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """测试AI设置是否有效"""
+    """测试AI设置是否有效."""
     if settings.GLOBAL_LLM == "public":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -89,9 +91,7 @@ async def test_ai_settings(
         )
     try:
         openai_client = OpenAIClient(settings.apiKey, settings.baseUrl)
-        if not await openai_client.test_connection(
-            settings.standardModel, settings.advancedModel
-        ):
+        if not await openai_client.test_connection(settings.standardModel, settings.advancedModel):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="连接测试失败: 请检查API密钥和基础URL是否正确",
@@ -99,15 +99,14 @@ async def test_ai_settings(
         else:
             if not current_user:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在"
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="用户不存在",
                 )
             query = db.query(ApiKey).filter(ApiKey.user_id == current_user.id)
             if query.count() > 1:
                 for api_key_model in query:
                     db.delete(api_key_model)
-            api_key_model = (
-                db.query(ApiKey).filter(ApiKey.user_id == current_user.id).first()
-            )
+            api_key_model = db.query(ApiKey).filter(ApiKey.user_id == current_user.id).first()
             if not api_key_model:
                 api_key_model = ApiKey(
                     key=settings.apiKey,
@@ -130,7 +129,8 @@ async def test_ai_settings(
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=f"连接测试失败: {str(e)}"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"连接测试失败: {str(e)}",
         )
 
 
@@ -140,9 +140,12 @@ async def update_settings(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """更新用户的设置"""
+    """更新用户的设置."""
     if not current_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在",
+        )
 
     current_user.email = settings.email
     current_user.full_name = settings.fullName
@@ -167,28 +170,30 @@ async def update_ai_settings(
     db: Session = Depends(get_db),
     global_settings: Settings = Depends(get_settings),
 ):
-    """更新用户的AI设置"""
+    """更新用户的AI设置."""
     if global_settings.GLOBAL_LLM == "public":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="公共模式下无法更新AI设置",
         )
     if not current_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在",
+        )
 
     # 先测试设置是否有效
     try:
         openai_client = OpenAIClient(settings.apiKey, settings.baseUrl)
-        if not openai_client.test_connection(
-            settings.standardModel, settings.advancedModel
-        ):
+        if not openai_client.test_connection(settings.standardModel, settings.advancedModel):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="连接测试失败: 请检查API密钥和基础URL是否正确",
             )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=f"AI设置无效: {str(e)}"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"AI设置无效: {str(e)}",
         )
 
     current_user.ai_api_key = settings.apiKey

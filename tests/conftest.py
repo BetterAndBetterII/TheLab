@@ -23,7 +23,7 @@ Base.metadata.create_all(bind=engine)
 
 @pytest.fixture
 def db_session():
-    """提供测试数据库会话"""
+    """提供测试数据库会话."""
     connection = engine.connect()
     transaction = connection.begin()
     session = TestingSessionLocal(bind=connection)
@@ -37,7 +37,7 @@ def db_session():
 
 @pytest.fixture
 def client(db_session):
-    """提供测试客户端"""
+    """提供测试客户端."""
 
     def override_get_db():
         try:
@@ -51,7 +51,7 @@ def client(db_session):
 
 @pytest.fixture
 def test_user(client):
-    """创建测试用户"""
+    """创建测试用户."""
     user_data = {
         "username": "testuser",
         "email": "test@example.com",
@@ -64,8 +64,11 @@ def test_user(client):
 
 @pytest.fixture
 def auth_headers(client, test_user):
-    """提供认证头信息"""
-    login_data = {"username": "testuser", "password": "testpassword123"}
+    """提供认证头信息."""
+    login_data = {
+        "username": "testuser",
+        "password": "testpassword123",
+    }
     response = client.post("/auth/login", data=login_data)
     assert response.status_code == 200
     token = response.json()["access_token"]
@@ -74,7 +77,7 @@ def auth_headers(client, test_user):
 
 @pytest.fixture
 def test_document(client, auth_headers):
-    """创建测试文档"""
+    """创建测试文档."""
     # 创建一个临时文件
     test_file_path = "test_document.txt"
     with open(test_file_path, "w") as f:
@@ -97,7 +100,7 @@ def test_document(client, auth_headers):
 
 @pytest.fixture
 def cleanup_files():
-    """清理测试文件"""
+    """清理测试文件."""
     yield
     # 测试后清理上传的文件
     upload_dir = "uploads"

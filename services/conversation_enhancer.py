@@ -4,12 +4,9 @@
 """
 
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List
 
-from clients.gemini_client import GeminiClient
-from clients.openai_client import OpenAIClient
-from database import Conversation, Document, Message, Session
-from models.users import User
+from database import Document, Message, Session
 
 
 class EnhancementType(Enum):
@@ -37,9 +34,7 @@ class ConversationEnhancer:
         self.client_pool = client_pool
 
     def _get_prompt_template(self, enhancement_type: EnhancementType) -> str:
-        """
-        获取不同类型的提示词模板
-        """
+        """获取不同类型的提示词模板."""
         templates = {
             EnhancementType.SUMMARY: """
 请对以下文档内容进行全面的摘要总结，要求：
@@ -94,15 +89,13 @@ class ConversationEnhancer:
         return templates.get(enhancement_type, "")
 
     def _get_context_window(
-        self, document: Document, current_page: int, window_size: int = 3
+        self,
+        document: Document,
+        current_page: int,
+        window_size: int = 3,
     ) -> str:
-        """
-        获取当前页面周围的上下文窗口
-        :param document: 文档对象
-        :param current_page: 当前页码
-        :param window_size: 窗口大小（单侧），默认为3页
-        :return: 合并后的文本内容
-        """
+        """获取当前页面周围的上下文窗口 :param document: 文档对象 :param current_page: 当前页码 :param window_size: 窗口大小（单侧），默认为3页 :return:
+        合并后的文本内容."""
         start_page = max(1, current_page - window_size)
         end_page = min(document.total_pages, current_page + window_size)
 
@@ -123,14 +116,8 @@ class ConversationEnhancer:
         enhancement_type: EnhancementType,
         window_size: int = 3,
     ) -> Dict:
-        """
-        增强指定页面的内容
-        :param document: 文档对象
-        :param page: 页码
-        :param enhancement_type: 增强类型
-        :param window_size: 上下文窗口大小
-        :return: 增强结果
-        """
+        """增强指定页面的内容 :param document: 文档对象 :param page: 页码 :param enhancement_type: 增强类型 :param window_size: 上下文窗口大小
+        :return: 增强结果."""
         # 获取上下文窗口的文本
         context_text = self._get_context_window(document, page, window_size)
         if not context_text:
@@ -157,19 +144,11 @@ class ConversationEnhancer:
         enhancement_types: List[EnhancementType],
         window_size: int = 3,
     ) -> List[Dict]:
-        """
-        批量增强指定页面的内容
-        :param document: 文档对象
-        :param page: 页码
-        :param enhancement_types: 增强类型列表
-        :param window_size: 上下文窗口大小
-        :return: 增强结果列表
-        """
+        """批量增强指定页面的内容 :param document: 文档对象 :param page: 页码 :param enhancement_types: 增强类型列表 :param window_size:
+        上下文窗口大小 :return: 增强结果列表."""
         results = []
         for enhancement_type in enhancement_types:
-            result = await self.enhance_page(
-                document, page, enhancement_type, window_size
-            )
+            result = await self.enhance_page(document, page, enhancement_type, window_size)
             results.append(result)
         return results
 
@@ -183,7 +162,6 @@ class ConversationEnhancer:
             Message: 处理后的消息对象
         """
         # 处理消息的具体实现
-        pass
 
     async def get_conversation_context(self, conversation_id: int) -> List[Message]:
         """获取对话上下文。
@@ -195,4 +173,3 @@ class ConversationEnhancer:
             List[Message]: 对话上下文消息列表
         """
         # 获取对话上下文的具体实现
-        pass

@@ -7,12 +7,12 @@ from fastapi import status
 
 @pytest.fixture
 def test_file():
-    """创建测试文件"""
+    """创建测试文件."""
     return io.BytesIO(b"test file content"), "test.pdf"
 
 
 def test_upload_document(client, auth_headers, cleanup_files):
-    """测试文档上传功能"""
+    """测试文档上传功能."""
     # 创建测试文件
     test_file_path = "test_upload.txt"
     with open(test_file_path, "w") as f:
@@ -38,7 +38,7 @@ def test_upload_document(client, auth_headers, cleanup_files):
 
 
 def test_get_document(client, auth_headers, test_document):
-    """测试获取文档功能"""
+    """测试获取文档功能."""
     document_id = test_document["document_id"]
 
     # 获取文档
@@ -53,7 +53,7 @@ def test_get_document(client, auth_headers, test_document):
 
 
 def test_list_documents(client, auth_headers, test_document):
-    """测试文档列表功能"""
+    """测试文档列表功能."""
     # 获取文档列表
     response = client.get("/documents/", headers=auth_headers)
 
@@ -72,7 +72,7 @@ def test_list_documents(client, auth_headers, test_document):
 
 
 def test_delete_document(client, auth_headers, test_document):
-    """测试删除文档功能"""
+    """测试删除文档功能."""
     document_id = test_document["document_id"]
 
     # 删除文档
@@ -87,7 +87,7 @@ def test_delete_document(client, auth_headers, test_document):
 
 
 def test_update_document_metadata(client, auth_headers, test_document):
-    """测试更新文档元数据功能"""
+    """测试更新文档元数据功能."""
     document_id = test_document["document_id"]
     update_data = {
         "title": "Updated Title",
@@ -111,7 +111,7 @@ def test_update_document_metadata(client, auth_headers, test_document):
 
 
 def test_search_documents(client, auth_headers, test_document):
-    """测试文档搜索功能"""
+    """测试文档搜索功能."""
     # 搜索文档
     response = client.get("/documents/search?query=test", headers=auth_headers)
 
@@ -124,7 +124,7 @@ def test_search_documents(client, auth_headers, test_document):
 
 @pytest.mark.asyncio
 async def test_process_document(client, auth_headers, test_document):
-    """测试文档处理功能"""
+    """测试文档处理功能."""
     document_id = test_document["document_id"]
 
     # 触发文档处理
@@ -144,7 +144,7 @@ async def test_process_document(client, auth_headers, test_document):
 
 
 def test_invalid_document_id(client, auth_headers):
-    """测试无效文档ID的处理"""
+    """测试无效文档ID的处理."""
     invalid_id = "nonexistent_id"
 
     # 尝试获取不存在的文档
@@ -153,7 +153,7 @@ def test_invalid_document_id(client, auth_headers):
 
 
 def test_invalid_file_type(client, auth_headers, cleanup_files):
-    """测试无效文件类型的处理"""
+    """测试无效文件类型的处理."""
     # 创建测试文件
     test_file_path = "test_invalid.exe"
     with open(test_file_path, "w") as f:
@@ -163,7 +163,13 @@ def test_invalid_file_type(client, auth_headers, cleanup_files):
     with open(test_file_path, "rb") as f:
         response = client.post(
             "/documents/upload",
-            files={"file": ("test_invalid.exe", f, "application/x-msdownload")},
+            files={
+                "file": (
+                    "test_invalid.exe",
+                    f,
+                    "application/x-msdownload",
+                )
+            },
             headers=auth_headers,
         )
 

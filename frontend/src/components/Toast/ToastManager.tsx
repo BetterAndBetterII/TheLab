@@ -53,4 +53,4 @@ const ToastManager: React.FC = () => {
   );
 };
 
-export default ToastManager; 
+export default ToastManager;

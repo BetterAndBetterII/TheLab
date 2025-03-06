@@ -29,7 +29,7 @@ class ForumService:
         category: TopicCategory,
         enable_agent: bool = True,
     ) -> Topic:
-        """创建新主题"""
+        """创建新主题."""
         topic = Topic(
             title=title,
             content=content,
@@ -48,11 +48,12 @@ class ForumService:
         return topic
 
     def get_topic(self, topic_id: int) -> Topic:
-        """获取主题详情"""
+        """获取主题详情."""
         topic = self.db.query(Topic).filter(Topic.id == topic_id).first()
         if not topic:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="主题不存在"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="主题不存在",
             )
 
         # 增加浏览次数
@@ -67,7 +68,7 @@ class ForumService:
         page: int = 1,
         page_size: int = 20,
     ) -> List[Topic]:
-        """获取主题列表"""
+        """获取主题列表."""
         # 构建基础查询
         base_query = self.db.query(Topic).join(User, Topic.user_id == User.id)
 
@@ -82,12 +83,7 @@ class ForumService:
         # 获取普通主题
         normal_query = base_query.filter(Topic.is_pinned == False)
         offset = (page - 1) * page_size
-        normal_topics = (
-            normal_query.order_by(Topic.updated_at.desc())
-            .offset(offset)
-            .limit(page_size)
-            .all()
-        )
+        normal_topics = normal_query.order_by(Topic.updated_at.desc()).offset(offset).limit(page_size).all()
 
         # 合并结果并确保用户名存在
         all_topics = pinned_topics + normal_topics
@@ -105,16 +101,18 @@ class ForumService:
         content: Optional[str] = None,
         category: Optional[TopicCategory] = None,
     ) -> Topic:
-        """更新主题"""
+        """更新主题."""
         topic = self.db.query(Topic).filter(Topic.id == topic_id).first()
         if not topic:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="主题不存在"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="主题不存在",
             )
 
         if topic.user_id != user_id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="无权修改此主题"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权修改此主题",
             )
 
         if title:
@@ -129,16 +127,18 @@ class ForumService:
         return topic
 
     def delete_topic(self, topic_id: int, user_id: int):
-        """删除主题"""
+        """删除主题."""
         topic = self.db.query(Topic).filter(Topic.id == topic_id).first()
         if not topic:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="主题不存在"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="主题不存在",
             )
 
         if topic.user_id != user_id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="无权删除此主题"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权删除此主题",
             )
 
         self.db.delete(topic)
@@ -153,12 +153,13 @@ class ForumService:
         parent_id: Optional[int] = None,
         enable_agent: bool = True,
     ) -> Reply:
-        """创建回复"""
+        """创建回复."""
         # 检查主题是否存在且未锁定
         topic = self.db.query(Topic).filter(Topic.id == topic_id).first()
         if not topic:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="主题不存在"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="主题不存在",
             )
 
         if topic.is_locked:
@@ -195,7 +196,7 @@ class ForumService:
         return reply
 
     def _trigger_agent_reply(self, topic_id: int) -> Optional[Reply]:
-        """触发Agent回复"""
+        """触发Agent回复."""
         try:
             # 获取系统用户（可以是管理员或特定的AI用户）
             system_user = self.db.query(User).filter(User.is_superuser == True).first()
@@ -211,7 +212,7 @@ class ForumService:
             return None
 
     def _generate_ai_replies(self, topic: Topic, trigger_reply: Optional[Reply] = None):
-        """生成AI回复"""
+        """生成AI回复."""
         try:
             # 构建提示信息
             prompt = f"主题：{topic.title}\n内容：{topic.content}\n"
@@ -237,7 +238,7 @@ class ForumService:
                 content=ai_content,
                 topic_id=topic.id,
                 user_id=None,  # AI回复没有用户ID
-                parent_id=trigger_reply.id if trigger_reply else None,
+                parent_id=(trigger_reply.id if trigger_reply else None),
                 is_ai_generated=True,
             )
 
@@ -248,10 +249,8 @@ class ForumService:
             # 记录错误但不影响主流程
             print(f"生成AI回复时出错: {str(e)}")
 
-    def get_topic_replies(
-        self, topic_id: int, page: int = 1, page_size: int = 20
-    ) -> List[Reply]:
-        """获取主题的回复列表"""
+    def get_topic_replies(self, topic_id: int, page: int = 1, page_size: int = 20) -> List[Reply]:
+        """获取主题的回复列表."""
         offset = (page - 1) * page_size
         return (
             self.db.query(Reply)
@@ -263,7 +262,7 @@ class ForumService:
         )
 
     async def generate_ai_topic(self, current_user: User) -> Topic:
-        """生成AI推文"""
+        """生成AI推文."""
         try:
             # 调用OpenAI API生成主题内容
             # response = openai.ChatCompletion.create(
@@ -271,7 +270,8 @@ class ForumService:
             #     messages=[
             #         {
             #             "role": "system",
-            #             "content": "你是一个论坛中的AI用户，需要生成一个有趣的主题帖子。主题应该包含标题和内容。内容应该是有见解的、有趣的或有教育意义的。",
+            #             "content": "你是一个论坛中的AI用户，需要生成一个有趣的主题帖子。主题应该包含标题和内容。
+            #             内容应该是有见解的、有趣的或有教育意义的。",
             #         },
             #         {
             #             "role": "user",
@@ -315,9 +315,7 @@ class ForumService:
                     generated_content += chunk.choices[0].delta.content
 
             # 分离标题和内容
-            generated_content = (
-                generated_content.replace("```json", "").replace("```", "").strip()
-            )
+            generated_content = generated_content.replace("```json", "").replace("```", "").strip()
             print(generated_content)
             generated_content = json.loads(generated_content)
 

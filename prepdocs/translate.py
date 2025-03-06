@@ -1,6 +1,5 @@
 # 解析英文文档
 import asyncio
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from clients.openai_client import OpenAIClient
 from config import Settings, get_settings
@@ -11,13 +10,16 @@ settings: Settings = get_settings()
 
 
 def get_translate_system_prompt(target_language: str) -> str:
-    return f"""
-You are a professional translator, translate the following text into {target_language}, and cannot output any other extra content:
-"""
+    return (
+        f"You are a professional translator, translate the following text into {target_language},"
+        f" and cannot output any other extra content:"
+    )
 
 
 async def process_single_translation(
-    openai_client: OpenAIClient, page_content: str, target_language: str
+    openai_client: OpenAIClient,
+    page_content: str,
+    target_language: str,
 ) -> Page:
     response = await openai_client.chat_with_text(
         f"{get_translate_system_prompt(target_language)}\n{page_content}",
@@ -28,11 +30,11 @@ async def process_single_translation(
 
 
 async def translate_text(
-    section: Section, user: User, target_language: str = "Simplified Chinese"
+    section: Section,
+    user: User,
+    target_language: str = "Simplified Chinese",
 ) -> Section:
-    """
-    多线程翻译文本，保持原始顺序
-    """
+    """多线程翻译文本，保持原始顺序."""
     if settings.GLOBAL_LLM == "private":
         openai_client = OpenAIClient(
             api_key=user.ai_api_key,
@@ -78,9 +80,7 @@ async def translate_text(
 
     async def process_page(page: Page):
         async with semaphore:
-            return await process_single_translation(
-                openai_client, page.content, target_language
-            )
+            return await process_single_translation(openai_client, page.content, target_language)
 
     tasks = [process_page(page) for page in section.pages]
     result_section.pages = await asyncio.gather(*tasks)

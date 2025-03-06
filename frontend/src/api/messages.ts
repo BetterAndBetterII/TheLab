@@ -14,4 +14,4 @@ export const messageApi = {
       headers: getAuthHeaders(),
     });
   },
-}; 
+};

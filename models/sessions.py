@@ -1,7 +1,6 @@
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -11,7 +10,11 @@ class Session(Base):
     __tablename__ = "sessions"
 
     id = Column(String, primary_key=True)  # 使用UUID作为session_id
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+    )
     created_at = Column(DateTime, default=datetime.now)
     expires_at = Column(DateTime, nullable=False)
     last_accessed_at = Column(DateTime, default=datetime.now)
@@ -23,11 +26,11 @@ class Session(Base):
     user = relationship("User", back_populates="sessions")
 
     def is_expired(self) -> bool:
-        """检查会话是否已过期"""
+        """检查会话是否已过期."""
         return datetime.now() > self.expires_at
 
     def to_dict(self) -> dict:
-        """将会话信息转换为字典"""
+        """将会话信息转换为字典."""
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -37,4 +40,4 @@ class Session(Base):
             "data": self.data or {},
             "user_agent": self.user_agent,
             "ip_address": self.ip_address,
-        } 
+        }

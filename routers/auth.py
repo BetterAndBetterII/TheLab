@@ -6,15 +6,10 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import (APIRouter, Depends, HTTPException, Request, Response,
-                     status)
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from redis import Redis
-from redis.connection import ConnectionPool
 from sqlalchemy.orm import Session
 
 from config import get_settings
@@ -133,29 +128,23 @@ class OAuthCallbackRequest(BaseModel):
 
 @router.get("/providers")
 async def get_available_providers():
-    """获取可用的认证提供者"""
+    """获取可用的认证提供者."""
     providers = []
-    if (
-        settings.GITHUB_CLIENT_ID
-        and settings.GITHUB_CLIENT_SECRET
-        and settings.GITHUB_REDIRECT_URI
-    ):
+    if settings.GITHUB_CLIENT_ID and settings.GITHUB_CLIENT_SECRET and settings.GITHUB_REDIRECT_URI:
         providers.append(
             {
                 "name": "github",
-                "url": f"https://github.com/login/oauth/authorize?client_id={settings.GITHUB_CLIENT_ID}&redirect_uri={settings.GITHUB_REDIRECT_URI}",
+                "url": f"https://github.com/login/oauth/authorize?"
+                f"client_id={settings.GITHUB_CLIENT_ID}&redirect_uri={settings.GITHUB_REDIRECT_URI}",
                 "client_id": settings.GITHUB_CLIENT_ID,
             }
         )
-    if (
-        settings.GOOGLE_CLIENT_ID
-        and settings.GOOGLE_CLIENT_SECRET
-        and settings.GOOGLE_REDIRECT_URI
-    ):
+    if settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET and settings.GOOGLE_REDIRECT_URI:
         providers.append(
             {
                 "name": "google",
-                "url": f"https://accounts.google.com/o/oauth2/v2/auth?client_id={settings.GOOGLE_CLIENT_ID}&redirect_uri={settings.GOOGLE_REDIRECT_URI}",
+                "url": f"https://accounts.google.com/o/oauth2/v2/auth?"
+                f"client_id={settings.GOOGLE_CLIENT_ID}&redirect_uri={settings.GOOGLE_REDIRECT_URI}",
                 "client_id": settings.GOOGLE_CLIENT_ID,
             }
         )
@@ -169,7 +158,7 @@ async def github_oauth_callback(
     request_obj: Request,
     db: Session = Depends(get_db),
 ):
-    """处理GitHub OAuth回调"""
+    """处理GitHub OAuth回调."""
     try:
         # 获取访问令牌
         access_token = auth_service.get_github_access_token(code)
@@ -183,15 +172,9 @@ async def github_oauth_callback(
         if not user:
             # 创建新用户
             user = User(
-                email=(
-                    github_user["email"]
-                    if github_user["email"]
-                    else f"{github_user['login']}@github-user.com"
-                ),
+                email=(github_user["email"] if github_user["email"] else f"{github_user['login']}@github-user.com"),
                 username=github_user["login"],
-                full_name=(
-                    github_user["name"] if github_user["name"] else github_user["login"]
-                ),
+                full_name=(github_user["name"] if github_user["name"] else github_user["login"]),
                 status=UserStatus.ACTIVE,  # GitHub用户直接激活
             )
             db.add(user)
@@ -200,17 +183,16 @@ async def github_oauth_callback(
 
         # 创建会话
         initial_data = {"registration_completed": True}
-        session_id = session_manager.create_session(
-            db, user, initial_data, request=request_obj
-        )
-        
+        session_id = session_manager.create_session(db, user, initial_data, request=request_obj)
+
         # 重定向到首页
         return RedirectResponse(
             url="/",
             status_code=status.HTTP_302_FOUND,
             headers={
                 "HX-Redirect": "/",
-                "Set-Cookie": f"{session_manager.cookie_name}={session_id}; HttpOnly; Max-Age={60 * 60 * 24 * settings.SESSION_EXPIRE_DAYS}; Path=/; SameSite=lax",
+                "Set-Cookie": f"{session_manager.cookie_name}={session_id}; "
+                f"HttpOnly; Max-Age={60 * 60 * 24 * settings.SESSION_EXPIRE_DAYS}; Path=/; SameSite=lax",
                 "HX-Refresh": "true",
             },
         )
@@ -224,14 +206,13 @@ async def github_oauth_callback(
 
 
 @router.post("/register/request-verification")
-async def request_verification(
-    request: VerificationRequest, db: Session = Depends(get_db)
-):
-    """请求发送验证码"""
+async def request_verification(request: VerificationRequest, db: Session = Depends(get_db)):
+    """请求发送验证码."""
     # 检查邮箱是否已被注册
     if db.query(User).filter(User.email == request.email).first():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="该邮箱已被注册"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="该邮箱已被注册",
         )
 
     # 生成验证码
@@ -257,7 +238,7 @@ async def verify_and_register(
     request_obj: Request,
     db: Session = Depends(get_db),
 ):
-    """验证验证码并完成注册"""
+    """验证验证码并完成注册."""
     # 验证验证码
     if not auth_service.verify_code(str(request.email), request.code):
         raise HTTPException(
@@ -279,9 +260,7 @@ async def verify_and_register(
 
     # 创建会话
     initial_data = {"registration_completed": True}
-    session_id = session_manager.create_session(
-        db, user, initial_data, request=request_obj
-    )
+    session_id = session_manager.create_session(db, user, initial_data, request=request_obj)
     response.set_cookie(
         key=session_manager.cookie_name,
         value=session_id,
@@ -300,15 +279,19 @@ async def login(
     request_obj: Request,
     db: Session = Depends(get_db),
 ):
-    """用户登录"""
+    """用户登录."""
     user = auth_service.authenticate_user(db, request.email, request.password)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="邮箱或密码错误"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="邮箱或密码错误",
         )
 
     if user.status != UserStatus.ACTIVE:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号未激活")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="账号未激活",
+        )
 
     # 更新最后登录时间
     user.last_login = datetime.now()
@@ -316,9 +299,7 @@ async def login(
 
     # 创建会话
     initial_data = {"last_login": datetime.now().isoformat()}
-    session_id = session_manager.create_session(
-        db, user, initial_data, request=request_obj
-    )
+    session_id = session_manager.create_session(db, user, initial_data, request=request_obj)
     response.set_cookie(
         key=session_manager.cookie_name,
         value=session_id,
@@ -337,7 +318,7 @@ async def logout(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """用户登出"""
+    """用户登出."""
     session_id = request.cookies.get(session_manager.cookie_name)
     if session_id:
         session_manager.delete_session(db, session_id)
@@ -350,7 +331,7 @@ async def logout(
 async def get_current_user_info(
     current_user: User = Depends(get_current_user),
 ):
-    """获取当前用户信息"""
+    """获取当前用户信息."""
     return current_user
 
 
@@ -359,7 +340,7 @@ async def get_user_sessions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """获取用户的所有活跃会话"""
+    """获取用户的所有活跃会话."""
     return session_manager.get_user_sessions(db, current_user.id)
 
 
@@ -370,16 +351,20 @@ async def delete_session(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """删除指定的会话"""
+    """删除指定的会话."""
     # 获取要删除的会话
     session = db.query(DBSession).filter(DBSession.id == session_id).first()
     if not session:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会话不存在",
+        )
 
     # 验证会话是否属于当前用户
     if session.user_id != current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="无权删除此会话"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="无权删除此会话",
         )
 
     # 如果是当前会话，同时清除cookie

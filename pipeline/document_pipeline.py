@@ -3,7 +3,6 @@ import hashlib
 import logging
 import os
 import queue
-import shutil
 import tempfile
 import threading
 import traceback
@@ -37,9 +36,9 @@ class DocumentPipeline:
         self.is_running = True
         db = next(get_db())
         # 删除之前未完成的任务
-        db.query(Document).filter(
-            Document.processing_status == ProcessingStatus.PROCESSING
-        ).update({Document.processing_status: ProcessingStatus.FAILED})
+        db.query(Document).filter(Document.processing_status == ProcessingStatus.PROCESSING).update(
+            {Document.processing_status: ProcessingStatus.FAILED}
+        )
         db.commit()
 
         # 启动守护线程处理任务
@@ -59,28 +58,21 @@ class DocumentPipeline:
         db.close()
 
     def _calculate_file_hash(self, file_data: bytes) -> str:
-        """计算文件的SHA256哈希值"""
+        """计算文件的SHA256哈希值."""
         sha256_hash = hashlib.sha256()
         sha256_hash.update(file_data)
         return sha256_hash.hexdigest()
 
     def _get_processing_config(self) -> Dict:
-        """获取当前的处理配置"""
+        """获取当前的处理配置."""
         return {
             "version": self.VERSION,
             "max_workers": self.thread_pool._max_workers,
             "timestamp": datetime.now().isoformat(),
         }
 
-    def _should_process_document(
-        self, document: Document, db: Session, force: bool = False
-    ) -> bool:
-        """
-        检查文档是否需要处理
-        :param document: Document对象
-        :param force: 是否强制处理
-        :return: 是否需要处理
-        """
+    def _should_process_document(self, document: Document, db: Session, force: bool = False) -> bool:
+        """检查文档是否需要处理 :param document: Document对象 :param force: 是否强制处理 :return: 是否需要处理."""
         if force:
             return True
         file_hash = self._calculate_file_hash(document.file_data)
@@ -124,12 +116,7 @@ class DocumentPipeline:
         document_id: int,
         force: bool = False,
     ) -> bool:
-        """
-        添加新任务到流水线
-        :param document_id: 文档ID
-        :param force: 是否强制处理
-        :return: 是否成功添加任务
-        """
+        """添加新任务到流水线 :param document_id: 文档ID :param force: 是否强制处理 :return: 是否成功添加任务."""
         db = next(get_db())
         document = db.query(Document).get(document_id)
         if not document:
@@ -147,14 +134,12 @@ class DocumentPipeline:
         db.close()
 
         # self.task_queue.put(document_id)
-        asyncio.run_coroutine_threadsafe(
-            self._process_document(document_id), self.forever_loop
-        )
+        asyncio.run_coroutine_threadsafe(self._process_document(document_id), self.forever_loop)
 
         return True
 
     def _create_processing_record(self, document: Document, db: Session):
-        """创建处理记录"""
+        """创建处理记录."""
         file_hash = self._calculate_file_hash(document.file_data)
         # 获取最新的处理记录版本号
         latest_record = (
@@ -183,7 +168,7 @@ class DocumentPipeline:
         processor_msg: Optional[str] = None,
         error_message: Optional[str] = None,
     ):
-        """更新文档状态"""
+        """更新文档状态."""
         document.processing_status = status
         document.updated_at = datetime.now()
         if error_message:
@@ -195,7 +180,7 @@ class DocumentPipeline:
         db.commit()
 
     async def _process_document(self, document_id: int):
-        """处理单个文档的流水线逻辑"""
+        """处理单个文档的流水线逻辑."""
         db = next(get_db())
         document = db.query(Document).get(document_id)
         if not document:
@@ -269,19 +254,19 @@ class DocumentPipeline:
             db.close()
 
     def _process_queue(self):
-        """守护线程：持续处理队列中的任务"""
+        """守护线程：持续处理队列中的任务."""
         asyncio.set_event_loop(self.forever_loop)
         self.forever_loop.run_forever()
 
     def shutdown(self):
-        """关闭流水线"""
+        """关闭流水线."""
         self.is_running = False
         self.thread_pool.shutdown(wait=True)
         self.daemon_thread.join(timeout=5)
         logger.info("Document Pipeline shutdown complete")
 
     async def stage_1(self, document: Document, db: Session) -> Document:
-        """预处理阶段：将文档转换为图片"""
+        """预处理阶段：将文档转换为图片."""
         logger.info(f"开始预处理文档: {document.filename}")
 
         # 使用系统临时目录
@@ -328,7 +313,7 @@ class DocumentPipeline:
         return document
 
     async def stage_2(self, document: Document, db: Session) -> Document:
-        """文本提取阶段：将图片转换为文本"""
+        """文本提取阶段：将图片转换为文本."""
         logger.info(f"开始提取文档文本: {document.filename}")
 
         # 构建图片Section
@@ -379,15 +364,13 @@ class DocumentPipeline:
             raise
 
     async def stage_3(self, document: Document, db: Session) -> Document:
-        """翻译阶段：将英文文本翻译为中文"""
+        """翻译阶段：将英文文本翻译为中文."""
         logger.info(f"开始翻译文档: {document.filename}")
 
         # 构建文本Section
         text_section = Section(
             title=document.filename,
-            pages=[
-                Page(content=page_data) for page_data in document.content_pages.values()
-            ],
+            pages=[Page(content=page_data) for page_data in document.content_pages.values()],
             file_type=FileType.TEXT,
             filename=document.filename,
         )
@@ -406,15 +389,23 @@ class DocumentPipeline:
         return document
 
     async def stage_4(self, document: Document, db: Session) -> Document:
-        """保存阶段：将处理后的内容保存到知识库"""
+        """保存阶段：将处理后的内容保存到知识库."""
         logger.info(f"开始保存文档到知识库: {document.filename}")
         if settings.GLOBAL_MODE == "public":
             namespace = "public"
         else:
             namespace = document.owner.email
 
-        pg_docs_uri = f"postgresql+asyncpg://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
-        pg_vector_uri = f"postgresql+asyncpg://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
+        pg_docs_uri = (
+            f"postgresql+asyncpg://"
+            f"{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}"
+            f"@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
+        )
+        pg_vector_uri = (
+            f"postgresql+asyncpg://"
+            f"{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@"
+            f"{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
+        )
         rag = KnowledgeBase(
             pg_docs_uri,
             pg_vector_uri,
@@ -427,7 +418,7 @@ class DocumentPipeline:
         return document
 
     def _generate_thumbnail(self, file_path: str) -> bytes:
-        """生成缩略图"""
+        """生成缩略图."""
         import io
 
         from PIL import Image
@@ -443,10 +434,7 @@ class DocumentPipeline:
 
 
 def get_document_pipeline(request: Request) -> DocumentPipeline:
-    """
-    获取或创建DocumentPipeline实例
-    这是一个FastAPI依赖函数，用于管理DocumentPipeline的生命周期
-    """
+    """获取或创建DocumentPipeline实例 这是一个FastAPI依赖函数，用于管理DocumentPipeline的生命周期."""
     if not hasattr(request.app.state, "document_pipeline"):
         request.app.state.document_pipeline = DocumentPipeline()
     return request.app.state.document_pipeline

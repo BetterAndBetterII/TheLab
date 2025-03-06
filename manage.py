@@ -7,16 +7,13 @@
 import argparse
 import logging
 import sys
-from typing import List, Optional
 
 import click
 
-from database import (Base, Document, Folder, ProcessingStatus, SessionLocal,
-                      create_rag_db, create_tables, engine)
-from models.users import User
-from pipeline.document_pipeline import get_document_pipeline
-from rag.knowledgebase import KnowledgeBase
 from config import get_settings
+from database import Document, Folder, ProcessingStatus, SessionLocal, create_rag_db, create_tables
+from models.users import User
+from rag.knowledgebase import KnowledgeBase
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def init_db() -> None:
-    """初始化数据库"""
+    """初始化数据库."""
     try:
         create_rag_db()
         create_tables()
@@ -35,7 +32,7 @@ def init_db() -> None:
 
 
 def migrate_to_sessions() -> None:
-    """迁移到新的sessions表"""
+    """迁移到新的sessions表."""
     try:
         logger.info("迁移完成")
     except Exception as e:
@@ -44,7 +41,7 @@ def migrate_to_sessions() -> None:
 
 
 def create_system_user():
-    """创建系统用户"""
+    """创建系统用户."""
     db = SessionLocal()
     try:
         # 检查是否已存在系统用户
@@ -68,15 +65,11 @@ def create_system_user():
 
 
 def create_superuser(username: str, email: str, password: str):
-    """创建超级用户"""
+    """创建超级用户."""
     db = SessionLocal()
     try:
         # 检查用户是否已存在
-        existing_user = (
-            db.query(User)
-            .filter((User.username == username) | (User.email == email))
-            .first()
-        )
+        existing_user = db.query(User).filter((User.username == username) | (User.email == email)).first()
         if existing_user:
             click.echo("用户名或邮箱已存在")
             return
@@ -97,7 +90,7 @@ def create_superuser(username: str, email: str, password: str):
 
 
 def migrate_legacy_db():
-    """迁移旧数据库"""
+    """迁移旧数据库."""
     db = SessionLocal()
     try:
         logger.info("迁移旧数据库...")
@@ -111,22 +104,16 @@ def migrate_legacy_db():
         cursor.execute("SELECT id, name, created_at, updated_at FROM api_project")
         projects = cursor.fetchall()
         # 读取 api_project_collections 表： id, project_id, collection_id
-        cursor.execute(
-            "SELECT id, project_id, collection_id FROM api_project_collections"
-        )
+        cursor.execute("SELECT id, project_id, collection_id FROM api_project_collections")
         project_collections = cursor.fetchall()
         # 读取 api_collection 表： id, name, created_at, updated_at
         cursor.execute("SELECT id, name, created_at, updated_at FROM api_collection")
         collections = cursor.fetchall()
         # 读取 api_collection_documents 表： id, collection_id, document_id
-        cursor.execute(
-            "SELECT id, collection_id, document_id FROM api_collection_documents"
-        )
+        cursor.execute("SELECT id, collection_id, document_id FROM api_collection_documents")
         collections_documents = cursor.fetchall()
         # 读取 api_document 表： id, title, linked_file_path, linked_task_id, created_at, updated_at
-        cursor.execute(
-            "SELECT id, title, linked_file_path, linked_task_id, created_at, updated_at FROM api_document"
-        )
+        cursor.execute("SELECT id, title, linked_file_path, linked_task_id, created_at, updated_at FROM api_document")
         documents = cursor.fetchall()
 
         print(documents[:10])
@@ -139,7 +126,12 @@ def migrate_legacy_db():
             project_name = project[1]
             project_created_at = project[2]
             project_updated_at = project[3]
-            print(project_id, project_name, project_created_at, project_updated_at)
+            print(
+                project_id,
+                project_name,
+                project_created_at,
+                project_updated_at,
+            )
             # 创建文件夹
             folder = Folder(
                 name=project_name,
@@ -217,12 +209,15 @@ def migrate_legacy_db():
             doc_title = doc[1]
             doc_file_path = doc[2]
             doc_uuid = doc[2].split("/")[-1]
-            doc_persist_path = os.path.join(
-                os.path.dirname(__file__), "./tmp/persist", doc_uuid
-            )
+            doc_persist_path = os.path.join(os.path.dirname(__file__), "./tmp/persist", doc_uuid)
             doc_abs_path = os.path.join(doc_persist_path, doc_title)
             doc_thumbnail_path = os.path.join(doc_persist_path, "thumbnail.png")
-            print(doc_title, doc_uuid, doc_file_path, doc_thumbnail_path)
+            print(
+                doc_title,
+                doc_uuid,
+                doc_file_path,
+                doc_thumbnail_path,
+            )
             if not doc_id in document_id_to_collection_id:
                 # 该文档已被无引用，被删除了
                 continue
@@ -245,14 +240,22 @@ def migrate_legacy_db():
             translation_pages = {}
             for i in range(en_page_length):
                 with open(
-                    os.path.join(doc_persist_path, "en", f"{doc_uuid}_index_{i}.md"),
+                    os.path.join(
+                        doc_persist_path,
+                        "en",
+                        f"{doc_uuid}_index_{i}.md",
+                    ),
                     "r",
                     encoding="utf-8",
                 ) as f:
                     content_pages[str(i)] = f.read()
             for i in range(zh_page_length):
                 with open(
-                    os.path.join(doc_persist_path, "zh", f"{doc_uuid}_index_{i}.md"),
+                    os.path.join(
+                        doc_persist_path,
+                        "zh",
+                        f"{doc_uuid}_index_{i}.md",
+                    ),
                     "r",
                     encoding="utf-8",
                 ) as f:
@@ -303,18 +306,19 @@ def migrate_legacy_db():
         if "conn" in locals():
             conn.close()
 
+
 def ingest_data():
-    """导入数据"""
+    """导入数据."""
     import asyncio
     import platform
-    
+
     async def process_documents(documents, rag):
         for document in documents:
             try:
                 await rag.upload_document(document)
             except Exception as e:
                 logger.error(f"处理文档 {document.filename} 时出错: {str(e)}")
-    
+
     async def main():
         settings = get_settings()
         if settings.GLOBAL_MODE == "public":
@@ -322,8 +326,16 @@ def ingest_data():
         else:
             raise ValueError("GLOBAL_MODE 必须为 public")
 
-        pg_docs_uri = f"postgresql+asyncpg://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
-        pg_vector_uri = f"postgresql+asyncpg://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
+        pg_docs_uri = (
+            f"postgresql+asyncpg://"
+            f"{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}"
+            f"@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
+        )
+        pg_vector_uri = (
+            f"postgresql+asyncpg://"
+            f"{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}"
+            f"@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
+        )
         rag = KnowledgeBase(
             pg_docs_uri,
             pg_vector_uri,
@@ -337,22 +349,22 @@ def ingest_data():
             logger.info("导入数据完成")
         finally:
             db.close()
-    
-    if platform.system() == 'Windows':
+
+    if platform.system() == "Windows":
         # Windows 平台特殊处理
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    
+
     asyncio.run(main())
+
 
 @click.group()
 def cli():
-    """TheLab 管理工具"""
-    pass
+    """TheLab 管理工具."""
 
 
 @cli.command()
 def initdb():
-    """初始化数据库"""
+    """初始化数据库."""
     click.echo("正在初始化数据库...")
     init_db()
     click.echo("数据库表创建完成")
@@ -363,13 +375,15 @@ def initdb():
 
 @cli.command()
 def from_legacy():
-    """迁移旧数据库"""
+    """迁移旧数据库."""
     migrate_legacy_db()
+
 
 @cli.command()
 def ingest():
-    """导入数据"""
+    """导入数据."""
     ingest_data()
+
 
 @cli.command()
 @click.option("--username", prompt="用户名", help="超级用户的用户名")
@@ -382,12 +396,12 @@ def ingest():
     help="超级用户的密码",
 )
 def createsuperuser(username, email, password):
-    """创建超级用户"""
+    """创建超级用户."""
     create_superuser(username, email, password)
 
 
 def main():
-    """主函数"""
+    """主函数."""
     parser = argparse.ArgumentParser(description="数据库管理工具")
     subparsers = parser.add_subparsers(help="可用命令")
 
@@ -404,9 +418,7 @@ def main():
     ingest_parser.set_defaults(func=ingest_data)
 
     # 迁移到sessions表命令
-    migrate_parser = subparsers.add_parser(
-        "migrate-sessions", help="迁移到新的sessions表"
-    )
+    migrate_parser = subparsers.add_parser("migrate-sessions", help="迁移到新的sessions表")
     migrate_parser.set_defaults(func=migrate_to_sessions)
 
     # 解析命令行参数

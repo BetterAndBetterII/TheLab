@@ -82,4 +82,4 @@ const DragZone: React.FC<DragZoneProps> = ({
   );
 };
 
-export default DragZone; 
+export default DragZone;

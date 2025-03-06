@@ -1,15 +1,14 @@
+import logging
+import os
 from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-import os
+from fastapi.staticfiles import StaticFiles
 
-from database import create_tables
-from routers import auth, conversations, documents, folders, forum, settings, search
-import logging
+from routers import auth, conversations, documents, folders, forum, search, settings
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -55,7 +54,12 @@ api_app.include_router(settings.router)  # 设置路由
 app.mount("/api", api_app)
 
 # 托管静态资源文件（js/css/images等）
-app.mount("/static", StaticFiles(directory="frontend/dist/static"), name="static")
+app.mount(
+    "/static",
+    StaticFiles(directory="frontend/dist/static"),
+    name="static",
+)
+
 
 # 处理所有其他路由，返回index.html
 @app.get("/{full_path:path}")
@@ -66,6 +70,7 @@ async def serve_spa(full_path: str):
         return FileResponse(static_file)
     # 否则返回 index.html 以支持客户端路由
     return FileResponse("frontend/dist/index.html")
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

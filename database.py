@@ -8,11 +8,10 @@ from datetime import datetime
 
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from sqlalchemy import (JSON, Boolean, Column, DateTime, Enum, Float,
-                        ForeignKey, Integer, LargeBinary, String, Table, Text,
+from sqlalchemy import (JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, LargeBinary, String, Table, Text,
                         create_engine, inspect, text)
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, relationship, sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker
 
 from config import get_settings
 
@@ -22,19 +21,15 @@ settings = get_settings()
 engine = create_engine(
     settings.DATABASE_URL,
     # SQLite 特定配置
-    connect_args=(
-        {"check_same_thread": False} if settings.DATABASE_TYPE == "sqlite" else {}
-    ),
+    connect_args=({"check_same_thread": False} if settings.DATABASE_TYPE == "sqlite" else {}),
     # PostgreSQL 特定配置
     pool_size=5 if settings.DATABASE_TYPE == "postgresql" else None,
-    max_overflow=10 if settings.DATABASE_TYPE == "postgresql" else None,
+    max_overflow=(10 if settings.DATABASE_TYPE == "postgresql" else None),
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-from models.forum import Reply, Topic
-from models.sessions import Session
 # 导入所有模型以确保它们在创建表时被注册
 from models.users import User
 
@@ -172,7 +167,9 @@ class Document(Base):
         order_by="ProcessingRecord.created_at.desc()",
     )
     notes = relationship(
-        "Note", back_populates="document", cascade="all, delete-orphan"
+        "Note",
+        back_populates="document",
+        cascade="all, delete-orphan",
     )
 
     # 总结历史记录，格式：{
@@ -191,19 +188,19 @@ class Document(Base):
     )
 
     def get_page_content(self, page: int) -> str:
-        """获取指定页的内容"""
+        """获取指定页的内容."""
         return self.content_pages.get(str(page), "")
 
     def get_page_summary(self, page: int) -> str:
-        """获取指定页的摘要"""
+        """获取指定页的摘要."""
         return self.summary_pages.get(str(page), "")
 
     def get_page_translation(self, page: int) -> str:
-        """获取指定页的翻译"""
+        """获取指定页的翻译."""
         return self.translation_pages.get(str(page), "")
 
     def get_page_keywords(self, page: int) -> list:
-        """获取指定页的关键词"""
+        """获取指定页的关键词."""
         return self.keywords_pages.get(str(page), [])
 
 
@@ -287,7 +284,7 @@ class Conversation(Base):
 
 
 def create_rag_db():
-    """创建RAG数据库"""
+    """创建RAG数据库."""
     if settings.DATABASE_TYPE == "postgresql":
         # 首先连接到默认的postgres数据库
         default_engine = create_engine(
@@ -298,11 +295,7 @@ def create_rag_db():
         # 创建数据库（如果不存在）
         with default_engine.connect() as conn:
             # 断开可能存在的连接
-            conn.execute(
-                text(
-                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'rag'"
-                )
-            )
+            conn.execute(text("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'rag'"))
             conn.execute(text("commit"))
 
             # 创建数据库
@@ -317,7 +310,7 @@ def create_rag_db():
 
 
 def get_rag_db():
-    """获取RAG数据库会话"""
+    """获取RAG数据库会话."""
     _, SessionLocal = create_rag_db()
     db = SessionLocal()
     try:
@@ -327,7 +320,7 @@ def get_rag_db():
 
 
 def create_tables():
-    """创建或更新所有数据库表
+    """创建或更新所有数据库表.
 
     如果表不存在则创建新表，如果表存在则更新表结构以匹配最新的模型定义。
     """
@@ -352,13 +345,13 @@ def create_tables():
                         table.create(engine)
                     else:
                         # 如果表存在，更新表结构
-                        existing_columns = {
-                            col["name"]: col
-                            for col in inspector.get_columns(table.name)
-                        }
+                        existing_columns = {col["name"]: col for col in inspector.get_columns(table.name)}
                         metadata_columns = {col.name: col for col in table.columns}
                         # 添加新列
-                        for col_name, col in metadata_columns.items():
+                        for (
+                            col_name,
+                            col,
+                        ) in metadata_columns.items():
                             if col_name not in existing_columns:
                                 print(f"添加列 {col_name}")
                                 try:
@@ -383,7 +376,7 @@ def create_tables():
 
 
 def initialize_database():
-    """初始化数据库数据"""
+    """初始化数据库数据."""
     db = SessionLocal()
     try:
         # 检查是否已存在系统用户

@@ -1,8 +1,6 @@
 # 解析图片
 import asyncio
 import logging
-import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from clients.openai_client import OpenAIClient
 from config import Settings, get_settings
@@ -15,13 +13,16 @@ settings: Settings = get_settings()
 
 
 def get_parse_markdown_system_prompt() -> str:
-    return """
-You are a markdown parser, convert images to markdown format. Format tables using markdown tables, and use $..$ or $$..$$ to wrap formulas, prevent using html tags. Replace images with as accurate descriptions as possible, and never output image links. Only ignore prescript, postscript and small icons in them at the very beginning or end of the image.
-"""
+    return (
+        "You are a markdown parser, convert images to markdown format. Format tables using markdown tables, "
+        "and use $..$ or $$..$$ to wrap formulas, prevent using html tags. "
+        "Replace images with as accurate descriptions as possible, and never output image links. "
+        "Only ignore prescript, postscript and small icons in them at the very beginning or end of the image."
+    )
 
 
 async def process_single_page(openai_client: OpenAIClient, page: Page) -> Page:
-    """处理单个页面的图片转文本"""
+    """处理单个页面的图片转文本."""
     response = await openai_client.chat_with_image(
         get_parse_markdown_system_prompt(),
         page.file_path,
@@ -33,11 +34,7 @@ async def process_single_page(openai_client: OpenAIClient, page: Page) -> Page:
 
 
 async def parse_images(section: Section, user: User) -> Section:
-    """
-    将图片Section转换为文本Section
-    :param section: 输入的图片Section
-    :return: 文本Section
-    """
+    """将图片Section转换为文本Section :param section: 输入的图片Section :return: 文本Section."""
 
     result_section = Section(
         title=section.title,

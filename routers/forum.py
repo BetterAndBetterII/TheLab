@@ -94,7 +94,7 @@ async def create_topic(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """创建新主题"""
+    """创建新主题."""
     forum_service = ForumService(db)
     return forum_service.create_topic(
         user_id=current_user.id,
@@ -113,14 +113,14 @@ async def list_topics(
     page_size: int = 10,
     db: Session = Depends(get_db),
 ):
-    """获取主题列表"""
+    """获取主题列表."""
     forum_service = ForumService(db)
     return forum_service.list_topics(category, page, page_size)
 
 
 @router.get("/topics/{topic_id}", response_model=TopicResponse)
 async def get_topic(topic_id: int, db: Session = Depends(get_db)):
-    """获取主题详情"""
+    """获取主题详情."""
     forum_service = ForumService(db)
     return forum_service.get_topic(topic_id)
 
@@ -132,7 +132,7 @@ async def update_topic(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """更新主题"""
+    """更新主题."""
     forum_service = ForumService(db)
     return forum_service.update_topic(
         topic_id=topic_id,
@@ -149,7 +149,7 @@ async def delete_topic(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """删除主题"""
+    """删除主题."""
     forum_service = ForumService(db)
     forum_service.delete_topic(topic_id, current_user.id)
     return {"message": "主题已删除"}
@@ -162,7 +162,7 @@ async def create_reply(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """创建回复"""
+    """创建回复."""
     forum_service = ForumService(db)
     return forum_service.create_reply(
         topic_id=topic_id,
@@ -181,7 +181,7 @@ async def get_topic_replies(
     page_size: int = 20,
     db: Session = Depends(get_db),
 ):
-    """获取主题的回复列表"""
+    """获取主题的回复列表."""
     forum_service = ForumService(db)
     return forum_service.get_topic_replies(topic_id, page, page_size)
 
@@ -192,7 +192,7 @@ async def trigger_agent_reply(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """手动触发Agent回复"""
+    """手动触发Agent回复."""
     forum_service = ForumService(db)
     reply = forum_service._trigger_agent_reply(topic_id)
     if not reply:
@@ -208,6 +208,6 @@ async def generate_ai_topic(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """生成AI推文"""
+    """生成AI推文."""
     forum_service = ForumService(db)
     return await forum_service.generate_ai_topic(current_user)

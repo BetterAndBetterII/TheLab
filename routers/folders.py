@@ -6,7 +6,7 @@ from datetime import datetime
 from io import BytesIO
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -61,9 +61,7 @@ async def create_folder(
         base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
     # 构建文件夹路径
     if folder_data.parentId:
-        parent = base_query_folder.filter(
-            Folder.id == int(folder_data.parentId)
-        ).first()
+        parent = base_query_folder.filter(Folder.id == int(folder_data.parentId)).first()
         if not parent:
             raise HTTPException(status_code=404, detail="父文件夹不存在")
         path = os.path.join(parent.path, folder_data.name)
@@ -79,7 +77,7 @@ async def create_folder(
     folder = Folder(
         name=folder_data.name,
         path=path,
-        parent_id=int(folder_data.parentId) if folder_data.parentId else None,
+        parent_id=(int(folder_data.parentId) if folder_data.parentId else None),
         owner_id=current_user.id,
         is_folder=True,
     )
@@ -128,10 +126,8 @@ async def list_folders(
             type="folder",
             size=0,
             lastModified=folder.updated_at,
-            owner=str(
-                db.query(User).filter(User.id == folder.owner_id).first().username
-            ),
-            parentId=str(folder.parent_id) if folder.parent_id else None,
+            owner=str(db.query(User).filter(User.id == folder.owner_id).first().username),
+            parentId=(str(folder.parent_id) if folder.parent_id else None),
             path=folder.path,
             isFolder=True,
             mimeType=None,
@@ -231,9 +227,7 @@ async def delete_folder(
         base_query_document = db.query(Document)
     else:
         base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
-        base_query_document = db.query(Document).filter(
-            Document.owner_id == current_user.id
-        )
+        base_query_document = db.query(Document).filter(Document.owner_id == current_user.id)
     if current_user.id in [1, 2]:
         base_query_folder = db.query(Folder)
         base_query_document = db.query(Document)
@@ -266,9 +260,7 @@ async def batch_delete_folders(
         base_query_document = db.query(Document)
     else:
         base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
-        base_query_document = db.query(Document).filter(
-            Document.owner_id == current_user.id
-        )
+        base_query_document = db.query(Document).filter(Document.owner_id == current_user.id)
     if current_user.id in [1, 2]:
         base_query_folder = db.query(Folder)
         base_query_document = db.query(Document)
@@ -280,13 +272,9 @@ async def batch_delete_folders(
         folder_ids.append(folder.id)
 
     # 先删除文件夹下的所有文档
-    base_query_document.filter(Document.folder_id.in_(folder_ids)).delete(
-        synchronize_session=False
-    )
+    base_query_document.filter(Document.folder_id.in_(folder_ids)).delete(synchronize_session=False)
     # 然后删除文件夹
-    base_query_folder.filter(Folder.id.in_(folder_ids)).delete(
-        synchronize_session=False
-    )
+    base_query_folder.filter(Folder.id.in_(folder_ids)).delete(synchronize_session=False)
     db.commit()
     return {"message": "文件夹已删除"}
 
@@ -332,16 +320,12 @@ async def download_folder(
         base_query_document = db.query(Document)
     else:
         base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
-        base_query_document = db.query(Document).filter(
-            Document.owner_id == current_user.id
-        )
+        base_query_document = db.query(Document).filter(Document.owner_id == current_user.id)
     folder = base_query_folder.filter(Folder.id == int(folderId)).first()
     if not folder:
         raise HTTPException(status_code=404, detail="文件夹不存在")
     # 获取文件夹下的所有文件
-    files: List[Document] = base_query_document.filter(
-        Document.folder_id == int(folderId)
-    ).all()
+    files: List[Document] = base_query_document.filter(Document.folder_id == int(folderId)).all()
 
     tmp_folder = tempfile.mkdtemp()
     for file in files:

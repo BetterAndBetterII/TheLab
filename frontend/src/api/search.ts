@@ -40,4 +40,4 @@ export const searchApi = {
       headers: getAuthHeaders(),
     });
   },
-}; 
+};

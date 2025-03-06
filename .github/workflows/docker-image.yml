@@ -30,10 +30,10 @@ jobs:
         run: |
           TAG=$(date +%Y%m%d-%H%M)
           echo "TAG=${TAG}" >> $GITHUB_ENV
-          
+
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Log in to the Container registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
@@ -51,5 +51,4 @@ jobs:
           # labels: |
           #   changelog=${{ steps.changelog.outputs.changelog }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:latest
-          cache-to: type=inline   
-
+          cache-to: type=inline

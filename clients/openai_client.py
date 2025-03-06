@@ -1,5 +1,4 @@
 import base64
-import io
 import logging
 import os
 from datetime import datetime
@@ -7,7 +6,6 @@ from typing import List, Literal
 
 import openai
 from openai.types.chat import ChatCompletionMessageParam
-from PIL import Image
 
 from clients.llm_client import LLMClient
 from database import ApiKey, get_db
@@ -24,28 +22,16 @@ class OpenAIClient(LLMClient):
         max_tokens=None,
         temperature=None,
     ):
-        """
-        初始化OpenAI客户端
-        """
+        """初始化OpenAI客户端."""
         self.api_key = api_key if api_key else os.getenv("OPENAI_API_KEY")
-        self.base_url = (
-            base_url
-            if base_url
-            else os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-        )
+        self.base_url = base_url if base_url else os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
         self.model = model if model else os.getenv("OPENAI_MODEL", "gpt-4")
         self.max_tokens = max_tokens if max_tokens else None
-        self.temperature = (
-            temperature
-            if temperature
-            else float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
-        )
+        self.temperature = temperature if temperature else float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
 
         # 获取数据库会话
         self.db = next(get_db())
-        self.api_model = (
-            self.db.query(ApiKey).filter(ApiKey.key == self.api_key).first()
-        )
+        self.api_model = self.db.query(ApiKey).filter(ApiKey.key == self.api_key).first()
 
         super().__init__(api_key, base_url)
 
@@ -61,11 +47,7 @@ class OpenAIClient(LLMClient):
         self.vision_model = self.model
 
     async def chat_with_text(self, message) -> dict:
-        """
-        纯文本对话功能
-        :param message: 用户输入的文本消息
-        :return: 模型的回复
-        """
+        """纯文本对话功能 :param message: 用户输入的文本消息 :return: 模型的回复."""
         try:
             messages = [
                 {
@@ -90,9 +72,7 @@ class OpenAIClient(LLMClient):
             return {"error": str(e)}
 
     async def test_connection(self, standard_model, advanced_model):
-        """
-        测试OpenAI连接是否有效
-        """
+        """测试OpenAI连接是否有效."""
         self.client.max_retries = 2
         response = await self.client.chat.completions.create(
             model=standard_model,
@@ -116,10 +96,7 @@ class OpenAIClient(LLMClient):
         image_data,
         image_type: Literal["base64", "path"] = "base64",
     ):
-        """
-        图片+文本对话功能，使用 messages 模式
-        注：处理完图片后，将其作为文本传递
-        """
+        """图片+文本对话功能，使用 messages 模式 注：处理完图片后，将其作为文本传递."""
         try:
             # 将不同来源的图片统一转换为 base64 URL
             if image_type == "base64":
@@ -132,9 +109,7 @@ class OpenAIClient(LLMClient):
                         # 如果包含data URI前缀，提取base64部分
                         prefix, image_data = image_data.split(",", 1)
                     # 添加padding
-                    padding = (
-                        4 - (len(image_data) % 4) if len(image_data) % 4 != 0 else 0
-                    )
+                    padding = 4 - (len(image_data) % 4) if len(image_data) % 4 != 0 else 0
                     image_data += "=" * padding
                     # 构造完整的data URI
                     image_url = f"data:image/jpeg;base64,{image_data}"
@@ -152,7 +127,10 @@ class OpenAIClient(LLMClient):
                     "role": "user",
                     "content": [
                         {"type": "text", "text": message},
-                        {"type": "image_url", "image_url": {"url": image_url}},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": image_url},
+                        },
                     ],
                 }
             ]
@@ -184,11 +162,7 @@ class OpenAIClient(LLMClient):
         self.db.commit()
 
     async def chat_stream(self, messages: List[ChatCompletionMessageParam]):
-        """
-        流式对话功能
-        :param messages: 用户输入的文本消息
-        :return: 模型的回复
-        """
+        """流式对话功能 :param messages: 用户输入的文本消息 :return: 模型的回复."""
         response = await self.client.chat.completions.create(
             model=self.text_model,
             messages=messages,
@@ -197,6 +171,6 @@ class OpenAIClient(LLMClient):
         return response
 
     def __del__(self):
-        """确保在对象被销毁时关闭数据库连接"""
+        """确保在对象被销毁时关闭数据库连接."""
         if hasattr(self, "db"):
             self.db.close()

@@ -103,7 +103,10 @@ async def create_conversation(
     return conversation
 
 
-@router.get("/documents/{document_id}", response_model=List[ConversationResponse])
+@router.get(
+    "/documents/{document_id}",
+    response_model=List[ConversationResponse],
+)
 async def list_conversations(
     document_id: int,
     db: Session = Depends(get_db),
@@ -139,7 +142,8 @@ async def get_conversation(
     conversation = (
         db.query(Conversation)
         .filter(
-            Conversation.id == conversation_id, Conversation.user_id == current_user.id
+            Conversation.id == conversation_id,
+            Conversation.user_id == current_user.id,
         )
         .first()
     )
@@ -186,7 +190,8 @@ SYSTEM_PROMPT_NOTE = """<|SYSTEM_PROMPT|>
 keyword **必须是论文原文中出现的一模一样的关键词**，不要自己造关键词，不要翻译过来。
 例子：
 <note>Coverage:Coverage is a measure of the extent to which a dataset covers the entire population.</note>
-<note>AI:Artificial Intelligence is a field of computer science that focuses on building intelligent systems that can perform tasks that typically require human-like intelligence.</note>
+<note>AI:Artificial Intelligence is a field of computer science that focuses on building intelligent systems
+that can perform tasks that typically require human-like intelligence.</note>
 <|SYSTEM_PROMPT|>
 """
 
@@ -200,12 +205,10 @@ async def chat_stream(
     add_notes: bool,
     settings: Settings,
 ) -> AsyncGenerator[str, None]:
-    """生成聊天响应流"""
+    """生成聊天响应流."""
 
     # 更新对话消息记录
-    messages[-1]["content"] = (
-        SYSTEM_PROMPT_NOTE if add_notes else SYSTEM_PROMPT
-    ) + messages[-1]["content"]
+    messages[-1]["content"] = (SYSTEM_PROMPT_NOTE if add_notes else SYSTEM_PROMPT) + messages[-1]["content"]
     new_messages = conversation.messages.copy()
     new_messages.append(
         {
@@ -323,11 +326,12 @@ async def chat(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    """聊天接口"""
+    """聊天接口."""
     c = (
         db.query(Conversation)
         .filter(
-            Conversation.id == conversation_id, Conversation.user_id == current_user.id
+            Conversation.id == conversation_id,
+            Conversation.user_id == current_user.id,
         )
         .first()
     )
@@ -361,7 +365,8 @@ async def delete_conversation(
     conversation = (
         db.query(Conversation)
         .filter(
-            Conversation.id == conversation_id, Conversation.user_id == current_user.id
+            Conversation.id == conversation_id,
+            Conversation.user_id == current_user.id,
         )
         .first()
     )
@@ -437,9 +442,7 @@ async def generate_flow_stream(
                 content += _c
                 yield f"data: {json.dumps({'content': _c})}\n\n"
 
-        flow_data = json.loads(
-            content.replace("```json", "").replace("```", "").strip()
-        )
+        flow_data = json.loads(content.replace("```json", "").replace("```", "").strip())
         history_entry = {
             "summary": flow_data,
             "created": int(datetime.now().timestamp()),
@@ -469,7 +472,7 @@ async def generate_flow(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    """生成文档总结"""
+    """生成文档总结."""
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
     else:
@@ -482,11 +485,7 @@ async def generate_flow(
             id=f"flowcmpl-{document_id}",
             object="flow.completion",
             created=int(datetime.now().timestamp()),
-            model=(
-                current_user.ai_standard_model
-                if settings.GLOBAL_LLM == "private"
-                else settings.LLM_STANDARD_MODEL
-            ),
+            model=(current_user.ai_standard_model if settings.GLOBAL_LLM == "private" else settings.LLM_STANDARD_MODEL),
             choices=[
                 {
                     "index": 0,
@@ -498,12 +497,7 @@ async def generate_flow(
                 }
             ],
         )
-    pages = "\n".join(
-        [
-            f"以下是第{int(i) + 1}页的内容: \n{page}\n"
-            for i, page in document.content_pages.items()
-        ]
-    )
+    pages = "\n".join([f"以下是第{int(i) + 1}页的内容: \n{page}\n" for i, page in document.content_pages.items()])
     full_content = f"论文标题: {document.filename} 论文内容: {pages}"
 
     # 如果请求流式响应
@@ -576,9 +570,7 @@ async def generate_quiz_stream(
         # 解析生成的测验内容并保存到历史记录
         try:
             print(content)
-            quiz_data = json.loads(
-                content.replace("```json", "").replace("```", "").strip()
-            )
+            quiz_data = json.loads(content.replace("```json", "").replace("```", "").strip())
             history_entry = {
                 "page": page_number,
                 "questions": quiz_data["questions"],
@@ -614,7 +606,7 @@ async def generate_quiz(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    """生成文档测验题"""
+    """生成文档测验题."""
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
     else:
@@ -629,20 +621,23 @@ async def generate_quiz(
         page_window = 3
         page_start = max(0, quiz_request.page_number - page_window)
         page_end = min(
-            len(document.content_pages), quiz_request.page_number + page_window
+            len(document.content_pages),
+            quiz_request.page_number + page_window,
         )
         content = "\n".join(
-            [
-                f"以下是第{i + 1}页的内容: \n{document.content_pages[str(i)]}"
-                for i in range(page_start, page_end)
-            ]
+            [f"以下是第{i + 1}页的内容: \n{document.content_pages[str(i)]}" for i in range(page_start, page_end)]
         )
 
     # 如果请求流式响应
     print("生成测验题流式响应")
     return StreamingResponse(
         generate_quiz_stream(
-            content, current_user, document, db, settings, quiz_request.page_number
+            content,
+            current_user,
+            document,
+            db,
+            settings,
+            quiz_request.page_number,
         ),
         media_type="text/event-stream",
     )
@@ -654,7 +649,7 @@ async def get_quiz_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """获取文档测验历史记录"""
+    """获取文档测验历史记录."""
     quiz_histories: QuizHistory = (
         db.query(QuizHistory)
         .filter(

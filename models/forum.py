@@ -37,9 +37,7 @@ class Topic(Base):
     )
 
     user = relationship("User", back_populates="topics")
-    replies = relationship(
-        "Reply", back_populates="topic", cascade="all, delete-orphan"
-    )
+    replies = relationship("Reply", back_populates="topic", cascade="all, delete-orphan")
 
 
 class Reply(Base):

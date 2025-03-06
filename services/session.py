@@ -1,9 +1,9 @@
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Union
+from typing import Optional
 
-from fastapi import HTTPException, Request, status, Depends
+from fastapi import Depends, HTTPException, Request, status
 from redis import Redis
 from sqlalchemy.orm import Session as DBSession
 
@@ -23,11 +23,11 @@ class SessionManager:
         self.expire_days = settings.SESSION_EXPIRE_DAYS
 
     def _generate_session_id(self) -> str:
-        """生成唯一的会话ID"""
+        """生成唯一的会话ID."""
         return str(uuid.uuid4())
 
     def _get_session_key(self, session_id: str) -> str:
-        """获取Redis中的会话键名"""
+        """获取Redis中的会话键名."""
         return f"{self.session_prefix}{session_id}"
 
     def create_session(
@@ -37,7 +37,7 @@ class SessionManager:
         initial_data: Optional[dict] = None,
         request: Optional[Request] = None,
     ) -> str:
-        """创建新会话"""
+        """创建新会话."""
         session_id = self._generate_session_id()
         session_key = self._get_session_key(session_id)
         now = datetime.now(timezone.utc)
@@ -51,7 +51,7 @@ class SessionManager:
             expires_at=expires_at,
             last_accessed_at=now,
             data=initial_data or {},
-            user_agent=request.headers.get("user-agent") if request else None,
+            user_agent=(request.headers.get("user-agent") if request else None),
             ip_address=request.client.host if request else None,
         )
         db.add(session)
@@ -60,13 +60,15 @@ class SessionManager:
         # 将数据存储到Redis用于快速访问
         session_data = session.to_dict()
         self.redis.setex(
-            session_key, timedelta(days=self.expire_days), json.dumps(session_data)
+            session_key,
+            timedelta(days=self.expire_days),
+            json.dumps(session_data),
         )
 
         return session_id
 
     def get_session(self, db: DBSession, session_id: str) -> Optional[Session]:
-        """获取会话数据，同时刷新过期时间"""
+        """获取会话数据，同时刷新过期时间."""
         session = db.query(Session).filter(Session.id == session_id).first()
 
         if not session or session.is_expired():
@@ -81,13 +83,15 @@ class SessionManager:
         # 更新Redis中的数据
         session_key = self._get_session_key(session_id)
         self.redis.setex(
-            session_key, timedelta(days=self.expire_days), json.dumps(session.to_dict())
+            session_key,
+            timedelta(days=self.expire_days),
+            json.dumps(session.to_dict()),
         )
 
         return session
 
     def update_session(self, db: DBSession, session_id: str, data: dict) -> bool:
-        """更新会话数据"""
+        """更新会话数据."""
         session = db.query(Session).filter(Session.id == session_id).first()
 
         if not session or session.is_expired():
@@ -101,13 +105,15 @@ class SessionManager:
         # 更新Redis中的数据
         session_key = self._get_session_key(session_id)
         self.redis.setex(
-            session_key, timedelta(days=self.expire_days), json.dumps(session.to_dict())
+            session_key,
+            timedelta(days=self.expire_days),
+            json.dumps(session.to_dict()),
         )
 
         return True
 
     def delete_session(self, db: DBSession, session_id: str) -> bool:
-        """删除会话"""
+        """删除会话."""
         session = db.query(Session).filter(Session.id == session_id).first()
         if session:
             db.delete(session)
@@ -118,17 +124,12 @@ class SessionManager:
         return bool(self.redis.delete(session_key))
 
     def get_user_sessions(self, db: DBSession, user_id: int) -> list[Session]:
-        """获取用户的所有有效会话"""
+        """获取用户的所有有效会话."""
         now = datetime.now(timezone.utc)
-        return (
-            db.query(Session)
-            .filter(Session.user_id == user_id)
-            .filter(Session.expires_at > now)
-            .all()
-        )
+        return db.query(Session).filter(Session.user_id == user_id).filter(Session.expires_at > now).all()
 
     def get_user_from_session(self, db: DBSession, request: Request) -> Optional[User]:
-        """从请求中获取用户信息"""
+        """从请求中获取用户信息."""
         session_id = request.cookies.get(self.cookie_name)
         if not session_id:
             return None
@@ -156,7 +157,7 @@ session_manager = SessionManager(redis_client)
 
 # 依赖函数
 async def get_current_user(request: Request, db: DBSession = Depends(get_db)) -> User:
-    """获取当前登录用户的依赖函数"""
+    """获取当前登录用户的依赖函数."""
     user = session_manager.get_user_from_session(db, request)
     if not user:
         raise HTTPException(

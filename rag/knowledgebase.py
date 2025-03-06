@@ -5,28 +5,21 @@ import traceback
 from concurrent.futures.thread import ThreadPoolExecutor
 
 import dotenv
-from llama_index.core import (Document, PromptTemplate, QueryBundle,
-                              StorageContext, VectorStoreIndex)
-from llama_index.core.extractors import (KeywordExtractor,
-                                         QuestionsAnsweredExtractor)
+from llama_index.core import Document, PromptTemplate, QueryBundle, StorageContext, VectorStoreIndex
+from llama_index.core.extractors import KeywordExtractor
 from llama_index.core.indices.vector_store import VectorIndexRetriever
 from llama_index.core.ingestion import IngestionPipeline
-from llama_index.core.node_parser import (SentenceSplitter,
-                                          SentenceWindowNodeParser)
-from llama_index.core.postprocessor import (MetadataReplacementPostProcessor,
-                                            SimilarityPostprocessor)
+from llama_index.core.node_parser import SentenceSplitter, SentenceWindowNodeParser
+from llama_index.core.postprocessor import MetadataReplacementPostProcessor, SimilarityPostprocessor
 from llama_index.core.schema import NodeWithScore
 from llama_index.core.settings import Settings
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
 from llama_index.embeddings.siliconflow import SiliconFlowEmbedding
-from llama_index.llms.openai import OpenAI
 from llama_index.llms.openai_like import OpenAILike
-from llama_index.llms.siliconflow import SiliconFlow
 from llama_index.postprocessor.siliconflow_rerank import SiliconFlowRerank
 from llama_index.storage.docstore.postgres import PostgresDocumentStore
 from llama_index.vector_stores.postgres import PGVectorStore
 from pydantic import BaseModel
-from tqdm import tqdm
 
 from database import Document as DBDocument
 
@@ -127,9 +120,7 @@ class KnowledgeBase:
     # text: str：用户提供的文本内容，通常为需要存储和处理的文档。
     # doc_id: str：文档的唯一标识符，用于将文档存储到数据库中并便于后续检索。
     async def upload_text(self, text: str, doc_id: str, metadata: dict = None):
-        """
-        处理用户手动输入的纯文本并存储为文档
-        """
+        """处理用户手动输入的纯文本并存储为文档."""
         # 如果没有提供元数据，使用默认值
         if metadata is None:
             metadata = {"source": "manual_input"}
@@ -142,9 +133,7 @@ class KnowledgeBase:
         return doc_id
 
     async def upload_document(self, document: DBDocument):
-        """
-        上传文档并存储到数据库
-        """
+        """上传文档并存储到数据库."""
         # 将分页内容拼接为完整的文本
         text = f"{document.content_pages}\n{document.translation_pages}\n{document.keywords_pages}"
         # 生成文档ID
@@ -172,9 +161,7 @@ class KnowledgeBase:
         return doc_id
 
     async def upload_files(self, file_paths: list[str]):
-        """
-        上传文件并存储到数据库
-        """
+        """上传文件并存储到数据库."""
         docs = []
         for file_path in file_paths[:50]:
             print(f"Ingesting file: {file_path}")
@@ -183,14 +170,16 @@ class KnowledgeBase:
                 print(f"Text length: {len(text)}")
                 doc_id = f"web_{os.path.basename(file_path)}_{hashlib.md5(text.encode()).hexdigest()}"
                 docs.append(
-                    Document(text=text, id_=doc_id, metadata={"source": "web_input"})
+                    Document(
+                        text=text,
+                        id_=doc_id,
+                        metadata={"source": "web_input"},
+                    )
                 )
         await self.pipeline.arun(documents=docs)
 
     async def list_documents(self):
-        """
-        列出所有已上传的文档
-        """
+        """列出所有已上传的文档."""
         all_docs = self.doc_store.docs
         return [
             {
@@ -202,9 +191,7 @@ class KnowledgeBase:
         ]
 
     async def query_documents(self, doc_ids: list[str]):
-        """
-        查询文档
-        """
+        """查询文档."""
         docs = []
         for doc_id in doc_ids:
             doc = await self.doc_store.aget_document(doc_id)
@@ -212,32 +199,23 @@ class KnowledgeBase:
         return docs
 
     async def remove_document_by_id(self, doc_id: str | list[str]):
-        """
-        删除指定文档
-        """
+        """删除指定文档."""
         if isinstance(doc_id, str):
-            await self.index.adelete_ref_doc(
-                ref_doc_id=doc_id, delete_from_docstore=True
-            )
+            await self.index.adelete_ref_doc(ref_doc_id=doc_id, delete_from_docstore=True)
             await self.doc_store.adelete_document(doc_id)
         else:
             for id_ in doc_id:
-                await self.index.adelete_ref_doc(
-                    ref_doc_id=id_, delete_from_docstore=True
-                )
+                await self.index.adelete_ref_doc(ref_doc_id=id_, delete_from_docstore=True)
                 await self.doc_store.adelete_document(id_)
 
     async def remove_all_documents(self, num_workers: int = 5):
-        """
-        删除所有文档
-        """
+        """删除所有文档."""
         all_docs = self.doc_store.docs
         loop = asyncio.get_event_loop()
         if num_workers and num_workers > 1:
             with ThreadPoolExecutor(max_workers=num_workers) as executor:
                 doc_batches = [
-                    list(all_docs.keys())[i : i + num_workers]
-                    for i in range(0, len(all_docs.keys()), num_workers)
+                    list(all_docs.keys())[i : i + num_workers] for i in range(0, len(all_docs.keys()), num_workers)
                 ]
                 tasks = [
                     loop.run_in_executor(
@@ -289,9 +267,7 @@ class KnowledgeBase:
         nodes = postprocessor.postprocess_nodes(nodes)
         if rerank:
             nodes = reranker.postprocess_nodes(nodes, qb)
-            nodes = SimilarityPostprocessor(similarity_cutoff=0.6).postprocess_nodes(
-                nodes
-            )
+            nodes = SimilarityPostprocessor(similarity_cutoff=0.6).postprocess_nodes(nodes)
         return nodes
 
     async def rerank(
@@ -308,20 +284,17 @@ class KnowledgeBase:
             top_n=top_k,
         )
         nodes = reranker.postprocess_nodes(nodes, qb)
-        nodes = SimilarityPostprocessor(similarity_cutoff=cutoff).postprocess_nodes(
-            nodes
-        )
+        nodes = SimilarityPostprocessor(similarity_cutoff=cutoff).postprocess_nodes(nodes)
         return nodes
 
     # query 查询指令
     # 指定相似性检索的 top_k 值（即返回的最相似文档数量）
     async def query_with_context(self, query: str, top_k: int = 5):
-        """
-        查询时包含上下文信息
-        """
+        """查询时包含上下文信息."""
 
         custom_prompt_str = (
-            "Context information is below. Ensure that the answer is based on the provided context. Provide relevant valid links.\n"
+            "Context information is below. Ensure that the answer is based on the provided context. "
+            "Provide relevant valid links.\n"
             "---------------------\n"
             "{context_str}\n"
             "---------------------\n"
@@ -337,9 +310,7 @@ class KnowledgeBase:
         combined_query = f"{context} user: {query}" if context else query
 
         # 查询引擎调用
-        query_engine = self.index.as_query_engine(
-            similarity_top_k=top_k, text_qa_template=custom_prompt
-        )
+        query_engine = self.index.as_query_engine(similarity_top_k=top_k, text_qa_template=custom_prompt)
         response = await query_engine.aquery(QueryBundle(combined_query))
 
         # 更新历史记录
@@ -348,13 +319,16 @@ class KnowledgeBase:
         return {
             "response": response.response,
             "sources": [
-                {"text": node.node.text, "metadata": node.node.metadata}
+                {
+                    "text": node.node.text,
+                    "metadata": node.node.metadata,
+                }
                 for node in response.source_nodes
             ],
         }
 
     def reset_history(self):
-        """重置对话历史"""
+        """重置对话历史."""
         self.history = []
 
 
@@ -370,9 +344,7 @@ class QueryResponse(BaseModel):
 
 
 async def query_documents(rag, request: QueryRequest):
-    """
-    查询接口：检索数据库中文档并生成回答
-    """
+    """查询接口：检索数据库中文档并生成回答."""
     try:
         result = await rag.query_with_context(query=request.query, top_k=request.top_k)
         return QueryResponse(response=result["response"], sources=result["sources"])
@@ -382,9 +354,7 @@ async def query_documents(rag, request: QueryRequest):
 
 
 async def upload_text_to_rag(rag, text: str):
-    """
-    上传纯文本并存储到数据库
-    """
+    """上传纯文本并存储到数据库."""
     try:
         doc_id = f"manual_{hash(text)}"
         await rag.upload_text(text=text, doc_id=doc_id)

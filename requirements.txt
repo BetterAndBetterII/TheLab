@@ -1,13 +1,25 @@
 aiosqlite==0.19.0       # SQLite异步驱动
 alembic==1.12.1
+bcrypt==4.0.1
 
 # 任务队列
 celery==5.3.6
+click
 fastapi==0.104.1
 flower==2.0.1  # Celery监控工具
 google.generativeai~=0.8.3
+
+llama-index-core==0.12.22
+llama-index-embeddings-siliconflow
+llama-index-llms-openai-like
+llama-index-llms-siliconflow
+llama-index-storage-docstore-postgres
+llama-index-vector-stores-postgres
+llama_index-postprocessor-siliconflow_rerank
 openai==1.65.2
 passlib[bcrypt]==1.7.4
+passlib[bcrypt]==1.7.4
+pdf2image~=1.17.0
 
 # AI和图像处理
 pillow~=11.0.0
@@ -16,23 +28,11 @@ pillow~=11.0.0
 psycopg2-binary==2.9.9  # PostgreSQL驱动
 pydantic==2.8.0
 pydantic-settings==2.1.0
+
+pydantic[email]==2.8.0
 python-dotenv==1.0.1
 python-jose[cryptography]==3.4.0
 python-multipart==0.0.19
 redis==5.0.1
 sqlalchemy==2.0.23
 uvicorn==0.24.0
-
-pydantic[email]==2.8.0
-bcrypt==4.0.1
-passlib[bcrypt]==1.7.4
-click
-pdf2image~=1.17.0
-
-llama-index-core==0.12.22
-llama-index-vector-stores-postgres
-llama-index-storage-docstore-postgres
-llama-index-llms-siliconflow
-llama-index-llms-openai-like
-llama-index-embeddings-siliconflow
-llama_index-postprocessor-siliconflow_rerank
