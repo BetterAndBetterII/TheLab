@@ -214,7 +214,7 @@ async def github_oauth_callback(
         response.headers["HX-Redirect"] = "/"
 
         # 重定向到首页
-        return response
+        return RedirectResponse(url="/")
     except HTTPException as e:
         raise e
     except Exception as e:
