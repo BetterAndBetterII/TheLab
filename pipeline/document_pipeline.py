@@ -97,6 +97,10 @@ class DocumentPipeline:
         # 如果存在相同哈希值的处理记录，则不处理
         if existing_record:
             existing_document = existing_record.document
+            if not existing_document:
+                db.delete(existing_record)
+                db.commit()
+                return True
             # 复制处理记录
             document.processing_status = existing_document.processing_status
             document.processor = existing_document.processor

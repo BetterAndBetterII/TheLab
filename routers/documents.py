@@ -424,6 +424,11 @@ async def delete_file(
     document = base_query.filter(Document.id == int(fileId)).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
+    processing_record = db.query(ProcessingRecord).filter(
+        ProcessingRecord.document_id == int(fileId)
+    ).first()
+    if processing_record:
+        db.delete(processing_record)
 
     db.delete(document)
     db.commit()
