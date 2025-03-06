@@ -33,6 +33,9 @@ RUN pnpm run build
 # 最终运行层
 FROM base AS runner
 
+# 北京时间
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
 # 设置工作目录
 WORKDIR /app
 
