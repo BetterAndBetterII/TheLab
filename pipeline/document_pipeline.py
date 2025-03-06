@@ -293,6 +293,12 @@ class DocumentPipeline:
         logger.debug(f"开始使用DocsIngester处理文档")
         ingester = DocsIngester()
         section = ingester.process_document(temp_file, document.filename)
+        # temp_file 存储到数据库
+        with open(temp_file, "rb") as f:
+            document.file_data = f.read()
+            document.mime_type = "application/pdf"
+            document.content_type = "application/pdf"
+            document.file_size = len(document.file_data)
         logger.debug(f"DocsIngester处理完成，共 {len(section.pages)} 页")
 
         # 更新文档状态

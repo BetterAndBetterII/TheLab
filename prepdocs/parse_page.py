@@ -73,6 +73,8 @@ class DocsIngester:
             # 对于 docx 和 pptx，先转换为 PDF
             pdf_path = self._convert_to_pdf_with_libreoffice(str(file_path))
             image_paths = self._process_pdf(Path(pdf_path))
+            # 将转换后的 PDF 移动到原始文件位置
+            shutil.move(pdf_path, file_path)
 
         # 将图片路径转换为Page对象列表
         pages = [Page(file_path=path) for path in image_paths]
