@@ -549,6 +549,12 @@ async def batch_delete_files(
         conversation.documents = [doc for doc in conversation.documents if doc.id not in file_ids]
     db.commit()
 
+    # 删除笔记
+    db.query(Note).filter(Note.document_id.in_(file_ids)).delete(synchronize_session=False)
+
+    # 删除笔记
+    db.query(QuizHistory).filter(QuizHistory.document_id.in_(file_ids)).delete(synchronize_session=False)
+
     # 然后删除文档
     db.query(Document).filter(Document.id.in_(file_ids)).delete(synchronize_session=False)
     db.commit()
