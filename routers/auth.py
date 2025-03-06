@@ -203,18 +203,17 @@ async def github_oauth_callback(
         session_id = session_manager.create_session(
             db, user, initial_data, request=request_obj
         )
-        response.set_cookie(
-            key=session_manager.cookie_name,
-            value=session_id,
-            httponly=True,
-            max_age=60 * 60 * 24 * settings.SESSION_EXPIRE_DAYS,
-            samesite="lax",
-        )
-        response.status_code = status.HTTP_302_FOUND
-        response.headers["HX-Redirect"] = "/"
-
+        
         # 重定向到首页
-        return RedirectResponse(url="/")
+        return RedirectResponse(
+            url="/",
+            status_code=status.HTTP_302_FOUND,
+            headers={
+                "HX-Redirect": "/",
+                "Set-Cookie": f"{session_manager.cookie_name}={session_id}; HttpOnly; Max-Age={60 * 60 * 24 * settings.SESSION_EXPIRE_DAYS}; Path=/; SameSite=lax",
+                "HX-Refresh": "true",
+            },
+        )
     except HTTPException as e:
         raise e
     except Exception as e:
