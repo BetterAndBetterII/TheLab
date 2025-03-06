@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from config import Settings, get_settings
-from database import Document, DocumentReadRecord, Folder, Note, ProcessingRecord, ProcessingStatus, get_db
+from database import Conversation, Document, DocumentReadRecord, Folder, Note, ProcessingRecord, ProcessingStatus, QuizHistory, get_db
 from models.users import User
 from pipeline.document_pipeline import DocumentPipeline, get_document_pipeline
 from services.session import get_current_user
@@ -419,6 +419,18 @@ async def delete_file(
     processing_record = db.query(ProcessingRecord).filter(ProcessingRecord.document_id == int(fileId)).first()
     if processing_record:
         db.delete(processing_record)
+
+    conversation = db.query(Conversation).filter(Conversation.documents.any(Document.id == int(fileId))).all()
+    for c in conversation:
+        db.delete(c)
+
+    note = db.query(Note).filter(Note.document_id == int(fileId)).all()
+    for n in note:
+        db.delete(n)
+
+    quiz_history = db.query(QuizHistory).filter(QuizHistory.document_id == int(fileId)).all()
+    for q in quiz_history:
+        db.delete(q)
 
     db.delete(document)
     db.commit()
