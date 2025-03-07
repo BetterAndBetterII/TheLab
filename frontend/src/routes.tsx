@@ -36,6 +36,14 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
+        path="/files/*"
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/search"
         element={
           <ProtectedRoute>

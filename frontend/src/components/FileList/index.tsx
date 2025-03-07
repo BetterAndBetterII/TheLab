@@ -3,7 +3,7 @@ import styles from './FileList.module.css';
 import Loading from '../Loading';
 import { fileApi, type FileItem, type FolderTree } from '../../api';
 import DragZone from './DragZone';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface FileOperation {
   type: 'rename' | 'move' | 'upload';
@@ -64,7 +64,6 @@ const FileList: React.FC<FileListProps> = ({
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
-  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [folderPath, setFolderPath] = useState<FileItem[]>([]);
   const [sortBy, setSortBy] = useState<'name' | 'date'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -74,12 +73,24 @@ const FileList: React.FC<FileListProps> = ({
   const fileListRef = useRef<HTMLDivElement>(null);
   const [folderTree, setFolderTree] = useState<FolderTree[]>([]);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // 从URL路径获取当前文件夹ID
+  const getCurrentFolderId = () => {
+    const path = location.pathname;
+    if (!path.startsWith('/files/')) {
+      return null;
+    }
+    const segments = path.split('/');
+    return segments[segments.length - 1] || null;
+  };
 
   useEffect(() => {
     setSelectedFiles(new Set());
-    fetchFiles();
+    const currentFolder = getCurrentFolderId();
+    fetchFiles(currentFolder);
     fileApi.getFolderTree().then(setFolderTree);
-  }, [currentFolder]);
+  }, [location.pathname]);
 
   useEffect(() => {
     const fetchFolderTree = async () => {
@@ -117,14 +128,14 @@ const FileList: React.FC<FileListProps> = ({
     }));
   };
 
-  const fetchFiles = async () => {
+  const fetchFiles = async (folderId: string | null) => {
     try {
       setLoading(true);
-      const response = await fileApi.getFiles(currentFolder);
+      const response = await fileApi.getFiles(folderId);
       setFiles(response);
 
-      if (currentFolder) {
-        const folderDetails = await fileApi.getFolderDetails(currentFolder);
+      if (folderId) {
+        const folderDetails = await fileApi.getFolderDetails(folderId);
         const pathItems: FileItem[] = [folderDetails];
         let currentItem = folderDetails;
 
@@ -138,7 +149,7 @@ const FileList: React.FC<FileListProps> = ({
         setFolderPath([]);
       }
 
-      onFolderChange?.(currentFolder);
+      onFolderChange?.(folderId);
     } catch (error) {
       console.error('Error fetching files:', error);
     } finally {
@@ -176,9 +187,9 @@ const FileList: React.FC<FileListProps> = ({
     try {
       setLoading(true);
       for (let i = 0; i < files.length; i++) {
-        await fileApi.uploadFile(files[i], currentFolder);
+        await fileApi.uploadFile(files[i], getCurrentFolderId());
       }
-      fetchFiles();
+      fetchFiles(getCurrentFolderId());
       setOperation(null);
       (window as any).toast.success('上传文件成功');
     } catch (error) {
@@ -194,10 +205,10 @@ const FileList: React.FC<FileListProps> = ({
 
     try {
       setLoading(true);
-      await fileApi.createFolder(newFolderName, currentFolder);
+      await fileApi.createFolder(newFolderName, getCurrentFolderId());
       setNewFolderName('');
       setShowNewFolderDialog(false);
-      fetchFiles();
+      fetchFiles(getCurrentFolderId());
       (window as any).toast.success('文件夹创建成功');
     } catch (error) {
       console.error('Error creating folder:', error);
@@ -229,7 +240,7 @@ const FileList: React.FC<FileListProps> = ({
         ].filter(Boolean));
 
         setSelectedFiles(new Set());
-        fetchFiles();
+        fetchFiles(getCurrentFolderId());
         (window as any).toast.success('删除成功');
       } catch (error) {
         console.error('Error deleting files:', error);
@@ -253,7 +264,7 @@ const FileList: React.FC<FileListProps> = ({
       );
       setSelectedFiles(new Set());
       setOperation(null);
-      fetchFiles();
+      fetchFiles(targetFolderId);
       (window as any).toast.success('移动成功');
     } catch (error) {
       console.error('Error moving files:', error);
@@ -268,7 +279,7 @@ const FileList: React.FC<FileListProps> = ({
       setLoading(true);
       await fileApi.renameFile(fileId, { newName });
       setOperation(null);
-      fetchFiles();
+      fetchFiles(getCurrentFolderId());
       (window as any).toast.success('重命名成功');
     } catch (error) {
       console.error('Error renaming file:', error);
@@ -448,13 +459,36 @@ const FileList: React.FC<FileListProps> = ({
     try {
       setLoading(true);
       await fileApi.retryProcessing(fileId);
-      fetchFiles();
+      fetchFiles(getCurrentFolderId());
       (window as any).toast.success('已重新开始处理文件');
     } catch (error) {
       console.error('Error retrying file processing:', error);
       (window as any).toast.error('重试处理失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 修改文件夹导航相关函数
+  const navigateToFolder = (folderId: string | null) => {
+    if (folderId === null) {
+      navigate('/files');
+    } else {
+      navigate(`/files/${folderId}`);
+    }
+  };
+
+  // 修改面包屑导航点击处理
+  const handleBreadcrumbClick = (folderId: string | null) => {
+    navigateToFolder(folderId);
+  };
+
+  // 修改文件夹双击处理
+  const handleFileDoubleClick = (file: FileItem) => {
+    if (file.isFolder) {
+      navigateToFolder(file.id);
+    } else {
+      navigate(`/chat/${file.id}`);
     }
   };
 
@@ -511,7 +545,7 @@ const FileList: React.FC<FileListProps> = ({
       <div className={styles.breadcrumb}>
         <span
           className={styles.breadcrumbItem}
-          onClick={() => setCurrentFolder(null)}
+          onClick={() => handleBreadcrumbClick(null)}
         >
           根目录
         </span>
@@ -520,7 +554,7 @@ const FileList: React.FC<FileListProps> = ({
             <span className={styles.breadcrumbSeparator}>/</span>
             <span
               className={styles.breadcrumbItem}
-              onClick={() => setCurrentFolder(folder.id)}
+              onClick={() => handleBreadcrumbClick(folder.id)}
             >
               {folder.name}
             </span>
@@ -558,17 +592,10 @@ const FileList: React.FC<FileListProps> = ({
                 selectedFiles.has(getItemKey({ id: file.id, type: file.isFolder ? 'folder' : 'file' })) ? styles.fileItemActive : ''
               }`}
               onClick={(e) => {
-                e.stopPropagation(); // 阻止事件冒泡
+                e.stopPropagation();
                 handleFileSelect(file, e);
               }}
-              onDoubleClick={() => {
-                if (file.isFolder) {
-                  setCurrentFolder(file.id);
-                } else {
-                  // handleDownload(file.id);
-                  navigate(`/chat/${file.id}`);
-                }
-              }}
+              onDoubleClick={() => handleFileDoubleClick(file)}
             >
               <div className={styles.fileIcon}>
                 {getFileIcon(file)}
@@ -690,7 +717,7 @@ const FileList: React.FC<FileListProps> = ({
             <h3>移动到</h3>
             <div className={styles.folderList}>
               <div
-                className={`${styles.folderTreeItem} ${currentFolder === null ? styles.folderTreeItemSelected : ''}`}
+                className={`${styles.folderTreeItem} ${getCurrentFolderId() === null ? styles.folderTreeItemSelected : ''}`}
                 onClick={() => handleMove(null)}
               >
                 <span className={styles.folderIcon}>📁</span>
