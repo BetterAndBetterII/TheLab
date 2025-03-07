@@ -32,8 +32,6 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# 导入所有模型以确保它们在创建表时被注册
-from models.users import User
 
 
 class ProcessingStatus(enum.Enum):
@@ -181,6 +179,9 @@ class Document(Base):
     flow_history = Column(JSON, default=list)
     # 测验历史记录，格式：[{"page": 1, "questions": [...], "created_at": "2024-03-21T10:00:00"}]
     # quiz_history = Column(JSON, default=list)
+
+    # 思维导图
+    mindmap = Column(JSON, default=dict)
 
     # 测验历史记录
     quiz_history = relationship(
@@ -379,6 +380,8 @@ def create_tables():
 
 def initialize_database():
     """初始化数据库数据."""
+    from models.users import User  # 添加 User 模型的导入
+
     db = SessionLocal()
     try:
         # 检查是否已存在系统用户

@@ -146,4 +146,13 @@ export const conversationApi = {
 
     return response.json();
   },
+
+  // 获取思维导图
+  getMindmap: async (documentId: string, retry?: boolean): Promise<{
+    mindmap: string;
+  }> => {
+    return handleRequest(`${BASE_URL}/conversations/mindmap/${documentId}?retry=${retry}`, {
+      headers: getAuthHeaders(),
+    });
+  },
 };

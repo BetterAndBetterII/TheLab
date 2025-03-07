@@ -658,13 +658,9 @@
   transform: translateX(-50%) translateY(0);
 }
 
-/* 显示按钮 */
-.showInputButton {
+.fixedButton {
   position: fixed;
-  left: 20px;
-  bottom: 20px;
-  width: 45px;
-  height: 45px;
+  z-index: 1000;
   border-radius: 50%;
   background: #1976d2;
   color: white;
@@ -675,12 +671,49 @@
   justify-content: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease;
-  z-index: 1000;
+  font-size: 20px;
+  text-align: center;
+  line-height: 1;
+  padding: 0;
 }
 
-.showInputButton:hover {
-  transform: scale(1.05);
+.mindmapButtonText {
+  line-height: 1;
+  padding-bottom: 4px;
+}
+
+.mindmapButtonTextLoading {
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fixedButton:hover {
+  transform: scale(1.05) translateY(-5px);
   background: #1565c0;
+}
+
+/* 显示按钮 */
+.showInputButton {
+  left: 20px;
+  bottom: 20px;
+  width: 45px;
+  height: 45px;
+}
+
+.showMindmapButton {
+  left: 80px;
+  bottom: 20px;
+  width: 45px;
+  height: 45px;
 }
 
 .loadingContainer {
@@ -719,4 +752,178 @@
 
 .errorContainer button:hover {
   background-color: #1565c0;
+}
+
+.mindmapModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.mindmapModalContent {
+  background-color: white;
+  border-radius: 8px;
+  width: 90vw;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.mindmapModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #eee;
+  gap: 12px;
+}
+
+.mindmapModalHeader h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+  flex: 1;
+}
+
+.modalActions {
+  display: flex;
+  gap: 12px;
+  flex-direction: row;
+}
+
+.exportButton,
+.regenerateButton,
+.closeButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.exportButton {
+  background: #1976d2;
+  color: white;
+}
+
+.exportButton:hover {
+  background: #1565c0;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.regenerateButton {
+  background: #4caf50;
+  color: white;
+}
+
+.regenerateButton:hover:not(:disabled) {
+  background: #43a047;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.regenerateButton:disabled {
+  background: #9e9e9e;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.closeButton {
+  background: #f5f5f5;
+  color: #666;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.closeButton:hover {
+  background: #e0e0e0;
+  color: #333;
+  transform: translateY(-1px);
+}
+
+.exportButton svg,
+.regenerateButton svg,
+.closeButton svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 添加按钮点击效果 */
+.exportButton:active,
+.regenerateButton:active,
+.closeButton:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.mindmapContainer {
+  flex: 1;
+  overflow: hidden;
+  --text-color: #333;
+  --background-color: #fff;
+}
+
+.mindmap {
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+}
+
+.mindmapContainer:hover .mindMapControls,
+.fullscreenmindmapContainer:hover .mindMapControls {
+    opacity: 1;
+}
+
+
+
+/* 思维导图节点样式 */
+.mindmapContainer :global(.markmap-node) {
+    color: var(--text-color);
+    font-size: 18px;
+    font-weight: 400;
+    position: relative;
+    text-decoration: none;
+}
+
+.mindmapContainer :global(.markmap-node) line {
+    stroke: rgba(25, 118, 210, 0.4);
+}
+
+.mindmapContainer :global(.markmap-fold) circle {
+    transition: transform 0.3s ease;
+    fill: rgba(25, 118, 210, 1);
+}
+
+.mindmapContainer :global(.markmap-node) circle {
+    transition: transform 0.3s ease;
+    stroke: rgba(25, 118, 210, 1);
+}
+
+.mindmapContainer :global(.markmap-node-line) {
+    stroke: rgba(25, 118, 210, 0.6);
+    transition: stroke-width 0.3s ease;
+}
+
+.mindmapContainer :global(.markmap-link) {
+    stroke: rgba(25, 118, 210, 0.4);
+    transition: stroke-width 0.3s ease;
+}
+
+/* 悬停效果 */
+.mindmapContainer :global(.markmap-node:hover) {
+    color: rgba(25, 118, 210, 1);
 }

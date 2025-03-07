@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, MutableRefObject } from 'react';
 import { Viewer, Worker } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import { searchPlugin, RenderHighlightsProps as SearchRenderHighlightsProps, OnHighlightKeyword } from '@react-pdf-viewer/search';
@@ -12,7 +12,9 @@ import {
   RenderHighlightTargetProps,
   RenderHighlightsProps,
 } from '@react-pdf-viewer/highlight';
-import { IoMdSend, IoMdChatboxes } from 'react-icons/io';
+import { Transformer } from 'markmap-lib';
+import { Markmap } from 'markmap-view';
+import { IoMdSend, IoMdChatboxes, IoMdDownload, IoMdRefresh, IoMdClose } from 'react-icons/io';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -45,6 +47,10 @@ import NotesPanel, { Note } from './NotesPanel';
 type TabType = 'notes' | 'summary' | 'chat' | 'flow' | 'quiz';
 
 type ModelType = 'standard' | 'advanced';
+
+interface MindmapData {
+  mindmap: string;
+}
 
 interface PDFReaderProps {
   pdfUrl: string;
@@ -81,6 +87,11 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const [quizHistory, setQuizHistory] = useState<QuizData[]>([]);
   const [currentModel, setCurrentModel] = useState<ModelType>('standard');
   const [addNotes, setAddNotes] = useState(false);
+
+  const [mindmapData, setMindmapData] = useState<MindmapData | null>(null);
+  const [showMindmap, setShowMindmap] = useState<boolean>(false);
+  const [mindmapLoading, setMindmapLoading] = useState<boolean>(false);
+
   const recordingNotes = useRef<Map<string, string>>(new Map());  // 记录笔记的关键词
 
   const pdfContainerRef = useRef<HTMLDivElement>(null);
@@ -88,6 +99,8 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const chatInputContainerRef = useRef<HTMLDivElement>(null);
+  const mindmapRef = useRef<SVGSVGElement>(null);
+  const markmapRef = useRef<Markmap | null>(null) as MutableRefObject<Markmap | null>;
 
   // 加载笔记
   const loadNotes = useCallback(async () => {
@@ -246,6 +259,145 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       resizer.removeEventListener('mousedown', handleMouseDown);
     };
   }, []);
+
+  useEffect(() => {
+    if (mindmapData && showMindmap) {
+      console.log(mindmapData);
+      // 使用 markmap 渲染思维导图
+      if (mindmapRef.current) {
+        const transformer = new Transformer();
+        const { root } = transformer.transform(mindmapData.mindmap);
+        if (markmapRef.current) {
+          markmapRef.current.destroy();
+        }
+        markmapRef.current = Markmap.create(mindmapRef.current, undefined, root);
+        markmapRef.current.fit();
+      }
+    }
+  }, [showMindmap, mindmapData]);
+
+  const handleMindmapClick = async (retry=false) => {
+    if (!documentId) return;
+    setMindmapLoading(false);
+    if (mindmapData) {
+      setShowMindmap(true);
+      return;
+    }
+    setMindmapLoading(true);
+    try {
+      // 获取所有页面的内容
+      const mindmapData = await conversationApi.getMindmap(documentId, retry);
+
+      if (mindmapData) {
+        setMindmapData(mindmapData);
+        setShowMindmap(true);
+      } else {
+        throw new Error('重新生成思维导图失败');
+      }
+    } catch (error: any) {
+      if (error.message === 'No permission') {
+        setMindmapData({
+          mindmap: "# 抱歉，您没有权限使用此功能。"
+        });
+        setShowMindmap(true);
+      }
+      console.error('获取思维导图出错:', error);
+    } finally {
+      setMindmapLoading(false);
+    }
+  };
+
+  const handleRegenerateMindmap = async (retry=false) => {
+    setMindmapLoading(true);
+    try {
+      const mindmapData = await conversationApi.getMindmap(documentId, retry);
+
+      if (mindmapData) {
+        setMindmapData(mindmapData);
+      } else {
+        console.error('重新生成思维导图失败');
+        throw new Error('重新生成思维导图失败');
+      }
+    } catch (error: any) {
+      if (error.message === 'No permission') {
+        setMindmapData({
+          mindmap: "# 抱歉，您没有权限使用此功能。"
+        });
+        setShowMindmap(true);
+        return;
+      }
+      console.error('重新生成思维导图出错:', error);
+    } finally {
+      setMindmapLoading(false);
+    }
+  };
+
+  const closeMindmap = () => {
+    setShowMindmap(false);
+    if (markmapRef.current) {
+      markmapRef.current.destroy();
+    }
+  };
+
+  const handleExportImage = () => {
+    if (!mindmapRef.current) return;
+    
+    const svg = mindmapRef.current;
+    if (!svg) return;
+
+    // 克隆SVG并添加样式
+    const svgClone = svg.cloneNode(true) as SVGElement;
+
+    // 应用计算后的样式
+    const styleElement = document.createElement('style');
+    styleElement.textContent = `
+        .markmap-node { color: ${getComputedStyle(document.documentElement).getPropertyValue('--text-color')}; font-size: 18px; font-weight: 400; }
+        .markmap-node line { stroke: rgba(25, 118, 210, 0.4); }
+        .markmap-fold circle { fill: rgba(25, 118, 210, 1); }
+        .markmap-node circle { stroke: rgba(25, 118, 210, 1); }
+        .markmap-node-line { stroke: rgba(25, 118, 210, 0.6); }
+        .markmap-link { stroke: rgba(25, 118, 210, 0.4); }
+    `;
+    svgClone.insertBefore(styleElement, svgClone.firstChild);
+
+    // 设置背景色
+    svgClone.style.backgroundColor = 'white';
+    
+    // 设置合适的视图框和尺寸
+    const bbox = (svg as SVGSVGElement).getBBox();
+    const viewBox = `${bbox.x - 10} ${bbox.y - 10} ${bbox.width + 20} ${bbox.height + 20}`;
+    svgClone.setAttribute('viewBox', viewBox);
+    svgClone.setAttribute('width', String(bbox.width + 20));
+    svgClone.setAttribute('height', String(bbox.height + 20));
+
+    // 转换为图片
+    const svgData = new XMLSerializer().serializeToString(svgClone);
+    const img = new Image();
+    
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const scale = 2; // 2倍清晰度
+      canvas.width = (bbox.width + 20) * scale;
+      canvas.height = (bbox.height + 20) * scale;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // 绘制图片
+      ctx.scale(scale, scale);
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, bbox.width + 20, bbox.height + 20);
+      
+      // 导出为PNG
+      const link = document.createElement('a');
+      link.download = '思维导图.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+    
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+  };
 
   const saveNote = async (content: string, quote: string, highlightAreas: HighlightArea[]) => {
     const note = await documentApi.createNote(documentId, {
@@ -805,7 +957,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       </div>
 
       <button
-        className={styles.showInputButton}
+        className={`${styles.showInputButton} ${styles.fixedButton}`}
         onClick={() => {
           setIsInputVisible(true);
           setTimeout(() => {
@@ -814,6 +966,13 @@ const PDFReader: React.FC<PDFReaderProps> = ({
         }}
       >
         <IoMdChatboxes size={24} />
+      </button>
+
+      <button
+        className={`${styles.showMindmapButton} ${styles.fixedButton}`}
+        onClick={() => handleMindmapClick()}
+      >
+        {mindmapLoading ? <span className={`${styles.mindmapButtonText} ${styles.mindmapButtonTextLoading}`}>🔄</span> : <span className={styles.mindmapButtonText}>🗺️</span>}
       </button>
 
       <div
@@ -855,6 +1014,39 @@ const PDFReader: React.FC<PDFReaderProps> = ({
           </button>
         </form>
       </div>
+
+      {showMindmap && (
+        <div className={styles.mindmapModal}>
+          <div className={styles.mindmapModalContent}>
+            <div className={styles.mindmapModalHeader}>
+              <h2>思维导图</h2>
+              <div className={styles.modalActions}>
+                <button 
+                  className={styles.exportButton}
+                  onClick={handleExportImage}
+                >
+                  <IoMdDownload />
+                  导出图片
+                </button>
+                <button 
+                  className={styles.regenerateButton}
+                  onClick={() => handleRegenerateMindmap(true)}
+                  disabled={mindmapLoading}
+                >
+                  <IoMdRefresh />
+                  {mindmapLoading ? '生成中...' : '重新生成'}
+                </button>
+                <button className={styles.closeButton} onClick={closeMindmap}>
+                  <IoMdClose />
+                </button>
+              </div>
+            </div>
+            <div className={styles.mindmapContainer}>
+              <svg ref={mindmapRef} className={styles.mindmap}></svg>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

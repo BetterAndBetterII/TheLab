@@ -75,6 +75,10 @@ class QuizRequest(BaseModel):
         from_attributes = True
 
 
+class MindmapResponse(BaseModel):
+    mindmap: str
+
+
 @router.post("", response_model=ConversationResponse)
 async def create_conversation(
     conversation_data: ConversationCreate,
@@ -208,7 +212,9 @@ async def chat_stream(
     """生成聊天响应流."""
 
     # 更新对话消息记录
-    messages[-1]["content"] = (SYSTEM_PROMPT_NOTE if add_notes else SYSTEM_PROMPT) + messages[-1]["content"]
+    messages[-1]["content"] = (
+        SYSTEM_PROMPT_NOTE if add_notes else SYSTEM_PROMPT
+    ) + messages[-1]["content"]
     new_messages = conversation.messages.copy()
     new_messages.append(
         {
@@ -442,7 +448,9 @@ async def generate_flow_stream(
                 content += _c
                 yield f"data: {json.dumps({'content': _c})}\n\n"
 
-        flow_data = json.loads(content.replace("```json", "").replace("```", "").strip())
+        flow_data = json.loads(
+            content.replace("```json", "").replace("```", "").strip()
+        )
         history_entry = {
             "summary": flow_data,
             "created": int(datetime.now().timestamp()),
@@ -485,7 +493,11 @@ async def generate_flow(
             id=f"flowcmpl-{document_id}",
             object="flow.completion",
             created=int(datetime.now().timestamp()),
-            model=(current_user.ai_standard_model if settings.GLOBAL_LLM == "private" else settings.LLM_STANDARD_MODEL),
+            model=(
+                current_user.ai_standard_model
+                if settings.GLOBAL_LLM == "private"
+                else settings.LLM_STANDARD_MODEL
+            ),
             choices=[
                 {
                     "index": 0,
@@ -497,7 +509,12 @@ async def generate_flow(
                 }
             ],
         )
-    pages = "\n".join([f"以下是第{int(i) + 1}页的内容: \n{page}\n" for i, page in document.content_pages.items()])
+    pages = "\n".join(
+        [
+            f"以下是第{int(i) + 1}页的内容: \n{page}\n"
+            for i, page in document.content_pages.items()
+        ]
+    )
     full_content = f"论文标题: {document.filename} 论文内容: {pages}"
 
     # 如果请求流式响应
@@ -570,7 +587,9 @@ async def generate_quiz_stream(
         # 解析生成的测验内容并保存到历史记录
         try:
             print(content)
-            quiz_data = json.loads(content.replace("```json", "").replace("```", "").strip())
+            quiz_data = json.loads(
+                content.replace("```json", "").replace("```", "").strip()
+            )
             history_entry = {
                 "page": page_number,
                 "questions": quiz_data["questions"],
@@ -625,7 +644,10 @@ async def generate_quiz(
             quiz_request.page_number + page_window,
         )
         content = "\n".join(
-            [f"以下是第{i + 1}页的内容: \n{document.content_pages[str(i)]}" for i in range(page_start, page_end)]
+            [
+                f"以下是第{i + 1}页的内容: \n{document.content_pages[str(i)]}"
+                for i in range(page_start, page_end)
+            ]
         )
 
     # 如果请求流式响应
@@ -671,3 +693,63 @@ async def get_quiz_history(
             for qh in quiz_histories
         ]
     }
+
+MINDMAP_PROMPT = """请你作为一个学术论文思维导图专家，仔细阅读这篇论文，
+生成一个结构化的思维导图**必须**使用Markdown格式，使用n-level的标题格式，并按照以下JSON格式：
+{
+    "mindmap": "思维导图内容"
+}
+
+请直接返回JSON格式的内容，不要添加其他说明文字。"""
+
+
+async def generate_mindmap(
+    full_content: str,
+    document_id: int,
+    db: Session,
+    current_user: User,
+    settings: Settings,
+):
+    try:
+        if settings.GLOBAL_LLM == "private":
+            openai_client = OpenAIClient(
+                api_key=current_user.ai_api_key,
+                base_url=current_user.ai_base_url,
+                model=current_user.ai_standard_model,
+            )
+        else:
+            openai_client = OpenAIClient(
+                api_key=settings.OPENAI_API_KEY,
+                base_url=settings.OPENAI_BASE_URL,
+                model=settings.LLM_STANDARD_MODEL,
+            )
+
+        messages = [
+            {"role": "system", "content": MINDMAP_PROMPT},
+            {"role": "user", "content": full_content},
+        ]
+        content = ""
+        async for chunk in await openai_client.chat_stream(messages):
+            if chunk.choices[0].delta.content and chunk.choices[0].delta.content != "":
+                _c = chunk.choices[0].delta.content
+                content += _c
+
+        mindmap_data = json.loads(
+            content.replace("```json", "").replace("```", "").strip()
+        )
+        document = db.query(Document).filter(Document.id == document_id).first()
+        flag_modified(document, "mindmap")
+        document.mindmap = {
+            "mindmap": mindmap_data["mindmap"],
+            "created_at": datetime.now().isoformat(),
+        }
+        db.commit()
+        db.refresh(document)
+        return mindmap_data["mindmap"]
+
+    except Exception as e:
+        traceback.print_exc()
+        if "content" in locals():
+            print(content)
+        print(e)
+        return "# 生成思维导图失败，请稍后再试。"

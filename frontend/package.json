@@ -25,6 +25,8 @@
     "axios": "^1.6.7",
     "canvas-confetti": "^1.9.3",
     "katex": "^0.16.21",
+    "markmap-lib": "^0.18.11",
+    "markmap-view": "^0.18.10",
     "pdfjs-dist": "^3.4.120",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
