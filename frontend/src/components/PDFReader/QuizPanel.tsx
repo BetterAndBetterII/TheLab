@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import styles from './QuizPanel.module.css';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import { conversationApi } from '../../api/conversations';
 import { IoIosArrowBack } from 'react-icons/io';
 
@@ -221,7 +226,14 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
               <div className={styles.questions}>
                 {currentQuizData.questions.map((question) => (
                   <div key={question.id} className={styles.questionCard}>
-                    <h3 className={styles.questionText}>{question.text}</h3>
+                    <h3 className={styles.questionText}>
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm, remarkMath]} 
+                        rehypePlugins={[rehypeKatex, rehypeRaw]}
+                      >
+                        {question.text}
+                      </ReactMarkdown>
+                    </h3>
                     <div className={styles.options}>
                       {question.options.map((option) => (
                         <button
@@ -231,13 +243,25 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
                           disabled={showAnswers[question.id]}
                         >
                           <span className={styles.optionLabel}>{option.id.toUpperCase()}</span>
-                          <span className={styles.optionText}>{option.text}</span>
+                          <span className={styles.optionText}>{
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm, remarkMath]} 
+                              rehypePlugins={[rehypeKatex, rehypeRaw]}
+                            >
+                              {option.text}
+                            </ReactMarkdown>
+                          }</span>
                         </button>
                       ))}
                     </div>
                     {showAnswers[question.id] && (
                       <div className={styles.explanation}>
-                        <p>{question.explanation}</p>
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm, remarkMath]} 
+                          rehypePlugins={[rehypeKatex, rehypeRaw]}
+                        >
+                          {question.explanation}
+                        </ReactMarkdown>
                       </div>
                     )}
                   </div>

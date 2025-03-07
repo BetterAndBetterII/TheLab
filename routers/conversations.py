@@ -21,6 +21,7 @@ from config import Settings, get_settings
 from database import Conversation, Document, QuizHistory, get_db
 from models.users import User
 from services.session import get_current_user
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -417,6 +418,7 @@ FLOW_PROMPT = """请你作为一个学术论文分析专家，仔细阅读这篇
 请直接返回JSON格式的内容，不要添加其他说明文字。"""
 
 
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0))
 async def generate_flow_stream(
     full_content: str,
     document_id: int,
@@ -447,9 +449,16 @@ async def generate_flow_stream(
                 _c = chunk.choices[0].delta.content
                 content += _c
                 yield f"data: {json.dumps({'content': _c})}\n\n"
+    
+    except Exception as e:
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        raise e
+    finally:
+        yield "data: [DONE]\n\n"
 
+    try:
         flow_data = json.loads(
-            content.replace("```json", "").replace("```", "").strip()
+            content.replace("```json", "").replace("```", "").replace("\\", "\\\\").strip()
         )
         history_entry = {
             "summary": flow_data,
@@ -467,9 +476,8 @@ async def generate_flow_stream(
         db.commit()
         db.refresh(document)
     except Exception as e:
-        yield f"data: {json.dumps({'error': str(e)})}\n\n"
-    finally:
-        yield "data: [DONE]\n\n"
+        traceback.print_exc()
+        raise e
 
 
 @router.post("/documents/{document_id}/flow")
@@ -550,7 +558,7 @@ QUIZ_PROMPT = """请你作为一个学术论文测验专家，仔细阅读这篇
 
 请直接返回JSON格式的内容，不要添加其他说明文字。"""
 
-
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0))
 async def generate_quiz_stream(
     full_content: str,
     current_user: User,
@@ -584,37 +592,40 @@ async def generate_quiz_stream(
                 content += _c
                 yield f"data: {json.dumps({'content': _c})}\n\n"
 
-        # 解析生成的测验内容并保存到历史记录
-        try:
-            print(content)
-            quiz_data = json.loads(
-                content.replace("```json", "").replace("```", "").strip()
-            )
-            history_entry = {
-                "page": page_number,
-                "questions": quiz_data["questions"],
-                "created_at": datetime.now().isoformat(),
-            }
-            # if not document.quiz_history:
-            #     document.quiz_history = []
-            # new_quiz_history = document.quiz_history.copy()
-            # new_quiz_history.append(history_entry)
-            # flag_modified(document, "quiz_history")
-            # document.quiz_history = new_quiz_history
-            quiz_history = QuizHistory(
-                document_id=document.id,
-                user_id=current_user.id,
-                quiz_history=history_entry,
-            )
-            db.add(quiz_history)
-            db.commit()
-        except:
-            traceback.print_exc()
-
     except Exception as e:
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        raise e
     finally:
         yield "data: [DONE]\n\n"
+
+    # 解析生成的测验内容并保存到历史记录
+    try:
+        print(content)
+        # 清洗latex中的反斜杠，避免被转义
+        quiz_data = json.loads(
+            content.replace("```json", "").replace("```", "").replace("\\", "\\\\").strip()
+        )
+        history_entry = {
+            "page": page_number,
+            "questions": quiz_data["questions"],
+            "created_at": datetime.now().isoformat(),
+        }
+        # if not document.quiz_history:
+        #     document.quiz_history = []
+        # new_quiz_history = document.quiz_history.copy()
+        # new_quiz_history.append(history_entry)
+        # flag_modified(document, "quiz_history")
+        # document.quiz_history = new_quiz_history
+        quiz_history = QuizHistory(
+            document_id=document.id,
+            user_id=current_user.id,
+            quiz_history=history_entry,
+        )
+        db.add(quiz_history)
+        db.commit()
+    except Exception as e:
+        traceback.print_exc()
+        raise e
 
 
 @router.post("/documents/{document_id}/quiz")
@@ -694,6 +705,7 @@ async def get_quiz_history(
         ]
     }
 
+
 MINDMAP_PROMPT = """请你作为一个学术论文思维导图专家，仔细阅读这篇论文，
 生成一个结构化的思维导图**必须**使用Markdown格式，使用n-level的标题格式，并按照以下JSON格式：
 {
@@ -702,7 +714,7 @@ MINDMAP_PROMPT = """请你作为一个学术论文思维导图专家，仔细阅
 
 请直接返回JSON格式的内容，不要添加其他说明文字。"""
 
-
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0))
 async def generate_mindmap(
     full_content: str,
     document_id: int,
@@ -735,7 +747,7 @@ async def generate_mindmap(
                 content += _c
 
         mindmap_data = json.loads(
-            content.replace("```json", "").replace("```", "").strip()
+            content.replace("```json", "").replace("```", "").replace("\\", "\\\\").strip()
         )
         document = db.query(Document).filter(Document.id == document_id).first()
         flag_modified(document, "mindmap")
