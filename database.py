@@ -23,8 +23,10 @@ engine = create_engine(
     # SQLite 特定配置
     connect_args=({"check_same_thread": False} if settings.DATABASE_TYPE == "sqlite" else {}),
     # PostgreSQL 特定配置
-    pool_size=5 if settings.DATABASE_TYPE == "postgresql" else None,
-    max_overflow=(10 if settings.DATABASE_TYPE == "postgresql" else None),
+    pool_size=20 if settings.DATABASE_TYPE == "postgresql" else None,  # 增加连接池大小
+    max_overflow=30 if settings.DATABASE_TYPE == "postgresql" else None,  # 增加最大溢出连接数
+    pool_timeout=60 if settings.DATABASE_TYPE == "postgresql" else None,  # 增加连接超时时间
+    pool_recycle=3600 if settings.DATABASE_TYPE == "postgresql" else None,  # 添加连接回收时间
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
