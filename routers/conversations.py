@@ -21,7 +21,6 @@ from config import Settings, get_settings
 from database import Conversation, Document, QuizHistory, get_db
 from models.users import User
 from services.session import get_current_user
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -418,7 +417,6 @@ FLOW_PROMPT = """请你作为一个学术论文分析专家，仔细阅读这篇
 请直接返回JSON格式的内容，不要添加其他说明文字。"""
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0))
 async def generate_flow_stream(
     full_content: str,
     document_id: int,
@@ -449,7 +447,7 @@ async def generate_flow_stream(
                 _c = chunk.choices[0].delta.content
                 content += _c
                 yield f"data: {json.dumps({'content': _c})}\n\n"
-    
+
     except Exception as e:
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
         raise e
@@ -458,7 +456,9 @@ async def generate_flow_stream(
 
     try:
         flow_data = json.loads(
-            content.replace("```json", "").replace("```", "").replace("\\", "\\\\").strip()
+            content.replace("```json", "")
+            .replace("```", "")
+            .strip()
         )
         history_entry = {
             "summary": flow_data,
@@ -521,9 +521,10 @@ async def generate_flow(
         [
             f"以下是第{int(i) + 1}页的内容: \n{page}\n"
             for i, page in document.content_pages.items()
+            if page.strip()  # 添加条件以跳过空页面
         ]
     )
-    full_content = f"论文标题: {document.filename} 论文内容: {pages}"
+    full_content = f"论文标题: {document.filename}\n论文内容:\n{pages}"
 
     # 如果请求流式响应
     return StreamingResponse(
@@ -558,7 +559,7 @@ QUIZ_PROMPT = """请你作为一个学术论文测验专家，仔细阅读这篇
 
 请直接返回JSON格式的内容，不要添加其他说明文字。"""
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0))
+
 async def generate_quiz_stream(
     full_content: str,
     current_user: User,
@@ -603,7 +604,9 @@ async def generate_quiz_stream(
         print(content)
         # 清洗latex中的反斜杠，避免被转义
         quiz_data = json.loads(
-            content.replace("```json", "").replace("```", "").replace("\\", "\\\\").strip()
+            content.replace("```json", "")
+            .replace("```", "")
+            .strip()
         )
         history_entry = {
             "page": page_number,
@@ -714,8 +717,8 @@ MINDMAP_PROMPT = """请你作为一个学术论文思维导图专家，仔细阅
 
 请直接返回JSON格式的内容，不要添加其他说明文字。"""
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0))
-async def generate_mindmap(
+
+async def get_mindmap(
     full_content: str,
     document_id: int,
     db: Session,
@@ -747,8 +750,11 @@ async def generate_mindmap(
                 content += _c
 
         mindmap_data = json.loads(
-            content.replace("```json", "").replace("```", "").replace("\\", "\\\\").strip()
+            content.replace("```json", "")
+            .replace("```", "")
+            .strip()
         )
+        print(mindmap_data)
         document = db.query(Document).filter(Document.id == document_id).first()
         flag_modified(document, "mindmap")
         document.mindmap = {
@@ -765,3 +771,43 @@ async def generate_mindmap(
             print(content)
         print(e)
         return "# 生成思维导图失败，请稍后再试。"
+
+
+@router.get("/mindmap/{document_id}")
+async def generate_mindmap(
+    document_id: int,
+    retry: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+):
+    """生成文档思维导图."""
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Document)
+    else:
+        base_query = db.query(Document).filter(Document.owner_id == current_user.id)
+    document = base_query.filter(Document.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="文档不存在")
+
+    if document.mindmap and not retry:
+        return MindmapResponse(
+            mindmap=str(document.mindmap["mindmap"]),
+        )
+
+    pages = "\n".join(
+        [
+            f"以下是第{int(i) + 1}页的内容: \n{page}\n"
+            for i, page in document.content_pages.items()
+            if page.strip()  # 添加条件以跳过空页面
+        ]
+    )
+    full_content = f"论文标题: {document.filename}\n论文内容:\n{pages}"
+
+    # 如果请求流式响应
+    mindmap_result = await get_mindmap(
+        full_content, document_id, db, current_user, settings
+    )
+    return MindmapResponse(
+        mindmap=mindmap_result,
+    )

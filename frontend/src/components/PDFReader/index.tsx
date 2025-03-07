@@ -279,7 +279,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const handleMindmapClick = async (retry=false) => {
     if (!documentId) return;
     setMindmapLoading(false);
-    if (mindmapData) {
+    if (mindmapData && !retry) {
       setShowMindmap(true);
       return;
     }
@@ -302,31 +302,6 @@ const PDFReader: React.FC<PDFReaderProps> = ({
         setShowMindmap(true);
       }
       console.error('获取思维导图出错:', error);
-    } finally {
-      setMindmapLoading(false);
-    }
-  };
-
-  const handleRegenerateMindmap = async (retry=false) => {
-    setMindmapLoading(true);
-    try {
-      const mindmapData = await conversationApi.getMindmap(documentId, retry);
-
-      if (mindmapData) {
-        setMindmapData(mindmapData);
-      } else {
-        console.error('重新生成思维导图失败');
-        throw new Error('重新生成思维导图失败');
-      }
-    } catch (error: any) {
-      if (error.message === 'No permission') {
-        setMindmapData({
-          mindmap: "# 抱歉，您没有权限使用此功能。"
-        });
-        setShowMindmap(true);
-        return;
-      }
-      console.error('重新生成思维导图出错:', error);
     } finally {
       setMindmapLoading(false);
     }
@@ -1030,7 +1005,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                 </button>
                 <button 
                   className={styles.regenerateButton}
-                  onClick={() => handleRegenerateMindmap(true)}
+                  onClick={() => handleMindmapClick(true)}
                   disabled={mindmapLoading}
                 >
                   <IoMdRefresh />
