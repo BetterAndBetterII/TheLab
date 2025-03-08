@@ -354,7 +354,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const scale = 2; // 2倍清晰度
+      const scale = 5; // 2倍清晰度
       canvas.width = (bbox.width + 20) * scale;
       canvas.height = (bbox.height + 20) * scale;
       
