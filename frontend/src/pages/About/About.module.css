@@ -54,15 +54,9 @@
   list-style: none;
 }
 
-@media (min-width: 640px) {
-  .featureList {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (min-width: 1024px) {
   .featureList {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -125,4 +119,64 @@
   color: #1f2937;
   font-weight: 500;
   margin-right: 0.5rem;
+}
+
+.logoText {
+  font-size: 2.5rem;
+  font-weight: bold;
+  background: linear-gradient(to right, #2563eb, #60a5fa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  transition: all 0.3s;
+}
+
+.logoText:hover {
+  background: linear-gradient(to right, #3b82f6, #93c5fd);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.aboutLink {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+}
+
+.aboutLink a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #374151;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.aboutLink a:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.aboutLink svg {
+  font-size: 1.25rem;
+  color: #4f46e5;
+  transition: transform 0.2s ease;
+}
+
+.aboutLink a:hover svg {
+  transform: translateX(-2px);
+}
+
+.aboutLink span {
+  font-size: 1.125rem;
+  line-height: 1;
 }

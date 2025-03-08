@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Logout from './pages/Logout';
 import Search from './pages/Search';
+import About from './pages/About';
 
 
 // Protected route wrapper
@@ -97,6 +98,12 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <Chat />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/about"
+        element={
+          <About />
         }
       />
 

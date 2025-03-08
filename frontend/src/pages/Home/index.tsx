@@ -5,6 +5,7 @@ import type { Message, Post, FileItem } from '../../api';
 import styles from './Home.module.css';
 import Loading from '../../components/Loading';
 import FileList from '../../components/FileList';
+import { RiBookmarkLine } from 'react-icons/ri';
 
 interface RecentActivity {
   id: string;
@@ -83,10 +84,16 @@ const Home: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}>欢迎回来</h1>
-        <p className={styles.subtitle}>
-          这里是您的工作空间，可以方便地管理文件和查看最近的活动。
-        </p>
+        <div className={styles.headerLeft}>
+          <h1 className={styles.title}>欢迎回来</h1>
+          <p className={styles.subtitle}>
+            这里是您的工作空间，可以方便地管理文件和查看最近的活动。
+          </p>
+        </div>
+        <Link to="/about" className={styles.aboutLink}>
+          <RiBookmarkLine />  
+          <span className={styles.aboutLinkText}>关于我们</span>
+        </Link>
       </div>
 
       <div className={styles.content}>

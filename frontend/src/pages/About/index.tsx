@@ -1,22 +1,33 @@
 import React from 'react';
 import styles from './About.module.css';
+import { Link } from 'react-router-dom';
+import { RiHome5Line } from 'react-icons/ri';
 
 const About: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}>关于我们</h1>
+        <h1 className={styles.title}>
+          关于🧪
+          <span className={styles.logoText}>TheLab</span>
+        </h1>
         <p className={styles.subtitle}>
-          TheLab 是一个现代化的在线协作平台，致力于为用户提供最佳的工作体验。
+          TheLab是一个将AI与交互放在首位的平台，致力于为用户提供最佳的学习体验。
         </p>
+      </div>
+      <div className={styles.aboutLink}>
+        <Link to="/">
+          <RiHome5Line />
+          返回主页
+        </Link>
       </div>
 
       <div className={styles.content}>
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>我们的使命</h2>
+          <h2 className={styles.sectionTitle}>我的初衷</h2>
           <p className={styles.text}>
-            我们的使命是通过技术创新，为用户提供一个高效、安全、便捷的在线工作环境，
-            帮助团队更好地协作和沟通。
+            我做的软件都是为了自己的兴趣还有自己的需求，既希望有多点同学可以体验到免费的有意思的AI工具，但又不希望太多人使用。（Gemini 免费API不太多）
+            希望大家可以多多支持，多多反馈，多多交流。
           </p>
         </section>
 
@@ -28,25 +39,34 @@ const About: React.FC = () => {
               <div>
                 <h3 className={styles.featureTitle}>文件管理</h3>
                 <p className={styles.featureText}>
-                  安全可靠的文件存储和共享功能，支持多种文件格式。
+                  安全可靠的文件存储和共享功能，支持多种文件格式。（PPT，PDF，Word，Excel）
                 </p>
               </div>
             </li>
             <li className={styles.featureItem}>
               <span className={styles.featureIcon}>💬</span>
               <div>
-                <h3 className={styles.featureTitle}>即时通讯</h3>
+                <h3 className={styles.featureTitle}>AI交互式学习</h3>
                 <p className={styles.featureText}>
-                  实时的团队沟通工具，支持文字、语音和视频通话。
+                  被动式翻译+主动式Quiz。心流与思维导图，全方面理解文本；自动笔记+AI解答，细致理解每一个细节...（太推销的文本自己都看不下去哈哈哈哈）
                 </p>
               </div>
             </li>
             <li className={styles.featureItem}>
               <span className={styles.featureIcon}>📝</span>
               <div>
-                <h3 className={styles.featureTitle}>在线论坛</h3>
+                <h3 className={styles.featureTitle}>共享文件</h3>
                 <p className={styles.featureText}>
-                  分享知识和经验的社区平台，促进团队成员之间的交流。
+                  所有人都可以上传文件，并分享给其他用户。
+                </p>
+              </div>
+            </li>
+            <li className={styles.featureItem}>
+              <span className={styles.featureIcon}>🔓</span>
+              <div>
+                <h3 className={styles.featureTitle}>开源计划</h3>
+                <p className={styles.featureText}>
+                  目前TheLab功能还未完善（从TheReader继承过来的），所以暂时还没整理好代码，开放仓库。但我保证，所有功能都将在两周内开源，欢迎大家来贡献代码。
                 </p>
               </div>
             </li>
@@ -54,19 +74,13 @@ const About: React.FC = () => {
         </section>
 
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>联系我们</h2>
+          <h2 className={styles.sectionTitle}>联系我</h2>
           <p className={styles.text}>
             如果您有任何问题或建议，欢迎随时与我们联系：
           </p>
           <div className={styles.contactInfo}>
             <p>
-              <strong>邮箱：</strong> support@thelab.com
-            </p>
-            <p>
-              <strong>电话：</strong> +86 123 4567 8900
-            </p>
-            <p>
-              <strong>地址：</strong> 中国上海市浦东新区科技园区888号
+              <strong>邮箱：</strong> hi@gitfetch.dev
             </p>
           </div>
         </section>
