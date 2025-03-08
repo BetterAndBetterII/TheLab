@@ -66,7 +66,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 }) => {
   // 定义状态持久化配置
   const STORAGE_KEY = `pdf_reader_state`;
-  
+
   // 获取持久化状态的函数
   const getStoredState = () => {
     const storedState = localStorage.getItem(STORAGE_KEY);
@@ -213,7 +213,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!autoShowInput) return; // 如果禁用了自动呼出,直接返回
-      
+
       const threshold = window.innerHeight - 150;
 
       const inputContainer = chatInputContainerRef.current;
@@ -308,7 +308,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
       const clampedWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
       const percentage = (clampedWidth / containerWidth) * 100;
-      
+
       setPdfWidth(`${percentage}%`);
     };
 
@@ -364,7 +364,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
       const clampedHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
       const percentage = (clampedHeight / containerHeight) * 100;
-      
+
       setPdfHeight(`${percentage}vh`);
     };
 
@@ -447,7 +447,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
   const handleExportImage = () => {
     if (!mindmapRef.current) return;
-    
+
     const svg = mindmapRef.current;
     if (!svg) return;
 
@@ -468,7 +468,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
     // 设置背景色
     svgClone.style.backgroundColor = 'white';
-    
+
     // 设置合适的视图框和尺寸
     const bbox = (svg as SVGSVGElement).getBBox();
     const viewBox = `${bbox.x - 10} ${bbox.y - 10} ${bbox.width + 20} ${bbox.height + 20}`;
@@ -479,13 +479,13 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     // 转换为图片
     const svgData = new XMLSerializer().serializeToString(svgClone);
     const img = new Image();
-    
+
     img.onload = () => {
       const canvas = document.createElement('canvas');
       const scale = 5; // 2倍清晰度
       canvas.width = (bbox.width + 20) * scale;
       canvas.height = (bbox.height + 20) * scale;
-      
+
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
@@ -494,14 +494,14 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, bbox.width + 20, bbox.height + 20);
-      
+
       // 导出为PNG
       const link = document.createElement('a');
       link.download = '思维导图.png';
       link.href = canvas.toDataURL('image/png');
       link.click();
     };
-    
+
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
   };
 
@@ -923,7 +923,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       <div
         className={`${styles.pdfContainer} ${isNotesPanelCollapsed && window.innerWidth <= 768 ? styles.pdfContainerExpanded : ''}`}
         ref={pdfContainerRef}
-        style={{ 
+        style={{
           width: window.innerWidth <= 768 ? '100%' : (isNotesPanelCollapsed ? '100%' : pdfWidth),
           height: window.innerWidth <= 768 ? (isNotesPanelCollapsed ? '100vh' : pdfHeight) : '100%'
         }}
@@ -961,13 +961,13 @@ const PDFReader: React.FC<PDFReaderProps> = ({
         onClick={() => setIsNotesPanelCollapsed(!isNotesPanelCollapsed)}
         title={isNotesPanelCollapsed ? '展开笔记面板' : '收起笔记面板'}
       >
-        {window.innerWidth <= 768 ? 
+        {window.innerWidth <= 768 ?
           (isNotesPanelCollapsed ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />) :
           (isNotesPanelCollapsed ? <FiChevronLeft size={20} /> : <FiChevronRight size={20} />)
         }
       </button>
 
-      <div 
+      <div
         className={`${styles.notesPanel} ${isNotesPanelCollapsed ? styles.notesPanelCollapsed : ''}`}
         style={{
           height: window.innerWidth <= 768 ? `calc(100vh - ${pdfHeight} - 4px)` : '100%',
@@ -1173,14 +1173,14 @@ const PDFReader: React.FC<PDFReaderProps> = ({
             <div className={styles.mindmapModalHeader}>
               <h2>思维导图</h2>
               <div className={styles.modalActions}>
-                <button 
+                <button
                   className={styles.exportButton}
                   onClick={handleExportImage}
                 >
                   <IoMdDownload />
                   导出图片
                 </button>
-                <button 
+                <button
                   className={styles.regenerateButton}
                   onClick={() => handleMindmapClick(true)}
                   disabled={mindmapLoading}

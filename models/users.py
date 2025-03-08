@@ -8,8 +8,8 @@ from sqlalchemy import Integer, String
 from sqlalchemy.orm import relationship
 
 from database import Base
+from models.forum import Reply, Topic
 from models.sessions import Session
-from models.forum import Topic, Reply
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -57,9 +57,7 @@ class User(Base):
     ai_advanced_model = Column(String, nullable=True)
 
     # 关联到会话
-    sessions = relationship(
-        Session, back_populates="user", cascade="all, delete-orphan"
-    )
+    sessions = relationship(Session, back_populates="user", cascade="all, delete-orphan")
 
     # 添加文档和文件夹的反向关系
     documents = relationship("Document", back_populates="owner")

@@ -212,9 +212,7 @@ async def chat_stream(
     """生成聊天响应流."""
 
     # 更新对话消息记录
-    messages[-1]["content"] = (
-        SYSTEM_PROMPT_NOTE if add_notes else SYSTEM_PROMPT
-    ) + messages[-1]["content"]
+    messages[-1]["content"] = (SYSTEM_PROMPT_NOTE if add_notes else SYSTEM_PROMPT) + messages[-1]["content"]
     new_messages = conversation.messages.copy()
     new_messages.append(
         {
@@ -455,11 +453,7 @@ async def generate_flow_stream(
         yield "data: [DONE]\n\n"
 
     try:
-        flow_data = json.loads(
-            content.replace("```json", "")
-            .replace("```", "")
-            .strip()
-        )
+        flow_data = json.loads(content.replace("```json", "").replace("```", "").strip())
         history_entry = {
             "summary": flow_data,
             "created": int(datetime.now().timestamp()),
@@ -501,11 +495,7 @@ async def generate_flow(
             id=f"flowcmpl-{document_id}",
             object="flow.completion",
             created=int(datetime.now().timestamp()),
-            model=(
-                current_user.ai_standard_model
-                if settings.GLOBAL_LLM == "private"
-                else settings.LLM_STANDARD_MODEL
-            ),
+            model=(current_user.ai_standard_model if settings.GLOBAL_LLM == "private" else settings.LLM_STANDARD_MODEL),
             choices=[
                 {
                     "index": 0,
@@ -603,11 +593,7 @@ async def generate_quiz_stream(
     try:
         print(content)
         # 清洗latex中的反斜杠，避免被转义
-        quiz_data = json.loads(
-            content.replace("```json", "")
-            .replace("```", "")
-            .strip()
-        )
+        quiz_data = json.loads(content.replace("```json", "").replace("```", "").strip())
         history_entry = {
             "page": page_number,
             "questions": quiz_data["questions"],
@@ -658,10 +644,7 @@ async def generate_quiz(
             quiz_request.page_number + page_window,
         )
         content = "\n".join(
-            [
-                f"以下是第{i + 1}页的内容: \n{document.content_pages[str(i)]}"
-                for i in range(page_start, page_end)
-            ]
+            [f"以下是第{i + 1}页的内容: \n{document.content_pages[str(i)]}" for i in range(page_start, page_end)]
         )
 
     # 如果请求流式响应
@@ -749,11 +732,7 @@ async def get_mindmap(
                 _c = chunk.choices[0].delta.content
                 content += _c
 
-        mindmap_data = json.loads(
-            content.replace("```json", "")
-            .replace("```", "")
-            .strip()
-        )
+        mindmap_data = json.loads(content.replace("```json", "").replace("```", "").strip())
         print(mindmap_data)
         document = db.query(Document).filter(Document.id == document_id).first()
         flag_modified(document, "mindmap")
@@ -805,9 +784,7 @@ async def generate_mindmap(
     full_content = f"论文标题: {document.filename}\n论文内容:\n{pages}"
 
     # 如果请求流式响应
-    mindmap_result = await get_mindmap(
-        full_content, document_id, db, current_user, settings
-    )
+    mindmap_result = await get_mindmap(full_content, document_id, db, current_user, settings)
     return MindmapResponse(
         mindmap=mindmap_result,
     )

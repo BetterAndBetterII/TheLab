@@ -30,7 +30,7 @@
   overflow: hidden;
   position: relative;
   height: 100%;
-  
+
   /* 滚动条宽度为0 */
   scrollbar-width: none;
   -ms-overflow-style: none;

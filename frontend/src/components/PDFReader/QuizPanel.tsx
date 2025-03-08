@@ -227,8 +227,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
                 {currentQuizData.questions.map((question) => (
                   <div key={question.id} className={styles.questionCard}>
                     <h3 className={styles.questionText}>
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm, remarkMath]} 
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
                         rehypePlugins={[rehypeKatex, rehypeRaw]}
                       >
                         {question.text}
@@ -244,8 +244,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
                         >
                           <span className={styles.optionLabel}>{option.id.toUpperCase()}</span>
                           <span className={styles.optionText}>{
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm, remarkMath]} 
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm, remarkMath]}
                               rehypePlugins={[rehypeKatex, rehypeRaw]}
                             >
                               {option.text}
@@ -256,8 +256,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
                     </div>
                     {showAnswers[question.id] && (
                       <div className={styles.explanation}>
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm, remarkMath]} 
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
                           rehypePlugins={[rehypeKatex, rehypeRaw]}
                         >
                           {question.explanation}

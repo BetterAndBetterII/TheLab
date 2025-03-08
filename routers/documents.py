@@ -9,7 +9,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from config import Settings, get_settings
-from database import Conversation, Document, DocumentReadRecord, Folder, Note, ProcessingRecord, ProcessingStatus, QuizHistory, get_db
+from database import (Conversation, Document, DocumentReadRecord, Folder, Note, ProcessingRecord, ProcessingStatus,
+                      QuizHistory, get_db)
 from models.users import User
 from pipeline.document_pipeline import DocumentPipeline, get_document_pipeline
 from services.session import get_current_user
