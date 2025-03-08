@@ -65,7 +65,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   onPageChange,
 }) => {
   // 定义状态持久化配置
-  const STORAGE_KEY = `pdf_reader_state_${documentId}`;
+  const STORAGE_KEY = `pdf_reader_state`;
   
   // 获取持久化状态的函数
   const getStoredState = () => {
