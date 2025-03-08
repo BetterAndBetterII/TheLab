@@ -87,6 +87,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const [quizHistory, setQuizHistory] = useState<QuizData[]>([]);
   const [currentModel, setCurrentModel] = useState<ModelType>('standard');
   const [addNotes, setAddNotes] = useState(false);
+  const [autoShowInput, setAutoShowInput] = useState(true);
 
   const [mindmapData, setMindmapData] = useState<MindmapData | null>(null);
   const [showMindmap, setShowMindmap] = useState<boolean>(false);
@@ -159,6 +160,8 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   // 添加鼠标移动监听逻辑
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
+      if (!autoShowInput) return; // 如果禁用了自动呼出,直接返回
+      
       const threshold = window.innerHeight - 150;
 
       const inputContainer = chatInputContainerRef.current;
@@ -189,7 +192,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [inputValue]);
+  }, [inputValue, autoShowInput]); // 添加autoShowInput作为依赖
 
   // 添加快捷键，Ctrl+Space呼出输入框
   useEffect(() => {
@@ -934,20 +937,33 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       <button
         className={`${styles.showInputButton} ${styles.fixedButton}`}
         onClick={() => {
-          setIsInputVisible(true);
-          setTimeout(() => {
-            inputRef.current?.focus();
-          }, 100);
+          if (autoShowInput) {
+            setIsInputVisible(true);
+            setTimeout(() => {
+              inputRef.current?.focus();
+            }, 100);
+          } else {
+            setIsInputVisible(prev => !prev);
+          }
         }}
       >
         <IoMdChatboxes size={24} />
       </button>
 
       <button
+        className={`${styles.showInputButton} ${styles.fixedButton}`}
+        style={{ bottom: '80px' }}
+        onClick={() => setAutoShowInput(prev => !prev)}
+        title={autoShowInput ? '自动呼出已开启' : '自动呼出已关闭'}
+      >
+        {autoShowInput ? <span className={styles.fixedButtonText}>🔔</span> : <span className={styles.fixedButtonText}>🔕</span>}
+      </button>
+
+      <button
         className={`${styles.showMindmapButton} ${styles.fixedButton}`}
         onClick={() => handleMindmapClick()}
       >
-        {mindmapLoading ? <span className={`${styles.mindmapButtonText} ${styles.mindmapButtonTextLoading}`}>🔄</span> : <span className={styles.mindmapButtonText}>🗺️</span>}
+        {mindmapLoading ? <span className={`${styles.fixedButtonText} ${styles.mindmapButtonTextLoading}`}>🔄</span> : <span className={styles.fixedButtonText}>🗺️</span>}
       </button>
 
       <div
