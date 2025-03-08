@@ -133,18 +133,26 @@ async def get_read_history(
         .order_by(DocumentReadRecord.read_at.desc())
         .offset(skip)
         .limit(limit)
+        .with_entities(
+            DocumentReadRecord.id.label("record_id"),
+            DocumentReadRecord.document_id,
+            DocumentReadRecord.read_at,
+            Document.filename,
+            Document.mime_type,
+            Document.file_size,
+        )
         .all()
     )
 
     return {
         "records": [
             {
-                "id": str(record.DocumentReadRecord.id),
-                "document_id": str(record.DocumentReadRecord.document_id),
-                "document_name": record.Document.filename,
-                "read_at": record.DocumentReadRecord.read_at,
-                "document_type": record.Document.mime_type,
-                "document_size": record.Document.file_size,
+                "id": str(record.record_id),
+                "document_id": str(record.document_id),
+                "document_name": record.filename,
+                "read_at": record.read_at,
+                "document_type": record.mime_type,
+                "document_size": record.file_size,
             }
             for record in records
         ]
