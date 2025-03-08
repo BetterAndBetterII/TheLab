@@ -15,6 +15,7 @@ import {
 import { Transformer } from 'markmap-lib';
 import { Markmap } from 'markmap-view';
 import { IoMdSend, IoMdChatboxes, IoMdDownload, IoMdRefresh, IoMdClose } from 'react-icons/io';
+import { FiChevronRight, FiChevronLeft, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -68,6 +69,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [isDragging, setIsDragging] = useState(false);
   const [pdfWidth, setPdfWidth] = useState('70%');
+  const [pdfHeight, setPdfHeight] = useState('50vh');
   const [activeTab, setActiveTab] = useState<TabType>('summary');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -102,6 +104,10 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const chatInputContainerRef = useRef<HTMLDivElement>(null);
   const mindmapRef = useRef<SVGSVGElement>(null);
   const markmapRef = useRef<Markmap | null>(null) as MutableRefObject<Markmap | null>;
+  const resizerHorizontalRef = useRef<HTMLDivElement>(null);
+
+  const [isDraggingVertical, setIsDraggingVertical] = useState(false);
+  const [isNotesPanelCollapsed, setIsNotesPanelCollapsed] = useState(false);
 
   // 加载笔记
   const loadNotes = useCallback(async () => {
@@ -263,6 +269,72 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     };
   }, []);
 
+  // 处理垂直拖拽
+  useEffect(() => {
+    const container = containerRef.current;
+    const resizerHorizontal = resizerHorizontalRef.current;
+    const pdfContainer = pdfContainerRef.current;
+
+    if (!container || !resizerHorizontal || !pdfContainer) return;
+
+    let startY: number;
+    let startHeight: number;
+
+    const startDraggingVertical = (e: MouseEvent | TouchEvent) => {
+      const touchY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      startY = touchY;
+      startHeight = pdfContainer.offsetHeight;
+      setIsDraggingVertical(true);
+    };
+
+    const stopDraggingVertical = () => {
+      setIsDraggingVertical(false);
+      document.removeEventListener('mousemove', onDragVertical);
+      document.removeEventListener('mouseup', stopDraggingVertical);
+      document.removeEventListener('touchmove', onDragVertical);
+      document.removeEventListener('touchend', stopDraggingVertical);
+    };
+
+    const onDragVertical = (e: MouseEvent | TouchEvent) => {
+      if (!container) return;
+
+      const touchY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const containerHeight = container.offsetHeight;
+      const newHeight = startHeight + (touchY - startY);
+
+      // 限制最小和最大高度
+      const minHeight = containerHeight * 0.15; // 15vh
+      const maxHeight = containerHeight * 0.85; // 85vh
+
+      const clampedHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
+      const percentage = (clampedHeight / containerHeight) * 100;
+
+      setPdfHeight(`${percentage}vh`);
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      e.preventDefault();
+      startDraggingVertical(e);
+      document.addEventListener('mousemove', onDragVertical);
+      document.addEventListener('mouseup', stopDraggingVertical);
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      startDraggingVertical(e);
+      document.addEventListener('touchmove', onDragVertical);
+      document.addEventListener('touchend', stopDraggingVertical);
+    };
+
+    resizerHorizontal.addEventListener('mousedown', handleMouseDown);
+    resizerHorizontal.addEventListener('touchstart', handleTouchStart);
+
+    return () => {
+      resizerHorizontal.removeEventListener('mousedown', handleMouseDown);
+      resizerHorizontal.removeEventListener('touchstart', handleTouchStart);
+    };
+  }, []);
+
   useEffect(() => {
     if (mindmapData && showMindmap) {
       console.log(mindmapData);
@@ -376,6 +448,18 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
   };
+
+  const handleCopyAll = (lang: string) => {
+    if (lang === 'en') {
+      navigator.clipboard.writeText(
+        "Slides: \n" + summaryEn.join('\n')
+      );
+    } else {
+      navigator.clipboard.writeText(
+        "课件内容: \n" + summaryCn.join('\n')
+      );
+    }
+  }
 
   const saveNote = async (content: string, quote: string, highlightAreas: HighlightArea[]) => {
     const note = await documentApi.createNote(documentId, {
@@ -779,9 +863,12 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   return (
     <div className={styles.container} ref={containerRef}>
       <div
-        className={styles.pdfContainer}
+        className={`${styles.pdfContainer} ${isNotesPanelCollapsed && window.innerWidth <= 768 ? styles.pdfContainerExpanded : ''}`}
         ref={pdfContainerRef}
-        style={{ width: pdfWidth }}
+        style={{ 
+          width: window.innerWidth <= 768 ? '100%' : (isNotesPanelCollapsed ? '100%' : pdfWidth),
+          height: window.innerWidth <= 768 ? (isNotesPanelCollapsed ? '100vh' : pdfHeight) : '100%'
+        }}
       >
         <Worker workerUrl={workerUrl}>
           <Viewer
@@ -801,135 +888,166 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       <div
         ref={resizerRef}
         className={`${styles.resizer} ${isDragging ? styles.dragging : ''}`}
+        style={{ display: isNotesPanelCollapsed ? 'none' : undefined }}
       />
 
-      <div className={styles.notesPanel}>
-        <div className={styles.tabsContainer}>
-          <button
-            className={`${styles.tab} ${activeTab === 'summary' ? styles.activeTab : ''}`}
-            onClick={() => setActiveTab('summary')}
-          >
-            总结
-          </button>
-          {/* <button
-            className={`${styles.tab} ${activeTab === 'summary' ? styles.activeTab : ''}`}
-            onClick={() => {
-              recordingNotes.current = new Map([
-                ["unsigned", "没有关键词"],
-              ]);
-              highlight(['unsigned']);
-            }}
-          >
-            搜索 unsigned
-          </button> */}
-          <button
-            className={`${styles.tab} ${activeTab === 'notes' ? styles.activeTab : ''}`}
-            onClick={() => setActiveTab('notes')}
-          >
-            笔记
-          </button>
-          <button
-            className={`${styles.tab} ${activeTab === 'chat' ? styles.activeTab : ''}`}
-            onClick={() => setActiveTab('chat')}
-          >
-            对话
-          </button>
-          <button
-            className={`${styles.tab} ${activeTab === 'flow' ? styles.activeTab : ''}`}
-            onClick={() => setActiveTab('flow')}
-          >
-            心流
-          </button>
-          <button
-            className={`${styles.tab} ${activeTab === 'quiz' ? styles.activeTab : ''}`}
-            onClick={() => setActiveTab('quiz')}
-          >
-            测验
-          </button>
-        </div>
+      <div
+        ref={resizerHorizontalRef}
+        className={`${styles.resizerHorizontal} ${isDraggingVertical ? styles.dragging : ''}`}
+        style={{ display: isNotesPanelCollapsed ? 'none' : undefined }}
+      />
 
-        <div className={styles.tabContent}>
-          {activeTab === 'summary' && (
+      <button
+        className={`${styles.collapseButton} ${window.innerWidth <= 768 ? styles.collapseButtonMobile : styles.collapseButtonDesktop}`}
+        onClick={() => setIsNotesPanelCollapsed(!isNotesPanelCollapsed)}
+        title={isNotesPanelCollapsed ? '展开笔记面板' : '收起笔记面板'}
+      >
+        {window.innerWidth <= 768 ? 
+          (isNotesPanelCollapsed ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />) :
+          (isNotesPanelCollapsed ? <FiChevronLeft size={20} /> : <FiChevronRight size={20} />)
+        }
+      </button>
+
+      <div 
+        className={`${styles.notesPanel} ${isNotesPanelCollapsed ? styles.notesPanelCollapsed : ''}`}
+        style={{
+          height: window.innerWidth <= 768 ? `calc(100vh - ${pdfHeight} - 4px)` : '100%',
+          pointerEvents: isNotesPanelCollapsed ? 'none' : 'auto'
+        }}
+      >
+        <div className={styles.notesPanelContent}>
+          {!isNotesPanelCollapsed && (
             <>
-              {isSummaryLoading ? (
-                <div className={styles.loadingContainer}>
-                  <span>加载摘要中...</span>
-                </div>
-              ) : summaryError ? (
-                <div className={styles.errorContainer}>
-                  <span>{summaryError}</span>
-                  <button onClick={() => fetchSummaries(documentId)}>重试</button>
-                </div>
-              ) : (
-                <SummaryPanel
-                  summaryEn={summaryEn[currentPage]}
-                  summaryCn={summaryCn[currentPage]}
-                />
-              )}
+              <div className={styles.tabsContainer}>
+                <button
+                  className={`${styles.tab} ${activeTab === 'summary' ? styles.activeTab : ''}`}
+                  onClick={() => setActiveTab('summary')}
+                >
+                  总结
+                </button>
+                {/* <button
+                  className={`${styles.tab} ${activeTab === 'summary' ? styles.activeTab : ''}`}
+                  onClick={() => {
+                    recordingNotes.current = new Map([
+                      ["unsigned", "没有关键词"],
+                    ]);
+                    highlight(['unsigned']);
+                  }}
+                >
+                  搜索 unsigned
+                </button> */}
+                <button
+                  className={`${styles.tab} ${activeTab === 'notes' ? styles.activeTab : ''}`}
+                  onClick={() => setActiveTab('notes')}
+                >
+                  笔记
+                </button>
+                <button
+                  className={`${styles.tab} ${activeTab === 'chat' ? styles.activeTab : ''}`}
+                  onClick={() => setActiveTab('chat')}
+                >
+                  对话
+                </button>
+                <button
+                  className={`${styles.tab} ${activeTab === 'flow' ? styles.activeTab : ''}`}
+                  onClick={() => setActiveTab('flow')}
+                >
+                  心流
+                </button>
+                <button
+                  className={`${styles.tab} ${activeTab === 'quiz' ? styles.activeTab : ''}`}
+                  onClick={() => setActiveTab('quiz')}
+                >
+                  测验
+                </button>
+              </div>
+
+              <div className={styles.tabContent}>
+                {activeTab === 'summary' && (
+                  <>
+                    {isSummaryLoading ? (
+                      <div className={styles.loadingContainer}>
+                        <span>加载摘要中...</span>
+                      </div>
+                    ) : summaryError ? (
+                      <div className={styles.errorContainer}>
+                        <span>{summaryError}</span>
+                        <button onClick={() => fetchSummaries(documentId)}>重试</button>
+                      </div>
+                    ) : (
+                      <SummaryPanel
+                        summaryEn={summaryEn[currentPage]}
+                        summaryCn={summaryCn[currentPage]}
+                        handleCopyAll={handleCopyAll}
+                      />
+                    )}
+                  </>
+                )}
+
+                {activeTab === 'notes' && (
+                  <>
+                    <NotesPanel
+                      notes={notes}
+                      setNotes={setNotes}
+                      showAllNotes={showAllNotes}
+                      setShowAllNotes={setShowAllNotes}
+                      currentPage={currentPage}
+                      jumpToHighlightArea={jumpToHighlightArea}
+                      editingNoteId={editingNoteId}
+                      setEditingNoteId={setEditingNoteId}
+                      editingContent={editingContent}
+                      setEditingContent={setEditingContent}
+                      documentId={documentId}
+                    />
+                  </>
+                )}
+
+                {activeTab === 'chat' && (
+                  <ChatPanel
+                    messages={messages}
+                    isLoading={isLoading}
+                    onClearChat={() => {
+                      setMessages([]);
+                      setCurrentConversationId(null);
+                      setIsLoading(false);
+                    }}
+                    onSelectChat={(id) => {
+                      setCurrentConversationId(id);
+                      conversationApi.get(id).then(res => {
+                        setMessages(res.messages.map(msg => ({
+                          id: `msg-${Date.now()}`,
+                          content: msg.content,
+                          type: msg.role as 'user' | 'assistant',
+                          timestamp: Date.now(),
+                        })));
+                      });
+                      setIsLoading(false);
+                    }}
+                    documentId={documentId}
+                  />
+                )}
+
+                {activeTab === 'flow' && (
+                  <FlowPanel
+                    documentId={documentId}
+                    flowData={flowData}
+                    setFlowData={setFlowData}
+                  />
+                )}
+
+                {activeTab === 'quiz' && (
+                  <QuizPanel
+                    currentPage={currentPage + 1}
+                    documentId={documentId}
+                    currentQuizData={currentQuizData}
+                    setCurrentQuizData={setCurrentQuizData}
+                    onSelectPage={pageNavigationPluginInstance.jumpToPage}
+                    quizHistory={quizHistory}
+                    setQuizHistory={setQuizHistory}
+                  />
+                )}
+              </div>
             </>
-          )}
-
-          {activeTab === 'notes' && (
-            <>
-              <NotesPanel
-                notes={notes}
-                setNotes={setNotes}
-                showAllNotes={showAllNotes}
-                setShowAllNotes={setShowAllNotes}
-                currentPage={currentPage}
-                jumpToHighlightArea={jumpToHighlightArea}
-                editingNoteId={editingNoteId}
-                setEditingNoteId={setEditingNoteId}
-                editingContent={editingContent}
-                setEditingContent={setEditingContent}
-                documentId={documentId}
-              />
-            </>
-          )}
-
-          {activeTab === 'chat' && (
-            <ChatPanel
-              messages={messages}
-              isLoading={isLoading}
-              onClearChat={() => {
-                setMessages([]);
-                setCurrentConversationId(null);
-                setIsLoading(false);
-              }}
-              onSelectChat={(id) => {
-                setCurrentConversationId(id);
-                conversationApi.get(id).then(res => {
-                  setMessages(res.messages.map(msg => ({
-                    id: `msg-${Date.now()}`,
-                    content: msg.content,
-                    type: msg.role as 'user' | 'assistant',
-                    timestamp: Date.now(),
-                  })));
-                });
-                setIsLoading(false);
-              }}
-              documentId={documentId}
-            />
-          )}
-
-          {activeTab === 'flow' && (
-            <FlowPanel
-              documentId={documentId}
-              flowData={flowData}
-              setFlowData={setFlowData}
-            />
-          )}
-
-          {activeTab === 'quiz' && (
-            <QuizPanel
-              currentPage={currentPage + 1}
-              documentId={documentId}
-              currentQuizData={currentQuizData}
-              setCurrentQuizData={setCurrentQuizData}
-              onSelectPage={pageNavigationPluginInstance.jumpToPage}
-              quizHistory={quizHistory}
-              setQuizHistory={setQuizHistory}
-            />
           )}
         </div>
       </div>
