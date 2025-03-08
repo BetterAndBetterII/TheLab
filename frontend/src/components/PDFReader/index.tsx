@@ -64,13 +64,41 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   documentId,
   onPageChange,
 }) => {
+  // 定义状态持久化配置
+  const STORAGE_KEY = `pdf_reader_state_${documentId}`;
+  
+  // 获取持久化状态的函数
+  const getStoredState = () => {
+    const storedState = localStorage.getItem(STORAGE_KEY);
+    if (storedState) {
+      return JSON.parse(storedState);
+    }
+    return null;
+  };
+
+  // 保存状态到localStorage的函数
+  const saveState = (updates: Record<string, any>) => {
+    const currentState = getStoredState() || {};
+    const newState = { ...currentState, ...updates };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+  };
+
   const [notes, setNotes] = useState<Note[]>([]);
   const [currentNote, setCurrentNote] = useState('');
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [pdfWidth, setPdfWidth] = useState('70%');
-  const [pdfHeight, setPdfHeight] = useState('50vh');
-  const [activeTab, setActiveTab] = useState<TabType>('summary');
+  const [pdfWidth, setPdfWidth] = useState(() => {
+    const stored = getStoredState()?.pdfWidth;
+    return stored || '70%';
+  });
+  const [pdfHeight, setPdfHeight] = useState(() => {
+    const stored = getStoredState()?.pdfHeight;
+    return stored || '50vh';
+  });
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const stored = getStoredState()?.activeTab;
+    return stored || 'summary';
+  });
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -87,9 +115,15 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const [flowData, setFlowData] = useState<FlowData | null>(null);
   const [currentQuizData, setCurrentQuizData] = useState<QuizData | null>(null);
   const [quizHistory, setQuizHistory] = useState<QuizData[]>([]);
-  const [currentModel, setCurrentModel] = useState<ModelType>('standard');
+  const [currentModel, setCurrentModel] = useState<ModelType>(() => {
+    const stored = getStoredState()?.currentModel;
+    return stored || 'standard';
+  });
   const [addNotes, setAddNotes] = useState(false);
-  const [autoShowInput, setAutoShowInput] = useState(true);
+  const [autoShowInput, setAutoShowInput] = useState(() => {
+    const stored = getStoredState()?.autoShowInput;
+    return stored !== undefined ? stored : true;
+  });
 
   const [mindmapData, setMindmapData] = useState<MindmapData | null>(null);
   const [showMindmap, setShowMindmap] = useState<boolean>(false);
@@ -107,7 +141,10 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const resizerHorizontalRef = useRef<HTMLDivElement>(null);
 
   const [isDraggingVertical, setIsDraggingVertical] = useState(false);
-  const [isNotesPanelCollapsed, setIsNotesPanelCollapsed] = useState(false);
+  const [isNotesPanelCollapsed, setIsNotesPanelCollapsed] = useState(() => {
+    const stored = getStoredState()?.isNotesPanelCollapsed;
+    return stored !== undefined ? stored : false;
+  });
 
   // 加载笔记
   const loadNotes = useCallback(async () => {
@@ -163,6 +200,15 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     fetchSummaries(documentId);
   }, []);
 
+  // 组件加载时读取保存的页码
+  useEffect(() => {
+    const savedPage = localStorage.getItem(`pdf_page_${documentId}`);
+    if (savedPage) {
+      const pageNumber = parseInt(savedPage, 10);
+      setCurrentPage(pageNumber);
+    }
+  }, [documentId]);
+
   // 添加鼠标移动监听逻辑
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -216,6 +262,18 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     });
   }, []);
 
+  // 监听状态变化并保存
+  useEffect(() => {
+    saveState({
+      pdfWidth,
+      pdfHeight,
+      activeTab,
+      autoShowInput,
+      currentModel,
+      isNotesPanelCollapsed
+    });
+  }, [pdfWidth, pdfHeight, activeTab, autoShowInput, currentModel, isNotesPanelCollapsed]);
+
   // 处理拖拽调整
   useEffect(() => {
     const container = containerRef.current;
@@ -245,13 +303,12 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       const containerWidth = container.offsetWidth;
       const newWidth = startWidth + (e.clientX - startX);
 
-      // 限制最小和最大宽度
       const minWidth = 280;
-      const maxWidth = containerWidth - 280; // 保留笔记面板最小宽度
+      const maxWidth = containerWidth - 280;
 
       const clampedWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
       const percentage = (clampedWidth / containerWidth) * 100;
-
+      
       setPdfWidth(`${percentage}%`);
     };
 
@@ -302,13 +359,12 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       const containerHeight = container.offsetHeight;
       const newHeight = startHeight + (touchY - startY);
 
-      // 限制最小和最大高度
-      const minHeight = containerHeight * 0.15; // 15vh
-      const maxHeight = containerHeight * 0.85; // 85vh
+      const minHeight = containerHeight * 0.15;
+      const maxHeight = containerHeight * 0.85;
 
       const clampedHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
       const percentage = (clampedHeight / containerHeight) * 100;
-
+      
       setPdfHeight(`${percentage}vh`);
     };
 
@@ -535,6 +591,8 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   // 处理页面变化
   const handlePageChange = (e: { currentPage: number }) => {
     setCurrentPage(e.currentPage);
+    // 保存当前页码到 localStorage
+    localStorage.setItem(`pdf_page_${documentId}`, e.currentPage.toString());
     onPageChange?.(e.currentPage + 1);
   };
 
@@ -881,6 +939,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
               highlightPluginInstance,
             ]}
             onPageChange={handlePageChange}
+            initialPage={currentPage}
           />
         </Worker>
       </div>
@@ -925,17 +984,6 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                 >
                   总结
                 </button>
-                {/* <button
-                  className={`${styles.tab} ${activeTab === 'summary' ? styles.activeTab : ''}`}
-                  onClick={() => {
-                    recordingNotes.current = new Map([
-                      ["unsigned", "没有关键词"],
-                    ]);
-                    highlight(['unsigned']);
-                  }}
-                >
-                  搜索 unsigned
-                </button> */}
                 <button
                   className={`${styles.tab} ${activeTab === 'notes' ? styles.activeTab : ''}`}
                   onClick={() => setActiveTab('notes')}
@@ -1071,7 +1119,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       <button
         className={`${styles.showInputButton} ${styles.fixedButton}`}
         style={{ bottom: '80px' }}
-        onClick={() => setAutoShowInput(prev => !prev)}
+        onClick={() => setAutoShowInput(!autoShowInput)}
         title={autoShowInput ? '自动呼出已开启' : '自动呼出已关闭'}
       >
         {autoShowInput ? <span className={styles.fixedButtonText}>🔔</span> : <span className={styles.fixedButtonText}>🔕</span>}
@@ -1110,11 +1158,6 @@ const PDFReader: React.FC<PDFReaderProps> = ({
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            // onBlur={() => {
-            //   if (!inputValue.trim()) {
-            //     setIsInputVisible(false);
-            //   }
-            // }}
             placeholder="输入消息..."
             className={styles.chatInput}
           />
