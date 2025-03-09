@@ -371,7 +371,7 @@ async def download_file(
     # 设置多种格式的文件名，以确保最大兼容性
     content_disposition = (
         f"attachment; "
-        f'filename="{filename}"; '  # 普通格式
+        f'filename="{encoded_filename}"; '  # 普通格式
         f"filename*=UTF-8''{encoded_filename}"  # RFC 5987 格式
     )
 

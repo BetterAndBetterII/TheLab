@@ -12,7 +12,7 @@ const About: React.FC = () => {
           <span className={styles.logoText}>TheLab</span>
         </h1>
         <p className={styles.subtitle}>
-          TheLab是一个将AI与交互放在首位的平台，致力于为用户提供最佳的学习体验。
+          TheLab是一个将AI与交互放在首位的平台，致力于为用户提供最佳的学习体验。TheLab承诺长期免费，只要Google Gemini API免费层还在，TheLab就会一直免费。
         </p>
       </div>
       <div className={styles.aboutLink}>
@@ -25,6 +25,8 @@ const About: React.FC = () => {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>我的初衷</h2>
           <p className={styles.text}>
+            TheLab目标是以最低的成本保持运营，理想成本（包括电费）控制在5元/天。若遇到上传文件过慢或失败，请耐心重试，或电邮hi@gitfetch.dev协助排查。
+            我会在第一时间响应，并尽可能在24小时内尽力解决问题。
             我做的软件都是为了自己的兴趣还有自己的需求，既希望有多点同学可以体验到免费的有意思的AI工具，但又不希望太多人使用。（Gemini 免费API不太多）
             希望大家可以多多支持，多多反馈，多多交流。
           </p>
