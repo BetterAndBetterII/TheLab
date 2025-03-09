@@ -89,6 +89,12 @@
   color: white;
 }
 
+.copyButton.copied:hover {
+  background: #409343;
+  border-color: #4caf50;
+  color: white;
+}
+
 .alternateButton {
   position: fixed;
   opacity: 0;

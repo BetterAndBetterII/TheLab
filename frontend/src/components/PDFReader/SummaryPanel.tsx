@@ -108,7 +108,7 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
                 <CheckIcon className={styles.icon} />
               ) : (
                 <>
-                  <DocumentDuplicateIcon className={styles.icon} />
+                  {/* <DocumentDuplicateIcon className={styles.icon} /> */}
                   <LanguageIcon className={`${styles.icon} ${styles.smallIcon}`} />
                 </>
               )}
@@ -148,7 +148,7 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
                 <CheckIcon className={styles.icon} />
               ) : (
                 <>
-                  <ClipboardIcon className={styles.icon} />
+                  {/* <ClipboardIcon className={styles.icon} /> */}
                   <LanguageIcon className={`${styles.icon} ${styles.smallIcon}`} />
                 </>
               )}
