@@ -270,7 +270,7 @@ class DocumentPipeline:
         logger.info(f"开始预处理文档: {document.filename}")
 
         # 使用系统临时目录
-        temp_dir = tempfile.gettempdir()
+        temp_dir = tempfile.mkdtemp()
         temp_file = os.path.join(temp_dir, document.filename)
         logger.debug(f"使用临时文件路径: {temp_file}")
 
