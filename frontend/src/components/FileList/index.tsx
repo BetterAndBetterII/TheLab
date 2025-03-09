@@ -65,8 +65,14 @@ const FileList: React.FC<FileListProps> = ({
   const [loading, setLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [folderPath, setFolderPath] = useState<FileItem[]>([]);
-  const [sortBy, setSortBy] = useState<'name' | 'date'>('date');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
+    const savedSortBy = localStorage.getItem('fileSortBy');
+    return (savedSortBy as 'name' | 'date') || 'date';
+  });
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
+    const savedSortOrder = localStorage.getItem('fileSortOrder');
+    return (savedSortOrder as 'asc' | 'desc') || 'desc';
+  });
   const [operation, setOperation] = useState<FileOperation | null>(null);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -113,6 +119,11 @@ const FileList: React.FC<FileListProps> = ({
     }, 2500);
     return () => clearInterval(interval);
   }, [files]);
+
+  useEffect(() => {
+    localStorage.setItem('fileSortBy', sortBy);
+    localStorage.setItem('fileSortOrder', sortOrder);
+  }, [sortBy, sortOrder]);
 
   const updateProcessingStatus = async () => {
     const targetFiles = files.filter(file => file.processingStatus === 'pending' || file.processingStatus === 'processing')

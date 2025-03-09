@@ -18,7 +18,6 @@ const About: React.FC = () => {
       <div className={styles.aboutLink}>
         <Link to="/">
           <RiHome5Line />
-          返回主页
         </Link>
       </div>
 

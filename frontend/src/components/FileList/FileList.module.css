@@ -369,3 +369,165 @@
 .failed {
   color: #ff4d4f;
 }
+
+/* 移动端响应式样式 */
+@media screen and (max-width: 768px) {
+  .container {
+    padding: 12px;
+  }
+
+  .header {
+    margin-bottom: 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+
+  .actionButton {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .breadcrumb {
+    padding: 6px 12px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .content {
+    border-radius: 6px;
+  }
+
+  .toolbar {
+    padding: 12px;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .fileList {
+    padding: 8px;
+  }
+
+  .fileItem {
+    padding: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .fileIcon {
+    font-size: 20px;
+    margin-right: 12px;
+  }
+
+  .fileInfo {
+    flex: 1 1 100%;
+    order: 2;
+  }
+
+  .fileName {
+    font-size: 15px;
+  }
+
+  .fileMeta {
+    flex-wrap: wrap;
+  }
+
+  .fileOwner {
+    margin: 0;
+    font-size: 13px;
+    flex: 1 1 100%;
+    order: 3;
+  }
+
+  .fileActions {
+    opacity: 1;
+    order: 1;
+    margin-left: auto;
+  }
+
+  .iconButton {
+    padding: 8px;
+    font-size: 16px;
+  }
+
+  .dialogContent {
+    width: 90vw;
+    max-width: none;
+    padding: 16px;
+  }
+
+  .dialogContent input {
+    font-size: 16px;
+    padding: 10px;
+  }
+
+  .dialogActions button {
+    flex: 1;
+    padding: 10px;
+    font-size: 15px;
+  }
+
+  /* 优化触摸交互 */
+  .fileItem:active {
+    background-color: #e3f2fd;
+  }
+
+  .iconButton:active {
+    background-color: #d9d9d9;
+  }
+
+  /* 优化文件夹树在移动端的显示 */
+  .folderList {
+    max-height: 60vh;
+  }
+
+  .folderTreeItem {
+    padding: 12px 8px;
+  }
+
+  /* 处理状态栏在移动端的显示 */
+  .processingStatus {
+    flex-wrap: wrap;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .progressBar {
+    width: 100%;
+    height: 4px;
+  }
+}
+
+/* 针对超小屏幕的额外优化 */
+@media screen and (max-width: 480px) {
+  .container {
+    padding: 8px;
+  }
+
+  .actionButton {
+    min-width: 100px;
+    font-size: 12px;
+  }
+
+  .fileName {
+    font-size: 14px;
+  }
+
+  .fileMeta {
+    font-size: 11px;
+  }
+
+  .fileOwner {
+    font-size: 12px;
+  }
+}

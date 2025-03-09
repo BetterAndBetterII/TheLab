@@ -1178,7 +1178,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                   onClick={handleExportImage}
                 >
                   <IoMdDownload />
-                  导出图片
+                  <span className={styles.buttonText}>导出图片</span>
                 </button>
                 <button
                   className={styles.regenerateButton}
@@ -1186,7 +1186,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                   disabled={mindmapLoading}
                 >
                   <IoMdRefresh />
-                  {mindmapLoading ? '生成中...' : '重新生成'}
+                  <span className={styles.buttonText}>{mindmapLoading ? '生成中...' : '重新生成'}</span>
                 </button>
                 <button className={styles.closeButton} onClick={closeMindmap}>
                   <IoMdClose />

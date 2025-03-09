@@ -171,6 +171,22 @@
   .mobileMenuButton {
     display: block;
   }
+
+  .collapseButton {
+    display: none;
+  }
+
+  .navbar.collapsed {
+    width: 240px;
+  }
+
+  .navbar.collapsed .menuLabel {
+    display: block;
+  }
+
+  .navbar.collapsed .logoText {
+    display: block;
+  }
 }
 
 /* 调整主内容区域的边距 */
