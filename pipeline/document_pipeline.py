@@ -36,9 +36,9 @@ class DocumentPipeline:
         self.is_running = True
         db = next(get_db())
         # 删除之前未完成的任务
-        db.query(Document).filter(Document.processing_status == ProcessingStatus.PROCESSING).update(
-            {Document.processing_status: ProcessingStatus.FAILED}
-        )
+        db.query(Document).filter(
+            Document.processing_status == ProcessingStatus.PROCESSING
+        ).update({Document.processing_status: ProcessingStatus.FAILED})
         db.commit()
 
         # 启动守护线程处理任务
@@ -71,7 +71,9 @@ class DocumentPipeline:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def _should_process_document(self, document: Document, db: Session, force: bool = False) -> bool:
+    def _should_process_document(
+        self, document: Document, db: Session, force: bool = False
+    ) -> bool:
         """检查文档是否需要处理 :param document: Document对象 :param force: 是否强制处理 :return: 是否需要处理."""
         if force:
             return True
@@ -134,7 +136,9 @@ class DocumentPipeline:
         db.close()
 
         # self.task_queue.put(document_id)
-        asyncio.run_coroutine_threadsafe(self._process_document(document_id), self.forever_loop)
+        asyncio.run_coroutine_threadsafe(
+            self._process_document(document_id), self.forever_loop
+        )
 
         return True
 
@@ -281,7 +285,7 @@ class DocumentPipeline:
         # 使用DocsIngester处理文档
         logger.debug(f"开始使用DocsIngester处理文档")
         ingester = DocsIngester()
-        section = ingester.process_document(temp_file, document.filename)
+        section = await ingester.process_document(temp_file, document.filename)
         # temp_file 存储到数据库
         with open(temp_file, "rb") as f:
             document.file_data = f.read()
@@ -370,7 +374,9 @@ class DocumentPipeline:
         # 构建文本Section
         text_section = Section(
             title=document.filename,
-            pages=[Page(content=page_data) for page_data in document.content_pages.values()],
+            pages=[
+                Page(content=page_data) for page_data in document.content_pages.values()
+            ],
             file_type=FileType.TEXT,
             filename=document.filename,
         )

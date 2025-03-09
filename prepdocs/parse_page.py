@@ -6,9 +6,13 @@ import shutil
 import subprocess
 import tempfile
 import uuid
+import asyncio
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from multiprocessing import Manager
 from pathlib import Path
 
-from pdf2image import convert_from_path
+import pypdfium2 as pdfium
+from tqdm import tqdm
 
 from prepdocs.config import FileType, Page, Section
 
@@ -54,8 +58,113 @@ class DocsIngester:
             logger.error(f"转换文件失败: {str(e)}")
             raise
 
-    def process_document(self, file_path: str, title: str) -> Section:
-        """处理文档并返回Section对象."""
+    def _process_batch_pages(
+        self, pdf_path: str, start_page: int, end_page: int, temp_dir: str
+    ) -> list[tuple[int, str]]:
+        """处理一批PDF页面并返回图片路径列表."""
+        image_paths = []
+        try:
+            pdf = pdfium.PdfDocument(pdf_path)
+            for page_num in range(start_page, end_page):
+                # 获取页面
+                page = pdf[page_num]
+                # 渲染为位图
+                bitmap = page.render(scale=300 / 72, rotation=0)  # 300 DPI
+                # 转换为RGB格式
+                pil_image = bitmap.to_pil()
+                # 保存图片
+                image_path = os.path.join(temp_dir, f"page_{page_num+1}.png")
+                pil_image.save(image_path, "PNG")
+                image_paths.append((page_num, image_path))
+                # 释放资源
+                bitmap.close()
+                page.close()
+
+            pdf.close()
+            return image_paths
+        except Exception as e:
+            logger.error(f"处理页面批次 {start_page}-{end_page} 时发生错误: {str(e)}")
+            raise
+
+    async def _process_pdf(self, file_path: Path) -> list[str]:
+        """异步处理 PDF 文件，返回图片路径列表."""
+        print("PDF processing start")
+
+        # 打开PDF文件
+        pdf = pdfium.PdfDocument(file_path)
+        total_pages = len(pdf)
+        pdf.close()  # 关闭主进程的PDF文件，让子进程自己打开
+
+        # 创建进度条
+        pbar = tqdm(total=total_pages, desc="处理PDF页面")
+
+        # 如果页数少于60，使用单线程处理
+        if total_pages < 50:
+            image_paths = []
+            try:
+                pdf = pdfium.PdfDocument(file_path)
+                for page_num in range(total_pages):
+                    page = pdf[page_num]
+                    bitmap = page.render(scale=300 / 72)
+                    pil_image = bitmap.to_pil()
+                    image_path = os.path.join(self.temp_dir, f"page_{page_num+1}.png")
+                    pil_image.save(image_path, "PNG")
+                    image_paths.append(image_path)
+                    pbar.update(1)
+                    # 释放资源
+                    bitmap.close()
+                    page.close()
+                pdf.close()
+            except Exception as e:
+                logger.error(f"单线程处理PDF时发生错误: {str(e)}")
+                raise
+            finally:
+                pbar.close()
+            return image_paths
+
+        # 使用4进程处理，将页面分成4个批次
+        batch_size = (total_pages + 3) // 4
+        temp_paths = [None] * total_pages
+
+        try:
+            # 创建进程池
+            with ProcessPoolExecutor(max_workers=4) as executor:
+                # 创建4个批次的任务
+                futures = []
+                for i in range(4):
+                    start_page = i * batch_size
+                    end_page = min((i + 1) * batch_size, total_pages)
+                    if start_page < total_pages:
+                        future = executor.submit(
+                            self._process_batch_pages,
+                            str(file_path),
+                            start_page,
+                            end_page,
+                            self.temp_dir
+                        )
+                        futures.append(future)
+
+                # 等待所有任务完成并处理结果
+                for future in futures:
+                    batch_results = future.result()
+                    for page_num, image_path in batch_results:
+                        temp_paths[page_num] = image_path
+                        pbar.update(1)
+
+        except Exception as e:
+            logger.error(f"处理PDF时发生错误: {str(e)}")
+            raise
+        finally:
+            pbar.close()
+
+        # 确保页面顺序正确
+        image_paths = [path for path in temp_paths if path is not None]
+
+        print("PDF processing end")
+        return image_paths
+
+    async def process_document_async(self, file_path: str, title: str) -> Section:
+        """异步处理文档并返回Section对象."""
         file_path = Path(file_path)
         if not file_path.exists():
             raise FileNotFoundError(f"文件不存在: {file_path}")
@@ -68,11 +177,11 @@ class DocsIngester:
         # 根据文件类型处理并获取图片路径列表
         image_paths = []
         if file_ext == "pdf":
-            image_paths = self._process_pdf(file_path)
+            image_paths = await self._process_pdf(file_path)
         else:
             # 对于 docx 和 pptx，先转换为 PDF
             pdf_path = self._convert_to_pdf_with_libreoffice(str(file_path))
-            image_paths = self._process_pdf(Path(pdf_path))
+            image_paths = await self._process_pdf(Path(pdf_path))
             # 将转换后的 PDF 移动到原始文件位置
             shutil.move(pdf_path, file_path)
 
@@ -87,17 +196,9 @@ class DocsIngester:
             filename=title,
         )
 
-    def _process_pdf(self, file_path: Path) -> list[str]:
-        """处理 PDF 文件，返回图片路径列表."""
-        images = convert_from_path(file_path)
-        image_paths = []
-
-        for i, image in enumerate(images):
-            image_path = os.path.join(self.temp_dir, f"page_{i+1}.png")
-            image.save(image_path, "PNG")
-            image_paths.append(image_path)
-
-        return image_paths
+    async def process_document(self, file_path: str, title: str) -> Section:
+        """同步处理文档的包装方法."""
+        return await self.process_document_async(file_path, title)
 
     def cleanup(self):
         """清理临时文件."""
