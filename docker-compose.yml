@@ -15,6 +15,7 @@ services:
       - redis
     networks:
       - app_network
+    restart: always
 
   db:
     image: pgvector/pgvector:pg17
