@@ -222,15 +222,12 @@ async def delete_folder(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    if settings.GLOBAL_MODE == "public":
+    if current_user.id in [1, 2]:
         base_query_folder = db.query(Folder)
         base_query_document = db.query(Document)
     else:
         base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
         base_query_document = db.query(Document).filter(Document.owner_id == current_user.id)
-    if current_user.id in [1, 2]:
-        base_query_folder = db.query(Folder)
-        base_query_document = db.query(Document)
     folder = base_query_folder.filter(Folder.id == int(folderId)).first()
     if not folder:
         raise HTTPException(status_code=404, detail="文件夹不存在")
@@ -255,15 +252,12 @@ async def batch_delete_folders(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    if settings.GLOBAL_MODE == "public":
+    if current_user.id in [1, 2]:
         base_query_folder = db.query(Folder)
         base_query_document = db.query(Document)
     else:
         base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
         base_query_document = db.query(Document).filter(Document.owner_id == current_user.id)
-    if current_user.id in [1, 2]:
-        base_query_folder = db.query(Folder)
-        base_query_document = db.query(Document)
     folder_ids = []
     for folderId in request.folderIds:
         folder = base_query_folder.filter(Folder.id == int(folderId)).first()

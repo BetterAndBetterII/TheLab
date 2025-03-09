@@ -416,12 +416,10 @@ async def delete_file(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    if settings.GLOBAL_MODE == "public":
+    if current_user.id in [1, 2]:
         base_query = db.query(Document)
     else:
         base_query = db.query(Document).filter(Document.owner_id == current_user.id)
-    if current_user.id in [1, 2]:
-        base_query = db.query(Document)
     document = base_query.filter(Document.id == int(fileId)).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
@@ -534,12 +532,10 @@ async def batch_delete_files(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    if settings.GLOBAL_MODE == "public":
+    if current_user.id in [1, 2]:
         base_query = db.query(Document)
     else:
         base_query = db.query(Document).filter(Document.owner_id == current_user.id)
-    if current_user.id in [1, 2]:
-        base_query = db.query(Document)
     file_ids = []
     for file_id in request.fileIds:
         document = base_query.filter(Document.id == int(file_id)).with_entities(Document.id).first()
