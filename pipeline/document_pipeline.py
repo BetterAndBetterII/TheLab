@@ -325,7 +325,7 @@ class DocumentPipeline:
         )
 
         # 创建临时图片文件，使用系统临时目录
-        temp_dir = tempfile.gettempdir()
+        temp_dir = tempfile.mkdtemp()
         temp_files = []
         for page_num, page_data in document.content_pages.items():
             if page_data["type"] == "image":
