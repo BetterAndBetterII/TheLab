@@ -1,5 +1,4 @@
 .summaryPanel {
-  margin-top: 16px;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -46,6 +45,7 @@
 }
 
 .markdownContainer {
+  max-height: 90%;
   position: relative;
   flex: 1;
   background: #f8f9fa;

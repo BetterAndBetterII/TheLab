@@ -81,6 +81,7 @@ input:checked + .toggleSlider:before {
   flex: 1;
   padding: 16px;
   position: relative;
+  margin-bottom: 45px;
 }
 
 /* 美化滚动条 */

@@ -309,10 +309,10 @@ const PDFReader: React.FC<PDFReaderProps> = ({
         const maxWidth = containerWidth - 280;
         const clampedWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
         const percentage = (clampedWidth / containerWidth) * 100;
-        
+
         // 使用节流函数更新宽度
         throttledSetPdfWidth(`${percentage}%`);
-        
+
         // 使用 requestAnimationFrame 优化视觉更新
         requestAnimationFrame(() => {
           pdfContainer.style.width = `${percentage}%`;
@@ -363,7 +363,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
         // 使用节流函数更新高度
         throttledSetPdfHeight(`${percentage}vh`);
-        
+
         // 使用 requestAnimationFrame 优化视觉更新
         requestAnimationFrame(() => {
           pdfContainer.style.height = `${percentage}vh`;

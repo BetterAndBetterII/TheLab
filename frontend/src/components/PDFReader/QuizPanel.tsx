@@ -266,12 +266,12 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
                     )}
                   </div>
                 ))}
+                {allCorrect && (
+                  <div className={styles.congratulations}>
+                    🎉 恭喜你全部回答正确！
+                  </div>
+                )}
               </div>
-              {allCorrect && (
-                <div className={styles.congratulations}>
-                  🎉 恭喜你全部回答正确！
-                </div>
-              )}
             </div>
           )}
         </div>
