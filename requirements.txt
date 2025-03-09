@@ -20,7 +20,6 @@ openai==1.65.2
 passlib[bcrypt]==1.7.4
 passlib[bcrypt]==1.7.4
 pdf2image~=1.17.0
-pypdfium2==4.30.1
 
 # AI和图像处理
 pillow~=11.0.0
@@ -31,6 +30,7 @@ pydantic==2.8.0
 pydantic-settings==2.1.0
 
 pydantic[email]==2.8.0
+pypdfium2==4.30.1
 python-dotenv==1.0.1
 python-jose[cryptography]==3.4.0
 python-multipart==0.0.19

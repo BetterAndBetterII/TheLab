@@ -21,6 +21,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
+import { throttle } from 'lodash';
 
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
@@ -145,6 +146,19 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     const stored = getStoredState()?.isNotesPanelCollapsed;
     return stored !== undefined ? stored : false;
   });
+
+  // 添加节流后的更新函数
+  const throttledSetPdfWidth = useRef(
+    throttle((width: string) => {
+      setPdfWidth(width);
+    }, 16)  // 约60fps
+  ).current;
+
+  const throttledSetPdfHeight = useRef(
+    throttle((height: string) => {
+      setPdfHeight(height);
+    }, 16)
+  ).current;
 
   // 加载笔记
   const loadNotes = useCallback(async () => {
@@ -274,7 +288,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     });
   }, [pdfWidth, pdfHeight, activeTab, autoShowInput, currentModel, isNotesPanelCollapsed]);
 
-  // 处理拖拽调整
+  // 优化水平拖拽
   useEffect(() => {
     const container = containerRef.current;
     const resizer = resizerRef.current;
@@ -282,51 +296,48 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
     if (!container || !resizer || !pdfContainer) return;
 
-    let startX: number;
-    let startWidth: number;
-
     const startDragging = (e: MouseEvent) => {
-      startX = e.clientX;
-      startWidth = pdfContainer.offsetWidth;
+      const startX = e.clientX;
+      const startWidth = pdfContainer.offsetWidth;
       setIsDragging(true);
-    };
 
-    const stopDragging = () => {
-      setIsDragging(false);
-      document.removeEventListener('mousemove', onDrag);
-      document.removeEventListener('mouseup', stopDragging);
-    };
+      const onDrag = (e: MouseEvent) => {
+        if (!container) return;
+        const containerWidth = container.offsetWidth;
+        const newWidth = startWidth + (e.clientX - startX);
+        const minWidth = 280;
+        const maxWidth = containerWidth - 280;
+        const clampedWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
+        const percentage = (clampedWidth / containerWidth) * 100;
+        
+        // 使用节流函数更新宽度
+        throttledSetPdfWidth(`${percentage}%`);
+        
+        // 使用 requestAnimationFrame 优化视觉更新
+        requestAnimationFrame(() => {
+          pdfContainer.style.width = `${percentage}%`;
+        });
+      };
 
-    const onDrag = (e: MouseEvent) => {
-      if (!container) return;
+      const stopDragging = () => {
+        setIsDragging(false);
+        document.removeEventListener('mousemove', onDrag);
+        document.removeEventListener('mouseup', stopDragging);
+      };
 
-      const containerWidth = container.offsetWidth;
-      const newWidth = startWidth + (e.clientX - startX);
-
-      const minWidth = 280;
-      const maxWidth = containerWidth - 280;
-
-      const clampedWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
-      const percentage = (clampedWidth / containerWidth) * 100;
-
-      setPdfWidth(`${percentage}%`);
-    };
-
-    const handleMouseDown = (e: MouseEvent) => {
-      e.preventDefault();
-      startDragging(e);
       document.addEventListener('mousemove', onDrag);
       document.addEventListener('mouseup', stopDragging);
     };
 
-    resizer.addEventListener('mousedown', handleMouseDown);
-
+    resizer.addEventListener('mousedown', startDragging);
     return () => {
-      resizer.removeEventListener('mousedown', handleMouseDown);
+      resizer.removeEventListener('mousedown', startDragging);
+      // 清理节流函数
+      throttledSetPdfWidth.cancel();
     };
-  }, []);
+  }, [throttledSetPdfWidth]);
 
-  // 处理垂直拖拽
+  // 优化垂直拖拽
   useEffect(() => {
     const container = containerRef.current;
     const resizerHorizontal = resizerHorizontalRef.current;
@@ -334,62 +345,58 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
     if (!container || !resizerHorizontal || !pdfContainer) return;
 
-    let startY: number;
-    let startHeight: number;
-
-    const startDraggingVertical = (e: MouseEvent | TouchEvent) => {
+    const startDragging = (e: MouseEvent | TouchEvent) => {
       const touchY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-      startY = touchY;
-      startHeight = pdfContainer.offsetHeight;
+      const startY = touchY;
+      const startHeight = pdfContainer.offsetHeight;
       setIsDraggingVertical(true);
+
+      const onDrag = (e: MouseEvent | TouchEvent) => {
+        if (!container) return;
+        const touchY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        const containerHeight = container.offsetHeight;
+        const newHeight = startHeight + (touchY - startY);
+        const minHeight = containerHeight * 0.15;
+        const maxHeight = containerHeight * 0.85;
+        const clampedHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
+        const percentage = (clampedHeight / containerHeight) * 100;
+
+        // 使用节流函数更新高度
+        throttledSetPdfHeight(`${percentage}vh`);
+        
+        // 使用 requestAnimationFrame 优化视觉更新
+        requestAnimationFrame(() => {
+          pdfContainer.style.height = `${percentage}vh`;
+        });
+      };
+
+      const stopDragging = () => {
+        setIsDraggingVertical(false);
+        document.removeEventListener('mousemove', onDrag);
+        document.removeEventListener('mouseup', stopDragging);
+        document.removeEventListener('touchmove', onDrag);
+        document.removeEventListener('touchend', stopDragging);
+      };
+
+      if ('touches' in e) {
+        document.addEventListener('touchmove', onDrag);
+        document.addEventListener('touchend', stopDragging);
+      } else {
+        document.addEventListener('mousemove', onDrag);
+        document.addEventListener('mouseup', stopDragging);
+      }
     };
 
-    const stopDraggingVertical = () => {
-      setIsDraggingVertical(false);
-      document.removeEventListener('mousemove', onDragVertical);
-      document.removeEventListener('mouseup', stopDraggingVertical);
-      document.removeEventListener('touchmove', onDragVertical);
-      document.removeEventListener('touchend', stopDraggingVertical);
-    };
-
-    const onDragVertical = (e: MouseEvent | TouchEvent) => {
-      if (!container) return;
-
-      const touchY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-      const containerHeight = container.offsetHeight;
-      const newHeight = startHeight + (touchY - startY);
-
-      const minHeight = containerHeight * 0.15;
-      const maxHeight = containerHeight * 0.85;
-
-      const clampedHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
-      const percentage = (clampedHeight / containerHeight) * 100;
-
-      setPdfHeight(`${percentage}vh`);
-    };
-
-    const handleMouseDown = (e: MouseEvent) => {
-      e.preventDefault();
-      startDraggingVertical(e);
-      document.addEventListener('mousemove', onDragVertical);
-      document.addEventListener('mouseup', stopDraggingVertical);
-    };
-
-    const handleTouchStart = (e: TouchEvent) => {
-      e.preventDefault();
-      startDraggingVertical(e);
-      document.addEventListener('touchmove', onDragVertical);
-      document.addEventListener('touchend', stopDraggingVertical);
-    };
-
-    resizerHorizontal.addEventListener('mousedown', handleMouseDown);
-    resizerHorizontal.addEventListener('touchstart', handleTouchStart);
+    resizerHorizontal.addEventListener('mousedown', startDragging);
+    resizerHorizontal.addEventListener('touchstart', startDragging);
 
     return () => {
-      resizerHorizontal.removeEventListener('mousedown', handleMouseDown);
-      resizerHorizontal.removeEventListener('touchstart', handleTouchStart);
+      resizerHorizontal.removeEventListener('mousedown', startDragging);
+      resizerHorizontal.removeEventListener('touchstart', startDragging);
+      // 清理节流函数
+      throttledSetPdfHeight.cancel();
     };
-  }, []);
+  }, [throttledSetPdfHeight]);
 
   useEffect(() => {
     if (mindmapData && showMindmap) {

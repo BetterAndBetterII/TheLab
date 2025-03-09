@@ -91,7 +91,7 @@ const Home: React.FC = () => {
           </p>
         </div>
         <Link to="/about" className={styles.aboutLink}>
-          <RiBookmarkLine />  
+          <RiBookmarkLine />
           <span className={styles.aboutLinkText}>关于我们</span>
         </Link>
       </div>

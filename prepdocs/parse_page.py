@@ -6,9 +6,7 @@ import shutil
 import subprocess
 import tempfile
 import uuid
-import asyncio
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from multiprocessing import Manager
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import pypdfium2 as pdfium
@@ -136,11 +134,7 @@ class DocsIngester:
                     end_page = min((i + 1) * batch_size, total_pages)
                     if start_page < total_pages:
                         future = executor.submit(
-                            self._process_batch_pages,
-                            str(file_path),
-                            start_page,
-                            end_page,
-                            self.temp_dir
+                            self._process_batch_pages, str(file_path), start_page, end_page, self.temp_dir
                         )
                         futures.append(future)
 
