@@ -8,6 +8,7 @@ export default function Search() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   // 搜索选项
   const [searchMode, setSearchMode] = useState<'hybrid' | 'text_search' | 'sparse'>('hybrid');
@@ -27,6 +28,7 @@ export default function Search() {
         mode: searchMode
       });
       setSearchResults(response.results);
+      setHasSearched(true);
     } catch (error) {
       console.error('搜索出错:', error);
     } finally {
@@ -49,7 +51,13 @@ export default function Search() {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (!e.target.value.trim()) {
+                    setHasSearched(false);
+                    setSearchResults([]);
+                  }
+                }}
                 placeholder="输入关键词搜索文档内容..."
                 className={styles.searchInput}
               />
@@ -159,7 +167,7 @@ export default function Search() {
                   </div>
                 ))}
               </div>
-            ) : searchQuery && (
+            ) : searchQuery && hasSearched && (
               <div className={styles.noResults}>
                 <FiSearch size={24} />
                 <p>未找到相关结果</p>
