@@ -1,3 +1,8 @@
+"""知识库模块。
+
+提供基于向量数据库的知识库实现，支持文档的存储、检索和查询功能。 使用 LlamaIndex 作为底层框架，支持异步操作和向量相似度搜索。
+"""
+
 import asyncio
 import hashlib
 import os
@@ -46,6 +51,11 @@ Settings.embed_model = SiliconFlowEmbedding(
 
 
 class KnowledgeBase:
+    """知识库类。
+
+    提供文档的存储、检索和查询功能。支持异步操作，使用向量数据库进行相似度搜索。
+    """
+
     vector_store: PGVectorStore
     doc_store: PostgresDocumentStore
     pipeline: IngestionPipeline
@@ -59,6 +69,14 @@ class KnowledgeBase:
         schema: str = "public",
         namespace: str = "default_user",
     ):
+        """初始化知识库。
+
+        Args:
+            pg_docs_uri: PostgreSQL文档存储URI
+            pg_vector_uri: PostgreSQL向量存储URI
+            schema: 数据库schema名称
+            namespace: 命名空间，用于隔离不同用户的数据
+        """
         hashed_namespace = hashlib.md5(namespace.encode()).hexdigest()
         # 创建一个与 PostgreSQL 数据库交互的键值存储 (PostgresKVStore) 实例，用于存储向量化后的文档
         # 存储向量化的文档（例如嵌入向量）
@@ -161,7 +179,14 @@ class KnowledgeBase:
         return doc_id
 
     async def upload_files(self, file_paths: list[str]):
-        """上传文件并存储到数据库."""
+        """上传文件并存储到数据库。
+
+        Args:
+            file_paths: 要上传的文件路径列表
+
+        Returns:
+            None
+        """
         docs = []
         for file_path in file_paths[:50]:
             print(f"Ingesting file: {file_path}")
@@ -238,6 +263,17 @@ class KnowledgeBase:
         rerank: bool = True,
         mode: str = "hybrid",
     ):
+        """检索相关文档。
+
+        Args:
+            query: 查询字符串
+            top_k: 返回的最相关文档数量
+            rerank: 是否进行重排序
+            mode: 检索模式，可选hybrid/text_search/sparse
+
+        Returns:
+            list[NodeWithScore]: 检索到的文档节点列表
+        """
         postprocessor = MetadataReplacementPostProcessor(
             target_metadata_key="window",
         )
@@ -277,6 +313,17 @@ class KnowledgeBase:
         top_k: int = 15,
         cutoff: float = 0.6,
     ):
+        """重新排序文档节点。
+
+        Args:
+            nodes: 待排序的文档节点列表
+            query: 查询字符串
+            top_k: 返回的节点数量
+            cutoff: 相似度阈值
+
+        Returns:
+            list[NodeWithScore]: 重排序后的文档节点列表
+        """
         qb = QueryBundle(query)
         reranker = SiliconFlowRerank(
             model="BAAI/bge-reranker-v2-m3",
@@ -291,7 +338,6 @@ class KnowledgeBase:
     # 指定相似性检索的 top_k 值（即返回的最相似文档数量）
     async def query_with_context(self, query: str, top_k: int = 5):
         """查询时包含上下文信息."""
-
         custom_prompt_str = (
             "Context information is below. Ensure that the answer is based on the provided context. "
             "Provide relevant valid links.\n"
@@ -334,17 +380,38 @@ class KnowledgeBase:
 
 # 定义请求和响应模型
 class QueryRequest(BaseModel):
+    """查询请求模型。
+
+    用于封装用户的查询请求参数。
+    """
+
     query: str
     top_k: int = 5
 
 
 class QueryResponse(BaseModel):
+    """查询响应模型。
+
+    用于封装查询结果的响应数据。
+    """
+
     response: str
     sources: list
 
 
 async def query_documents(rag, request: QueryRequest):
-    """查询接口：检索数据库中文档并生成回答."""
+    """查询文档接口。
+
+    Args:
+        rag: 知识库实例
+        request: 查询请求对象
+
+    Returns:
+        QueryResponse: 查询响应对象
+
+    Raises:
+        Exception: 查询过程中的任何错误
+    """
     try:
         result = await rag.query_with_context(query=request.query, top_k=request.top_k)
         return QueryResponse(response=result["response"], sources=result["sources"])
@@ -365,7 +432,7 @@ async def upload_text_to_rag(rag, text: str):
 
 
 async def run():
-    # 初始化 RAG 实例
+    """运行知识库测试。"""
     PG_DOCS_URI = os.getenv("PG_DOCS_URI")
     PG_VECTOR_URI = os.getenv("PG_VECTOR_URI")
     rag = KnowledgeBase(pg_docs_uri=PG_DOCS_URI, pg_vector_uri=PG_VECTOR_URI)
@@ -373,5 +440,5 @@ async def run():
 
 
 if __name__ == "__main__":
-    # 配置数据库 URI
+    """运行知识库测试。"""
     asyncio.run(run())

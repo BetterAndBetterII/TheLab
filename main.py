@@ -1,3 +1,8 @@
+"""FastAPI应用程序入口模块.
+
+该模块是应用程序的主入口，负责配置FastAPI应用实例， 包括CORS中间件、API路由注册、静态文件服务等功能.
+"""
+
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -16,6 +21,16 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """应用程序生命周期管理器.
+
+    处理应用程序的启动和关闭事件，确保资源的正确清理.
+
+    Args:
+        app: FastAPI应用实例
+
+    Yields:
+        None
+    """
     yield
     # 清理工作
     if hasattr(app.state, "document_pipeline"):
@@ -61,9 +76,19 @@ app.mount(
 )
 
 
-# 处理所有其他路由，返回index.html
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
+    """处理所有前端路由请求.
+
+    实现单页应用(SPA)的客户端路由支持，将所有未匹配的路由
+    重定向到index.html，同时支持静态文件的直接访问.
+
+    Args:
+        full_path: 请求的完整路径
+
+    Returns:
+        FileResponse: 静态文件或index.html的响应
+    """
     # 检查是否存在对应的静态文件
     static_file = f"frontend/dist/{full_path}"
     if os.path.isfile(static_file):

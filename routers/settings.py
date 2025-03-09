@@ -1,3 +1,8 @@
+"""设置相关的路由处理模块。
+
+提供用户设置的管理功能，包括基本设置和AI配置的更新、测试等功能。
+"""
+
 import traceback
 from datetime import datetime
 
@@ -15,6 +20,11 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 
 class BasicSettings(BaseModel):
+    """基本设置模型。
+
+    包含用户的基本设置信息。
+    """
+
     email: str
     fullName: str
     bio: str | None = None
@@ -22,6 +32,11 @@ class BasicSettings(BaseModel):
 
 
 class AISettings(BaseModel):
+    """AI设置模型。
+
+    包含用户的AI相关配置。
+    """
+
     apiKey: str
     baseUrl: str
     standardModel: str = "gemini-1.5-flash"
@@ -29,6 +44,11 @@ class AISettings(BaseModel):
 
 
 class AISettingsResponse(BaseModel):
+    """AI设置响应模型。
+
+    包含用户的完整设置信息。
+    """
+
     email: str
     fullName: str
     bio: str | None = None
@@ -39,6 +59,11 @@ class AISettingsResponse(BaseModel):
     isAdmin: bool
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
 

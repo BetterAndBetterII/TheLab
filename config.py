@@ -1,3 +1,8 @@
+"""应用程序配置模块.
+
+该模块定义了应用程序的所有配置项，包括数据库、Redis、Celery、邮件、认证等设置. 使用 pydantic_settings.BaseSettings 进行环境变量管理.
+"""
+
 from functools import lru_cache
 from typing import Literal, Optional
 
@@ -5,6 +10,11 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    """应用程序配置类.
+
+    管理所有应用程序配置项，支持从环境变量和.env文件加载配置. 包含数据库、缓存、任务队列、邮件、认证、AI模型等相关配置.
+    """
+
     # 数据库设置
     DATABASE_TYPE: str = "sqlite"  # 默认使用 SQLite
     DATABASE_HOST: Optional[str] = None
@@ -75,6 +85,17 @@ class Settings(BaseSettings):
 
     @property
     def DATABASE_URL(self) -> str:
+        """获取数据库连接URL.
+
+        根据配置的数据库类型，生成对应的数据库连接URL.
+        目前支持SQLite和PostgreSQL两种数据库类型.
+
+        Returns:
+            str: 数据库连接URL
+
+        Raises:
+            ValueError: 当配置了不支持的数据库类型时抛出
+        """
         if self.DATABASE_TYPE == "sqlite":
             return f"sqlite:///./{self.DATABASE_NAME}"
         elif self.DATABASE_TYPE == "postgresql":
@@ -87,6 +108,17 @@ class Settings(BaseSettings):
 
     @property
     def RAG_DATABASE_URL(self) -> str:
+        """获取RAG（检索增强生成）数据库连接URL.
+
+        根据配置的数据库类型，生成对应的RAG数据库连接URL.
+        目前支持SQLite和PostgreSQL两种数据库类型.
+
+        Returns:
+            str: RAG数据库连接URL
+
+        Raises:
+            ValueError: 当配置了不支持的数据库类型时抛出
+        """
         if self.DATABASE_TYPE == "sqlite":
             return f"sqlite:///./{self.RAG_DATABASE_NAME}"
         elif self.DATABASE_TYPE == "postgresql":
@@ -99,11 +131,26 @@ class Settings(BaseSettings):
 
     @property
     def REDIS_URL(self) -> str:
+        """获取Redis连接URL.
+
+        根据配置生成Redis连接URL，支持带密码和不带密码两种形式.
+
+        Returns:
+            str: Redis连接URL
+        """
         if self.REDIS_PASSWORD:
             return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
     def __init__(self, **kwargs):
+        """初始化Settings实例.
+
+        初始化配置对象，设置默认的Celery broker和backend URL，
+        并配置OpenAI客户端.
+
+        Args:
+            **kwargs: 配置参数字典
+        """
         super().__init__(**kwargs)
         # 如果没有显式设置，使用Redis URL作为Celery的broker和backend
         if not self.CELERY_BROKER_URL:
@@ -117,9 +164,21 @@ class Settings(BaseSettings):
         openai.api_key = self.OPENAI_API_KEY
 
     class Config:
+        """Pydantic配置类.
+
+        定义配置文件的加载行为，指定默认的环境变量文件路径.
+        """
+
         env_file = ".env"
 
 
 @lru_cache()
 def get_settings() -> Settings:
+    """获取应用程序配置单例实例.
+
+    使用lru_cache装饰器确保配置对象只被创建一次.
+
+    Returns:
+        Settings: 配置对象实例
+    """
     return Settings()

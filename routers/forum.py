@@ -1,3 +1,8 @@
+"""论坛相关的路由处理模块。
+
+提供论坛主题的创建、查询、修改、删除等功能的API接口。 支持主题分类、回复管理和AI生成内容功能。
+"""
+
 from datetime import datetime
 from typing import List, Optional
 
@@ -14,8 +19,12 @@ from services.session import get_current_user
 router = APIRouter(prefix="/forum", tags=["forum"])
 
 
-# 请求和响应模型
 class TopicCreate(BaseModel):
+    """主题创建请求模型。
+
+    包含创建新主题所需的参数。
+    """
+
     title: str
     content: str
     category: TopicCategory
@@ -23,26 +32,51 @@ class TopicCreate(BaseModel):
 
 
 class TopicUpdate(BaseModel):
+    """主题更新请求模型。
+
+    包含更新主题所需的参数。
+    """
+
     title: Optional[str] = None
     content: Optional[str] = None
     category: Optional[TopicCategory] = None
 
 
 class ReplyCreate(BaseModel):
+    """回复创建请求模型。
+
+    包含创建新回复所需的参数。
+    """
+
     content: str
     parent_id: Optional[int] = None
     enable_agent: Optional[bool] = True
 
 
 class UserResponse(BaseModel):
+    """用户响应模型。
+
+    包含用户基本信息。
+    """
+
     id: int
     username: str
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
 
 class ReplyResponse(BaseModel):
+    """回复响应模型。
+
+    包含回复的完整信息。
+    """
+
     id: int
     content: str
     topic_id: int
@@ -54,16 +88,37 @@ class ReplyResponse(BaseModel):
     updated_at: datetime
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
     @field_validator("username")
     def set_username(cls, v, info):
+        """设置用户名的验证器。
+
+        当用户名为空时返回默认值。
+
+        Args:
+            v: 用户名值
+            info: 验证器信息
+
+        Returns:
+            str: 处理后的用户名
+        """
         if v is None:
             return "Unknown User"
         return v
 
 
 class TopicResponse(BaseModel):
+    """主题响应模型。
+
+    包含主题的完整信息和相关回复。
+    """
+
     id: int
     title: str
     content: str
@@ -78,10 +133,26 @@ class TopicResponse(BaseModel):
     replies: List[ReplyResponse]
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
     @field_validator("username")
     def set_username(cls, v, info):
+        """设置用户名的验证器。
+
+        当用户名为空时返回默认值。
+
+        Args:
+            v: 用户名值
+            info: 验证器信息
+
+        Returns:
+            str: 处理后的用户名
+        """
         if v is None:
             return "Unknown User"
         return v

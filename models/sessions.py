@@ -1,3 +1,8 @@
+"""会话管理模块。
+
+处理用户会话相关的数据模型，包括会话创建、过期和数据存储。
+"""
+
 from datetime import datetime
 
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
@@ -7,6 +12,11 @@ from database import Base
 
 
 class Session(Base):
+    """用户会话模型。
+
+    存储用户会话信息，包括会话ID、用户信息、过期时间等。 支持会话数据的JSON存储和用户代理信息记录。
+    """
+
     __tablename__ = "sessions"
 
     id = Column(String, primary_key=True)  # 使用UUID作为session_id

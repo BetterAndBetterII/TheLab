@@ -1,4 +1,8 @@
-# 解析图片
+"""图片解析模块。
+
+提供将图片转换为文本的功能，使用OpenAI的图像识别能力将图片内容转换为markdown格式的文本。
+"""
+
 import asyncio
 import logging
 
@@ -13,6 +17,11 @@ settings: Settings = get_settings()
 
 
 def get_parse_markdown_system_prompt() -> str:
+    """获取用于图片解析的系统提示。
+
+    Returns:
+        str: 系统提示文本
+    """
     return (
         "You are a markdown parser, convert images to markdown format. Format tables using markdown tables, "
         "and use $..$ or $$..$$ to wrap formulas, prevent using html tags. "
@@ -22,7 +31,18 @@ def get_parse_markdown_system_prompt() -> str:
 
 
 async def process_single_page(openai_client: OpenAIClient, page: Page) -> Page:
-    """处理单个页面的图片转文本."""
+    """处理单个页面的图片转文本。
+
+    Args:
+        openai_client: OpenAI客户端实例
+        page: 要处理的页面对象
+
+    Returns:
+        Page: 处理后的页面对象，包含提取的文本内容
+
+    Raises:
+        ValueError: 当图片解析失败时抛出
+    """
     response = await openai_client.chat_with_image(
         get_parse_markdown_system_prompt(),
         page.file_path,
@@ -34,8 +54,15 @@ async def process_single_page(openai_client: OpenAIClient, page: Page) -> Page:
 
 
 async def parse_images(section: Section, user: User) -> Section:
-    """将图片Section转换为文本Section :param section: 输入的图片Section :return: 文本Section."""
+    """将图片Section转换为文本Section。
 
+    Args:
+        section: 输入的图片Section
+        user: 用户对象，用于获取API配置
+
+    Returns:
+        Section: 包含提取文本的Section对象
+    """
     result_section = Section(
         title=section.title,
         pages=[None] * len(section.pages),  # 预分配空间以保持顺序
@@ -65,8 +92,6 @@ async def parse_images(section: Section, user: User) -> Section:
 
     tasks = [process_page(page, semaphore) for page in section.pages]
     result_section.pages = await asyncio.gather(*tasks)
-    # for i, page in enumerate(section.pages):
-    #     result_section.pages[i] = await process_single_page(openai_client, page)
 
     # 移除任何处理失败的页面（None值）
     result_section.pages = [page for page in result_section.pages if page is not None]

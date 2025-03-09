@@ -1,3 +1,8 @@
+"""论坛服务模块。
+
+提供论坛功能的核心服务，包括主题和回复的管理，以及AI生成内容功能。 支持主题分类、回复管理和自动回复等功能。
+"""
+
 import json
 import random
 from typing import List, Optional
@@ -17,7 +22,21 @@ settings = get_settings()
 
 
 class ForumService:
+    """论坛服务类。
+
+    提供论坛的核心功能实现，包括：
+    - 主题的创建、更新、删除
+    - 回复的管理
+    - AI内容生成
+    - 主题分类管理
+    """
+
     def __init__(self, db: Session):
+        """初始化论坛服务。
+
+        Args:
+            db: 数据库会话
+        """
         self.db = db
 
     def create_topic(
@@ -77,11 +96,11 @@ class ForumService:
             base_query = base_query.filter(Topic.category == category)
 
         # 获取置顶主题
-        pinned_query = base_query.filter(Topic.is_pinned == True)
+        pinned_query = base_query.filter(Topic.is_pinned is True)
         pinned_topics = pinned_query.order_by(Topic.updated_at.desc()).all()
 
         # 获取普通主题
-        normal_query = base_query.filter(Topic.is_pinned == False)
+        normal_query = base_query.filter(Topic.is_pinned is False)
         offset = (page - 1) * page_size
         normal_topics = normal_query.order_by(Topic.updated_at.desc()).offset(offset).limit(page_size).all()
 
@@ -162,7 +181,7 @@ class ForumService:
                 detail="主题不存在",
             )
 
-        if topic.is_locked:
+        if topic.is_locked is True:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="主题已锁定，无法回复",
@@ -199,7 +218,7 @@ class ForumService:
         """触发Agent回复."""
         try:
             # 获取系统用户（可以是管理员或特定的AI用户）
-            system_user = self.db.query(User).filter(User.is_superuser == True).first()
+            system_user = self.db.query(User).filter(User.is_superuser is True).first()
 
             # 创建Agent实例
             agent = ForumAgent(self.db, user=system_user)
@@ -264,22 +283,6 @@ class ForumService:
     async def generate_ai_topic(self, current_user: User) -> Topic:
         """生成AI推文."""
         try:
-            # 调用OpenAI API生成主题内容
-            # response = openai.ChatCompletion.create(
-            #     model="gpt-3.5-turbo",
-            #     messages=[
-            #         {
-            #             "role": "system",
-            #             "content": "你是一个论坛中的AI用户，需要生成一个有趣的主题帖子。主题应该包含标题和内容。
-            #             内容应该是有见解的、有趣的或有教育意义的。",
-            #         },
-            #         {
-            #             "role": "user",
-            #             "content": "请生成一个论坛主题帖子，包含标题和内容。主题可以是技术、生活、分享等任意分类。",
-            #         },
-            #     ],
-            # )
-
             # 随机选择一个分类
             categories = list(TopicCategory)
             category = random.choice(categories)
@@ -290,17 +293,16 @@ class ForumService:
                 model=current_user.ai_standard_model,
             )
             generated_content = ""
-            finish_reason = None
             POST_PROMPT = f"""
 请生成一个论坛主题帖子，包含标题和内容。
 可以是{category}相关的内容
 标题要吸引人，内容要有趣，有教育意义。
 使用JSON格式输出，格式如下：
-{
+{{
     "title": "标题",
     "content": "内容",
     "username": "用户名"
-}
+}}
 """
             async for chunk in await openai_client.chat_stream(
                 messages=[
@@ -320,7 +322,7 @@ class ForumService:
             generated_content = json.loads(generated_content)
 
             # 获取系统用户（AI用户）
-            system_user = self.db.query(User).filter(User.is_superuser == True).first()
+            system_user = self.db.query(User).filter(User.is_superuser is True).first()
             if not system_user:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -1,3 +1,8 @@
+"""邮件服务模块。
+
+提供邮件发送功能，支持验证码、密码重置等邮件模板。 使用SMTP协议发送邮件，支持TLS加密。
+"""
+
 import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -7,6 +12,15 @@ from typing import List, Optional, Union
 
 
 class EmailService:
+    """邮件服务类。
+
+    提供邮件发送功能，包括：
+    - 普通邮件发送
+    - 验证码邮件
+    - 密码重置邮件
+    支持HTML格式和纯文本格式。
+    """
+
     def __init__(
         self,
         smtp_host: str = None,
@@ -17,9 +31,17 @@ class EmailService:
         default_sender: str = None,
         default_sender_name: str = None,
     ):
-        """初始化邮件服务 :param smtp_host: SMTP服务器地址 :param smtp_port: SMTP服务器端口 :param smtp_user: SMTP用户名 :param
-        smtp_password: SMTP密码 :param use_tls: 是否使用TLS加密 :param default_sender: 默认发件人邮箱 :param default_sender_name:
-        默认发件人名称."""
+        """初始化邮件服务。
+
+        Args:
+            smtp_host: SMTP服务器地址
+            smtp_port: SMTP服务器端口
+            smtp_user: SMTP用户名
+            smtp_password: SMTP密码
+            use_tls: 是否使用TLS加密
+            default_sender: 默认发件人邮箱
+            default_sender_name: 默认发件人名称
+        """
         self.smtp_host = smtp_host or os.getenv("SMTP_HOST", "smtp.gmail.com")
         self.smtp_port = smtp_port or int(os.getenv("SMTP_PORT", "587"))
         self.smtp_user = smtp_user or os.getenv("SMTP_USER")
@@ -37,8 +59,19 @@ class EmailService:
         from_name: Optional[str] = None,
         is_html: bool = False,
     ) -> MIMEMultipart:
-        """创建邮件消息 :param subject: 邮件主题 :param body: 邮件内容 :param to_addresses: 收件人地址（单个或列表） :param from_address:
-        发件人地址（可选） :param from_name: 发件人名称（可选） :param is_html: 是否为HTML内容 :return: 邮件消息对象."""
+        """创建邮件消息。
+
+        Args:
+            subject: 邮件主题
+            body: 邮件内容
+            to_addresses: 收件人地址（单个或列表）
+            from_address: 发件人地址（可选）
+            from_name: 发件人名称（可选）
+            is_html: 是否为HTML内容
+
+        Returns:
+            MIMEMultipart: 邮件消息对象
+        """
         msg = MIMEMultipart()
         msg["Subject"] = subject
 
@@ -67,8 +100,19 @@ class EmailService:
         from_name: Optional[str] = None,
         is_html: bool = False,
     ) -> bool:
-        """发送邮件 :param subject: 邮件主题 :param body: 邮件内容 :param to_addresses: 收件人地址（单个或列表） :param from_address: 发件人地址（可选）
-        :param from_name: 发件人名称（可选） :param is_html: 是否为HTML内容 :return: 是否发送成功."""
+        """发送邮件。
+
+        Args:
+            subject: 邮件主题
+            body: 邮件内容
+            to_addresses: 收件人地址（单个或列表）
+            from_address: 发件人地址（可选）
+            from_name: 发件人名称（可选）
+            is_html: 是否为HTML内容
+
+        Returns:
+            bool: 是否发送成功
+        """
         try:
             # 创建邮件消息
             msg = self._create_message(
@@ -107,7 +151,16 @@ class EmailService:
         verification_code: str,
         username: str = "用户",
     ) -> bool:
-        """发送验证码邮件 :param to_address: 收件人地址 :param verification_code: 验证码 :param username: 用户名 :return: 是否发送成功."""
+        """发送验证码邮件。
+
+        Args:
+            to_address: 收件人地址
+            verification_code: 验证码
+            username: 用户名
+
+        Returns:
+            bool: 是否发送成功
+        """
         subject = "验证码 - 请验证您的邮箱"
         body = f"""
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -136,7 +189,16 @@ class EmailService:
         reset_link: str,
         username: str = "用户",
     ) -> bool:
-        """发送密码重置邮件 :param to_address: 收件人地址 :param reset_link: 重置链接 :param username: 用户名 :return: 是否发送成功."""
+        """发送密码重置邮件。
+
+        Args:
+            to_address: 收件人地址
+            reset_link: 重置链接
+            username: 用户名
+
+        Returns:
+            bool: 是否发送成功
+        """
         subject = "密码重置 - 重置您的密码"
         body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

@@ -1,3 +1,8 @@
+"""会话管理服务模块。
+
+提供用户会话的管理功能，包括会话的创建、更新、删除和验证。 支持Redis缓存和数据库持久化存储。
+"""
+
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -5,6 +10,7 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from redis import Redis
+from redis.connection import ConnectionPool
 from sqlalchemy.orm import Session as DBSession
 
 from config import get_settings
@@ -16,7 +22,20 @@ settings = get_settings()
 
 
 class SessionManager:
+    """会话管理器类。
+
+    提供会话管理的核心功能，包括：
+    - 会话的创建和删除
+    - 会话状态的维护
+    - 用户认证状态的管理
+    """
+
     def __init__(self, redis_client: Redis):
+        """初始化会话管理器。
+
+        Args:
+            redis_client: Redis客户端实例，用于存储会话数据
+        """
         self.redis = redis_client
         self.cookie_name = "session_id"
         self.session_prefix = "session:"
@@ -142,8 +161,6 @@ class SessionManager:
 
 
 # 创建全局会话管理器实例
-from redis.connection import ConnectionPool
-
 redis_pool = ConnectionPool(
     host=settings.REDIS_HOST,
     port=settings.REDIS_PORT,

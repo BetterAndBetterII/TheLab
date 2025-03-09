@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""数据库管理工具。
+"""数据库管理工具模块.
 
-用于执行数据库相关的管理操作，如迁移、初始化等。
+用于执行数据库相关的管理操作，如迁移、初始化等.
 """
 
 import argparse
@@ -164,7 +164,7 @@ def migrate_legacy_db():
             collection_name = collection[1]
             collection_created_at = collection[2]
             collection_updated_at = collection[3]
-            if not collection_id in collection_id_to_project_id:
+            if collection_id not in collection_id_to_project_id:
                 # 该集合已被无引用，被删除了
                 continue
             # 所属的项目
@@ -218,11 +218,11 @@ def migrate_legacy_db():
                 doc_file_path,
                 doc_thumbnail_path,
             )
-            if not doc_id in document_id_to_collection_id:
+            if doc_id not in document_id_to_collection_id:
                 # 该文档已被无引用，被删除了
                 continue
             collection_id = document_id_to_collection_id[doc_id]
-            if not collection_id in collection_id_to_folder_id:
+            if collection_id not in collection_id_to_folder_id:
                 # 该集合已被无引用，被删除了
                 continue
             folder_id = collection_id_to_folder_id[collection_id]
@@ -359,7 +359,7 @@ def ingest_data():
 
 @click.group()
 def cli():
-    """TheLab 管理工具."""
+    """TheLab管理工具."""
 
 
 @cli.command()

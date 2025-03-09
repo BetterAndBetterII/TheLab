@@ -1,4 +1,7 @@
-# DocsIngester
+"""文档处理模块。
+
+提供文档预处理功能，包括将各种格式的文档转换为PDF，并将PDF页面转换为图片。 支持的文档格式包括PDF、DOCX和PPTX。
+"""
 
 import logging
 import os
@@ -18,7 +21,16 @@ logger = logging.getLogger(__name__)
 
 
 class DocsIngester:
+    """文档处理器类。
+
+    处理各种格式的文档，将其转换为标准化的图片格式，以便后续处理。 支持PDF、DOCX、PPTX等格式的文档转换。
+    """
+
     def __init__(self):
+        """初始化文档处理器。
+
+        创建临时目录用于文件处理，并设置支持的文件格式。
+        """
         self.temp_dir = tempfile.mkdtemp()
         self.supported_formats = {"pdf", "docx", "pptx"}
 

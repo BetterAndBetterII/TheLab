@@ -1,3 +1,8 @@
+"""论坛AI代理服务模块。
+
+提供基于AI的论坛交互功能，包括自动回复、主题生成等功能。 使用OpenAI API实现智能对话和内容生成。
+"""
+
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -8,8 +13,18 @@ from models.users import AIProvider, User
 
 
 class ForumAgent:
+    """论坛AI代理类。
+
+    提供论坛的AI交互功能，包括自动回复和内容生成。 支持多种AI提供商，默认使用OpenAI。
+    """
+
     def __init__(self, db: Session, user: Optional[User] = None):
-        """初始化论坛Agent :param db: 数据库会话 :param user: 用户对象，包含AI配置."""
+        """初始化论坛AI代理。
+
+        Args:
+            db: 数据库会话
+            user: 用户对象，包含AI配置
+        """
         self.db = db
         self.user = user
         self.client = self._init_ai_client()

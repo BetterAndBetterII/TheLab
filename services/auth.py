@@ -1,3 +1,8 @@
+"""认证服务模块。
+
+提供用户认证相关的功能，包括注册、登录、验证码管理、OAuth认证等。 支持多种认证方式和令牌管理。
+"""
+
 import random
 import string
 from datetime import datetime, timedelta, timezone
@@ -16,7 +21,21 @@ settings = get_settings()
 
 
 class AuthService:
+    """认证服务类。
+
+    提供用户认证相关的功能实现，包括：
+    - 验证码生成和验证
+    - 用户注册和激活
+    - 令牌生成和验证
+    - OAuth认证
+    """
+
     def __init__(self, redis_client: Redis):
+        """初始化认证服务。
+
+        Args:
+            redis_client: Redis客户端实例，用于存储验证码等临时数据
+        """
         self.redis = redis_client
 
     def generate_verification_code(self) -> str:

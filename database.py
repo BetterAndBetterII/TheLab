@@ -1,6 +1,6 @@
-"""数据库模型和会话管理模块。
+"""数据库模型和会话管理模块.
 
-这个模块包含了所有数据库相关的模型定义和数据库会话管理功能。
+这个模块包含了所有数据库相关的模型定义和数据库会话管理功能.
 """
 
 import enum
@@ -8,8 +8,22 @@ from datetime import datetime
 
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from sqlalchemy import (JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, LargeBinary, String, Table, Text,
-                        create_engine, inspect, text)
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+    Table,
+    Text,
+    create_engine,
+    inspect,
+    text,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -34,6 +48,15 @@ Base = declarative_base()
 
 
 class ProcessingStatus(enum.Enum):
+    """文档处理状态枚举类.
+
+    定义了文档处理的各个状态：
+    - PENDING: 等待处理
+    - PROCESSING: 处理中
+    - COMPLETED: 处理完成
+    - FAILED: 处理失败
+    """
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -50,6 +73,11 @@ conversation_documents = Table(
 
 
 class Folder(Base):
+    """文件夹模型类.
+
+    用于组织和管理文档的文件夹结构，支持嵌套文件夹.
+    """
+
     __tablename__ = "folders"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -68,6 +96,11 @@ class Folder(Base):
 
 
 class ApiKey(Base):
+    """API密钥模型类.
+
+    管理用户的API密钥信息，包括使用统计和错误记录.
+    """
+
     __tablename__ = "api_keys"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -89,6 +122,11 @@ class ApiKey(Base):
 
 
 class ProcessingRecord(Base):
+    """文档处理记录模型类.
+
+    记录文档处理的历史记录，包括处理版本和配置信息.
+    """
+
     __tablename__ = "processing_records"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -104,9 +142,9 @@ class ProcessingRecord(Base):
 
 
 class Document(Base):
-    """文档模型类。
+    """文档模型类.
 
-    存储上传文档的元数据信息。
+    存储上传文档的元数据信息，包括文件内容、处理状态和关联数据.
     """
 
     __tablename__ = "documents"
@@ -207,9 +245,9 @@ class Document(Base):
 
 
 class QuizHistory(Base):
-    """测验历史记录模型类。
+    """测验历史记录模型类.
 
-    存储用户测验的历史记录。
+    存储用户的文档测验历史记录，包括测验内容和结果.
     """
 
     __tablename__ = "quiz_history"
@@ -227,9 +265,9 @@ class QuizHistory(Base):
 
 
 class DocumentReadRecord(Base):
-    """文档阅读记录模型类。
+    """文档阅读记录模型类.
 
-    存储用户阅读文档的记录。
+    存储用户的文档阅读历史，记录阅读时间和进度.
     """
 
     __tablename__ = "document_read_records"
@@ -241,9 +279,9 @@ class DocumentReadRecord(Base):
 
 
 class Note(Base):
-    """笔记模型类。
+    """笔记模型类.
 
-    存储用户在文档上添加的笔记。
+    存储用户在文档上添加的笔记，包括笔记内容和高亮区域.
     """
 
     __tablename__ = "notes"
@@ -263,9 +301,9 @@ class Note(Base):
 
 
 class Conversation(Base):
-    """对话模型类。
+    """对话模型类.
 
-    存储用户与系统之间的对话记录。
+    存储用户与系统之间的对话历史，包括对话内容和相关文档.
     """
 
     __tablename__ = "conversations"
@@ -324,7 +362,7 @@ def get_rag_db():
 def create_tables():
     """创建或更新所有数据库表.
 
-    如果表不存在则创建新表，如果表存在则更新表结构以匹配最新的模型定义。
+    如果表不存在则创建新表，如果表存在则更新表结构以匹配最新的模型定义.
     """
     # 创建迁移上下文
     with engine.connect() as conn:
@@ -401,8 +439,14 @@ def initialize_database():
         db.close()
 
 
-# 获取数据库会话
 def get_db():
+    """获取数据库会话.
+
+    创建一个新的数据库会话，使用完毕后自动关闭.
+
+    Yields:
+        Session: SQLAlchemy会话对象
+    """
     db = SessionLocal()
     try:
         yield db

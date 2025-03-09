@@ -1,3 +1,8 @@
+"""论坛模块。
+
+包含论坛相关的数据模型，如主题、回复等。
+"""
+
 import enum
 from datetime import datetime, timezone
 
@@ -10,6 +15,16 @@ from database import Base
 
 
 class TopicCategory(enum.Enum):
+    """主题分类枚举。
+
+    定义了论坛主题的不同分类：
+    - GENERAL: 综合讨论
+    - TECHNICAL: 技术交流
+    - QUESTION: 问答
+    - SHARING: 分享
+    - FEEDBACK: 反馈
+    """
+
     GENERAL = "general"  # 综合讨论
     TECHNICAL = "technical"  # 技术交流
     QUESTION = "question"  # 问答
@@ -18,6 +33,11 @@ class TopicCategory(enum.Enum):
 
 
 class Topic(Base):
+    """论坛主题模型。
+
+    存储论坛主题的基本信息，包括标题、内容、分类、作者等。 支持置顶和锁定功能。
+    """
+
     __tablename__ = "forum_topics"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -41,6 +61,11 @@ class Topic(Base):
 
 
 class Reply(Base):
+    """论坛回复模型。
+
+    存储论坛主题的回复信息，支持多级回复。 包含回复内容、作者信息、时间戳等。 支持AI生成的回复标记。
+    """
+
     __tablename__ = "forum_replies"
 
     id = Column(Integer, primary_key=True, index=True)

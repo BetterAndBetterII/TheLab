@@ -1,3 +1,8 @@
+"""文档处理流水线模块。
+
+提供文档处理的完整流水线实现，包括文档预处理、文本提取、翻译和知识库存储等功能。 支持异步处理和任务队列管理。
+"""
+
 import asyncio
 import hashlib
 import logging
@@ -28,9 +33,25 @@ settings = get_settings()
 
 
 class DocumentPipeline:
+    """文档处理流水线类。
+
+    实现了完整的文档处理流程，包括以下阶段：
+    1. 预处理：将文档转换为图片
+    2. 文本提取：从图片中提取文本
+    3. 翻译：将英文文本翻译为中文
+    4. 知识库存储：将处理后的内容保存到知识库
+
+    支持异步处理、任务队列管理和处理状态追踪。
+    """
+
     VERSION = "1.0.0"  # 处理器版本号
 
     def __init__(self, max_workers=3):
+        """初始化文档处理流水线。
+
+        Args:
+            max_workers: 最大并发工作线程数，默认为3
+        """
         self.task_queue = queue.Queue()
         self.thread_pool = ThreadPoolExecutor(max_workers=max_workers)
         self.is_running = True
@@ -279,7 +300,7 @@ class DocumentPipeline:
         logger.debug(f"成功写入临时文件，大小: {len(document.file_data)} bytes")
 
         # 使用DocsIngester处理文档
-        logger.debug(f"开始使用DocsIngester处理文档")
+        logger.debug("开始使用DocsIngester处理文档")
         ingester = DocsIngester()
         section = await ingester.process_document(temp_file, document.filename)
         # temp_file 存储到数据库
@@ -403,8 +424,8 @@ class DocumentPipeline:
         )
         pg_vector_uri = (
             f"postgresql+asyncpg://"
-            f"{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@"
-            f"{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
+            f"{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}"
+            f"@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.RAG_DATABASE_NAME}"
         )
         rag = KnowledgeBase(
             pg_docs_uri,

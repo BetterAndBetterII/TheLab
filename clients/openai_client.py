@@ -1,3 +1,8 @@
+"""OpenAI API客户端实现模块.
+
+该模块提供了与OpenAI API交互的具体实现，支持文本对话、图像对话和流式对话等功能.
+"""
+
 import base64
 import logging
 import os
@@ -14,6 +19,11 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAIClient(LLMClient):
+    """OpenAI API的客户端实现类.
+
+    继承自LLMClient抽象基类，实现了与OpenAI API的具体交互逻辑， 包括文本对话、图像对话、流式对话等功能.支持自定义API密钥、 基础URL、模型选择、最大token数和温度等参数.
+    """
+
     def __init__(
         self,
         api_key=None,
@@ -149,6 +159,10 @@ class OpenAIClient(LLMClient):
             return {"error": str(e)}
 
     async def update_api_key_usage(self):
+        """更新API密钥的使用统计信息.
+
+        每次成功调用API后更新计数器和最后使用时间. 如果API密钥模型不存在，则不执行任何操作.
+        """
         if not self.api_model:
             return
         self.api_model.counter += 1
@@ -156,6 +170,14 @@ class OpenAIClient(LLMClient):
         self.db.commit()
 
     async def update_api_key_error(self, error_message):
+        """更新API密钥的错误信息.
+
+        Args:
+            error_message: 需要记录的错误信息
+
+        当API调用发生错误时，更新最后一次错误信息.
+        如果API密钥模型不存在，则不执行任何操作.
+        """
         if not self.api_model:
             return
         self.api_model.last_error_message = error_message

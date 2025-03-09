@@ -1,3 +1,8 @@
+"""文档相关的路由处理模块。
+
+这个模块包含了所有与文档相关的路由处理器，包括文档上传、下载、预览、处理状态查询等功能。 支持文件夹管理、批量操作和笔记功能。
+"""
+
 import mimetypes
 import os
 import urllib.parse
@@ -9,8 +14,17 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from config import Settings, get_settings
-from database import (Conversation, Document, DocumentReadRecord, Folder, Note, ProcessingRecord, ProcessingStatus,
-                      QuizHistory, get_db)
+from database import (
+    Conversation,
+    Document,
+    DocumentReadRecord,
+    Folder,
+    Note,
+    ProcessingRecord,
+    ProcessingStatus,
+    QuizHistory,
+    get_db,
+)
 from models.users import User
 from pipeline.document_pipeline import DocumentPipeline, get_document_pipeline
 from services.session import get_current_user
@@ -19,6 +33,11 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 
 class FileResponse(BaseModel):
+    """文件响应模型。
+
+    包含文件的基本信息和元数据。
+    """
+
     id: str
     name: str
     type: str
@@ -33,43 +52,88 @@ class FileResponse(BaseModel):
     errorMessage: Optional[str] = None
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
 
 class MoveFileRequest(BaseModel):
+    """移动文件请求模型。
+
+    包含文件移动操作所需的参数。
+    """
+
     sourceId: str
     targetFolderId: Optional[str]
 
 
 class RenameFileRequest(BaseModel):
+    """重命名文件请求模型。
+
+    包含文件重命名操作所需的参数。
+    """
+
     newName: str
 
 
 class BatchDeleteRequest(BaseModel):
+    """批量删除请求模型。
+
+    包含批量删除操作所需的文件ID列表。
+    """
+
     fileIds: List[str]
 
 
 class BatchMoveRequest(BaseModel):
+    """批量移动请求模型。
+
+    包含批量移动操作所需的文件和文件夹ID列表。
+    """
+
     fileIds: List[str]
     folderIds: List[str]
     targetFolderId: Optional[str]
 
 
 class DocumentSummaryResponse(BaseModel):
+    """文档摘要响应模型。
+
+    包含文档摘要信息和总页数。
+    """
+
     summaries: Dict[str, Dict[str, str]]
     total_pages: int
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
 
 class NoteCreate(BaseModel):
+    """笔记创建请求模型。
+
+    包含创建笔记所需的内容和高亮区域信息。
+    """
+
     content: str
     quote: str
     highlight_areas: List[dict]
 
 
 class NoteResponse(BaseModel):
+    """笔记响应模型。
+
+    包含笔记的完整信息。
+    """
+
     id: str
     content: str
     quote: str
@@ -78,10 +142,20 @@ class NoteResponse(BaseModel):
     updated_at: datetime
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
 
 class NoteUpdate(BaseModel):
+    """笔记更新请求模型。
+
+    包含更新笔记所需的字段。
+    """
+
     content: str
     quote: str
     highlight_areas: List[dict]
@@ -93,6 +167,16 @@ async def record_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """记录文档阅读记录。
+
+    Args:
+        documentId: 文档ID
+        db: 数据库会话
+        current_user: 当前用户
+
+    Returns:
+        dict: 操作结果信息
+    """
     # 查找现有记录
     existing_record = (
         db.query(DocumentReadRecord)
@@ -126,6 +210,17 @@ async def get_read_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """获取用户的阅读历史记录。
+
+    Args:
+        skip: 跳过的记录数
+        limit: 返回的最大记录数
+        db: 数据库会话
+        current_user: 当前用户
+
+    Returns:
+        dict: 阅读历史记录列表
+    """
     """获取用户的阅读历史记录."""
     records = (
         db.query(DocumentReadRecord, Document)
@@ -170,6 +265,23 @@ async def upload_file(
     document_pipeline: DocumentPipeline = Depends(get_document_pipeline),
     settings: Settings = Depends(get_settings),
 ):
+    """上传文件。
+
+    Args:
+        file: 上传的文件
+        folderId: 目标文件夹ID
+        filename: 自定义文件名
+        db: 数据库会话
+        current_user: 当前用户
+        document_pipeline: 文档处理管道
+        settings: 应用配置
+
+    Returns:
+        FileResponse: 上传的文件信息
+
+    Raises:
+        HTTPException: 当文件夹不存在时抛出404错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query_folder = db.query(Folder)
     else:
@@ -229,6 +341,18 @@ async def list_files(
     document_pipeline: DocumentPipeline = Depends(get_document_pipeline),
     settings: Settings = Depends(get_settings),
 ):
+    """获取文件列表。
+
+    Args:
+        parentId: 父文件夹ID
+        db: 数据库会话
+        current_user: 当前用户
+        document_pipeline: 文档处理管道
+        settings: 应用配置
+
+    Returns:
+        List[FileResponse]: 文件列表
+    """
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
     else:
@@ -292,6 +416,20 @@ async def get_processing_status(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """获取文件处理状态。
+
+    Args:
+        fileId: 文件ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        dict: 处理状态信息
+
+    Raises:
+        HTTPException: 当文档不存在时抛出404错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
     else:
@@ -323,6 +461,20 @@ async def get_file_details(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """获取文件详细信息。
+
+    Args:
+        fileId: 文件ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        FileResponse: 文件详细信息
+
+    Raises:
+        HTTPException: 当文档不存在时抛出404错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
     else:
@@ -352,6 +504,20 @@ async def download_file(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """下载文件。
+
+    Args:
+        fileId: 文件ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        Response: 文件下载响应
+
+    Raises:
+        HTTPException: 当文档不存在时抛出404错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
     else:
@@ -396,6 +562,20 @@ async def get_file_preview(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """获取文件预览URL。
+
+    Args:
+        fileId: 文件ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        dict: 预览URL信息
+
+    Raises:
+        HTTPException: 当文档不存在时抛出404错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
     else:
@@ -416,6 +596,20 @@ async def delete_file(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """删除文件。
+
+    Args:
+        fileId: 文件ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        dict: 删除结果信息
+
+    Raises:
+        HTTPException: 当文档不存在时抛出404错误
+    """
     if current_user.id in [1, 2]:
         base_query = db.query(Document)
     else:
@@ -452,6 +646,21 @@ async def rename_file(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """重命名文件。
+
+    Args:
+        fileId: 文件ID
+        request: 重命名请求数据
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        FileResponse: 更新后的文件信息
+
+    Raises:
+        HTTPException: 当文档不存在时抛出404错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
     else:
@@ -490,6 +699,21 @@ async def move_file(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """移动文件。
+
+    Args:
+        fileId: 文件ID
+        request: 移动请求数据
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        FileResponse: 更新后的文件信息
+
+    Raises:
+        HTTPException: 当文档或目标文件夹不存在时抛出404错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
         base_query_folder = db.query(Folder)
@@ -532,6 +756,17 @@ async def batch_delete_files(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """批量删除文件。
+
+    Args:
+        request: 批量删除请求数据
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        dict: 删除结果信息
+    """
     if current_user.id in [1, 2]:
         base_query = db.query(Document)
     else:
@@ -573,6 +808,20 @@ async def batch_move_files(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """批量移动文件。
+
+    Args:
+        request: 批量移动请求数据
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        dict: 移动结果信息
+
+    Raises:
+        HTTPException: 当目标文件夹不存在或移动操作无效时抛出错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query_document = db.query(Document)
         base_query_folder = db.query(Folder)
@@ -617,6 +866,20 @@ async def get_document_summaries(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """获取文档摘要。
+
+    Args:
+        fileId: 文件ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        DocumentSummaryResponse: 文档摘要信息
+
+    Raises:
+        HTTPException: 当文档不存在或未处理完成时抛出错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query_document = db.query(Document)
     else:
@@ -660,6 +923,21 @@ async def retry_processing(
     settings: Settings = Depends(get_settings),
     document_pipeline: DocumentPipeline = Depends(get_document_pipeline),
 ):
+    """重试处理失败的文件。
+
+    Args:
+        fileId: 文件ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+        document_pipeline: 文档处理管道
+
+    Returns:
+        dict: 重试结果信息
+
+    Raises:
+        HTTPException: 当文档不存在或状态不是失败时抛出错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query_document = db.query(Document)
     else:

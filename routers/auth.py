@@ -47,6 +47,11 @@ email_service = EmailService(
 
 
 class UserRegisterRequest(BaseModel):
+    """用户注册请求模型。
+
+    包含用户注册所需的基本信息字段。
+    """
+
     email: EmailStr
     username: str
     password: str
@@ -54,10 +59,20 @@ class UserRegisterRequest(BaseModel):
 
 
 class VerificationRequest(BaseModel):
+    """验证请求模型。
+
+    用于请求发送验证码的邮箱信息。
+    """
+
     email: EmailStr
 
 
 class VerificationConfirmRequest(BaseModel):
+    """验证确认请求模型。
+
+    用于验证码确认和完成注册的请求数据。
+    """
+
     email: EmailStr
     code: str
     username: str
@@ -66,11 +81,21 @@ class VerificationConfirmRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
+    """登录请求模型。
+
+    包含用户登录所需的认证信息。
+    """
+
     email: EmailStr
     password: str
 
 
 class UserResponse(BaseModel):
+    """用户响应模型。
+
+    用于返回用户信息的数据结构。
+    """
+
     id: int
     email: str
     username: str
@@ -79,6 +104,11 @@ class UserResponse(BaseModel):
     created_at: datetime
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
 
@@ -112,6 +142,11 @@ class UserBase(BaseModel):
 
 
 class SessionInfo(BaseModel):
+    """会话信息模型。
+
+    包含用户会话的详细信息。
+    """
+
     id: str
     created_at: datetime
     last_accessed_at: datetime
@@ -119,10 +154,20 @@ class SessionInfo(BaseModel):
     ip_address: Optional[str]
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
 
 class OAuthCallbackRequest(BaseModel):
+    """OAuth回调请求模型。
+
+    用于处理OAuth认证回调的请求数据。
+    """
+
     code: str
 
 

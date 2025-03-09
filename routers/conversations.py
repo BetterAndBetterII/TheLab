@@ -26,20 +26,40 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
 class ConversationCreate(BaseModel):
+    """对话创建请求模型。
+
+    包含创建新对话所需的基本信息字段。
+    """
+
     title: str
     document_ids: List[int]
 
 
 class ConversationUpdate(BaseModel):
+    """对话更新请求模型。
+
+    包含更新对话所需的字段。
+    """
+
     title: str
 
 
 class ChatMessage(BaseModel):
+    """聊天消息模型。
+
+    定义单条聊天消息的结构。
+    """
+
     role: str
     content: str
 
 
 class ChatRequest(BaseModel):
+    """聊天请求模型。
+
+    包含发送聊天消息所需的参数。
+    """
+
     messages: List[ChatMessage]
     stream: bool = True
     model: str = Literal["standard", "advanced"]
@@ -56,10 +76,20 @@ class ConversationResponse(BaseModel):
     updated_at: datetime
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
 
 class FlowJsonResponse(BaseModel):
+    """流式响应模型。
+
+    用于处理流式响应的数据结构。
+    """
+
     id: str
     object: str
     created: int
@@ -68,14 +98,29 @@ class FlowJsonResponse(BaseModel):
 
 
 class QuizRequest(BaseModel):
+    """测验请求模型。
+
+    包含生成测验题所需的参数。
+    """
+
     page_number: int
     stream: Optional[bool]
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
 
 class MindmapResponse(BaseModel):
+    """思维导图响应模型。
+
+    包含思维导图的数据结构。
+    """
+
     mindmap: str
 
 
@@ -85,6 +130,19 @@ async def create_conversation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """创建新的对话。
+
+    Args:
+        conversation_data: 对话创建请求数据
+        db: 数据库会话
+        current_user: 当前用户
+
+    Returns:
+        ConversationResponse: 创建的对话信息
+
+    Raises:
+        HTTPException: 当文档不存在时抛出404错误
+    """
     # 验证所有文档是否存在
     documents = []
     for doc_id in conversation_data.document_ids:
@@ -116,6 +174,16 @@ async def list_conversations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """获取指定文档的所有对话列表。
+
+    Args:
+        document_id: 文档ID
+        db: 数据库会话
+        current_user: 当前用户
+
+    Returns:
+        List[ConversationResponse]: 对话列表
+    """
     conversations = (
         db.query(Conversation)
         .filter(
@@ -143,6 +211,19 @@ async def get_conversation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """获取指定对话的详细信息。
+
+    Args:
+        conversation_id: 对话ID
+        db: 数据库会话
+        current_user: 当前用户
+
+    Returns:
+        ConversationResponse: 对话详细信息
+
+    Raises:
+        HTTPException: 当对话不存在时抛出404错误
+    """
     conversation = (
         db.query(Conversation)
         .filter(
@@ -165,6 +246,14 @@ async def get_conversation(
 
 
 def remove_system_prompt(content: str) -> str:
+    """移除系统提示内容。
+
+    Args:
+        content: 原始内容
+
+    Returns:
+        str: 移除系统提示后的内容
+    """
     # 替换<|SYSTEM_PROMPT|>****<|SYSTEM_PROMPT|>之间所有内容为空
     result = re.sub(
         r"<\|SYSTEM_PROMPT\|>.*?<\|SYSTEM_PROMPT\|>",
@@ -178,6 +267,14 @@ def remove_system_prompt(content: str) -> str:
 
 
 def clean_messages(messages):
+    """清理消息内容。
+
+    Args:
+        messages: 原始消息列表
+
+    Returns:
+        list: 清理后的消息列表
+    """
     for m in messages:
         m["content"] = remove_system_prompt(m["content"])
     return messages
@@ -209,8 +306,20 @@ async def chat_stream(
     add_notes: bool,
     settings: Settings,
 ) -> AsyncGenerator[str, None]:
-    """生成聊天响应流."""
+    """生成聊天响应流。
 
+    Args:
+        messages: 消息列表
+        conversation: 对话对象
+        model: 模型名称
+        db: 数据库会话
+        current_user: 当前用户
+        add_notes: 是否添加笔记
+        settings: 应用配置
+
+    Yields:
+        str: 流式响应数据
+    """
     # 更新对话消息记录
     messages[-1]["content"] = (SYSTEM_PROMPT_NOTE if add_notes else SYSTEM_PROMPT) + messages[-1]["content"]
     new_messages = conversation.messages.copy()
@@ -330,7 +439,21 @@ async def chat(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    """聊天接口."""
+    """聊天接口。
+
+    Args:
+        conversation_id: 对话ID
+        request: 聊天请求数据
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        StreamingResponse: 流式响应对象
+
+    Raises:
+        HTTPException: 当对话不存在时抛出404错误
+    """
     c = (
         db.query(Conversation)
         .filter(
@@ -366,6 +489,19 @@ async def delete_conversation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """删除指定对话。
+
+    Args:
+        conversation_id: 对话ID
+        db: 数据库会话
+        current_user: 当前用户
+
+    Returns:
+        dict: 删除结果信息
+
+    Raises:
+        HTTPException: 当对话不存在时抛出404错误
+    """
     conversation = (
         db.query(Conversation)
         .filter(
@@ -422,6 +558,18 @@ async def generate_flow_stream(
     current_user: User,
     settings: Settings,
 ):
+    """生成文档流程图的流式响应。
+
+    Args:
+        full_content: 文档完整内容
+        document_id: 文档ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Yields:
+        str: 流式响应数据
+    """
     try:
         if settings.GLOBAL_LLM == "private":
             openai_client = OpenAIClient(
@@ -482,7 +630,21 @@ async def generate_flow(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    """生成文档总结."""
+    """生成文档总结。
+
+    Args:
+        document_id: 文档ID
+        stream: 是否使用流式响应
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        StreamingResponse: 流式响应对象
+
+    Raises:
+        HTTPException: 当文档不存在时抛出404错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
     else:
@@ -558,6 +720,22 @@ async def generate_quiz_stream(
     settings: Settings,
     page_number: int = None,
 ):
+    """生成文档测验题的流式响应。
+
+    Args:
+        full_content: 文档完整内容
+        current_user: 当前用户
+        document: 文档对象
+        db: 数据库会话
+        settings: 应用配置
+        page_number: 页码
+
+    Returns:
+        StreamingResponse: 流式响应对象
+
+    Raises:
+        Exception: 当生成测验题失败时抛出异常
+    """
     try:
         if settings.GLOBAL_LLM == "private":
             openai_client = OpenAIClient(
@@ -625,7 +803,21 @@ async def generate_quiz(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    """生成文档测验题."""
+    """生成文档测验题。
+
+    Args:
+        document_id: 文档ID
+        quiz_request: 测验请求数据
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        StreamingResponse: 流式响应对象
+
+    Raises:
+        HTTPException: 当文档不存在时抛出404错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
     else:
@@ -668,7 +860,19 @@ async def get_quiz_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """获取文档测验历史记录."""
+    """获取文档测验历史记录。
+
+    Args:
+        document_id: 文档ID
+        db: 数据库会话
+        current_user: 当前用户
+
+    Returns:
+        dict: 测验历史记录
+
+    Raises:
+        HTTPException: 当测验历史记录不存在时抛出404错误
+    """
     quiz_histories: QuizHistory = (
         db.query(QuizHistory)
         .filter(
@@ -708,6 +912,21 @@ async def get_mindmap(
     current_user: User,
     settings: Settings,
 ):
+    """生成文档思维导图内容。
+
+    Args:
+        full_content: 文档完整内容
+        document_id: 文档ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        str: 生成的思维导图内容
+
+    Raises:
+        Exception: 当生成思维导图失败时抛出异常
+    """
     try:
         if settings.GLOBAL_LLM == "private":
             openai_client = OpenAIClient(
@@ -760,7 +979,21 @@ async def generate_mindmap(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
-    """生成文档思维导图."""
+    """生成文档思维导图。
+
+    Args:
+        document_id: 文档ID
+        retry: 是否重试生成
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        MindmapResponse: 思维导图响应对象
+
+    Raises:
+        HTTPException: 当文档不存在时抛出404错误
+    """
     if settings.GLOBAL_MODE == "public":
         base_query = db.query(Document)
     else:

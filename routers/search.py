@@ -1,4 +1,8 @@
-# 搜索相关的路由
+"""搜索相关的路由处理模块。
+
+提供基于向量数据库的文档搜索功能，支持语义搜索和相似度排序。
+"""
+
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -15,6 +19,11 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 
 class SearchRequest(BaseModel):
+    """搜索请求模型。
+
+    包含搜索查询和配置参数。
+    """
+
     query: str
     top_k: Optional[int] = 10
     rerank: Optional[bool] = True
@@ -22,6 +31,11 @@ class SearchRequest(BaseModel):
 
 
 class SearchResult(BaseModel):
+    """搜索结果项模型。
+
+    包含单个搜索结果的详细信息。
+    """
+
     text: str
     score: float
     metadata: dict
@@ -29,6 +43,11 @@ class SearchResult(BaseModel):
 
 
 class SearchResponse(BaseModel):
+    """搜索响应模型。
+
+    包含搜索结果列表。
+    """
+
     results: List[SearchResult]
 
 
@@ -39,6 +58,20 @@ async def search(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """执行文档搜索。
+
+    Args:
+        request: 搜索请求参数
+        settings: 应用配置
+        db: 数据库会话
+        current_user: 当前用户
+
+    Returns:
+        SearchResponse: 搜索结果
+
+    Raises:
+        HTTPException: 当搜索过程中发生错误时抛出
+    """
     try:
         if settings.GLOBAL_MODE == "public":
             namespace = "public"

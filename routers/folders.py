@@ -1,3 +1,8 @@
+"""文件夹相关的路由处理模块。
+
+提供文件夹的创建、查询、修改、删除等功能的API接口。支持文件夹的层级管理和批量操作。
+"""
+
 import os
 import shutil
 import tempfile
@@ -20,6 +25,11 @@ router = APIRouter(prefix="/folders", tags=["folders"])
 
 
 class FileResponse(BaseModel):
+    """文件响应模型。
+
+    包含文件或文件夹的基本信息和元数据。
+    """
+
     id: str
     name: str
     type: str
@@ -32,19 +42,39 @@ class FileResponse(BaseModel):
     mimeType: Optional[str]
 
     class Config:
+        """模型配置类。
+
+        设置模型的行为和验证规则。
+        """
+
         from_attributes = True
 
 
 class FolderCreate(BaseModel):
+    """文件夹创建请求模型。
+
+    包含创建新文件夹所需的参数。
+    """
+
     name: str
     parentId: Optional[str] = None
 
 
 class FolderUpdate(BaseModel):
+    """文件夹更新请求模型。
+
+    包含更新文件夹所需的参数。
+    """
+
     name: str
 
 
 class BatchDeleteRequest(BaseModel):
+    """批量删除请求模型。
+
+    包含要批量删除的文件夹ID列表。
+    """
+
     folderIds: List[str]
 
 
@@ -55,6 +85,20 @@ async def create_folder(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """创建新文件夹。
+
+    Args:
+        folder_data: 文件夹创建请求数据
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        FileResponse: 创建的文件夹信息
+
+    Raises:
+        HTTPException: 当父文件夹不存在或路径已存在时抛出
+    """
     if settings.GLOBAL_MODE == "public":
         base_query_folder = db.query(Folder)
     else:
@@ -107,6 +151,17 @@ async def list_folders(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """获取文件夹列表。
+
+    Args:
+        parentId: 父文件夹ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        List[FileResponse]: 文件夹列表
+    """
     if settings.GLOBAL_MODE == "public":
         base_query_folder = db.query(Folder)
     else:
@@ -142,6 +197,16 @@ async def get_folder_tree(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """获取文件夹树结构。
+
+    Args:
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        dict: 文件夹树结构
+    """
     if settings.GLOBAL_MODE == "public":
         base_query_folder = db.query(Folder)
     else:
@@ -173,6 +238,21 @@ async def update_folder(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """更新文件夹信息。
+
+    Args:
+        folderId: 文件夹ID
+        folder_data: 更新数据
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        FileResponse: 更新后的文件夹信息
+
+    Raises:
+        HTTPException: 当文件夹不存在或新路径已存在时抛出
+    """
     if settings.GLOBAL_MODE == "public":
         base_query_folder = db.query(Folder)
     else:
@@ -222,6 +302,20 @@ async def delete_folder(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """删除文件夹。
+
+    Args:
+        folderId: 文件夹ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        dict: 删除操作结果
+
+    Raises:
+        HTTPException: 当文件夹不存在或非空时抛出
+    """
     if current_user.id in [1, 2]:
         base_query_folder = db.query(Folder)
         base_query_document = db.query(Document)
@@ -252,6 +346,20 @@ async def batch_delete_folders(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """批量删除文件夹。
+
+    Args:
+        request: 批量删除请求
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        dict: 删除操作结果
+
+    Raises:
+        HTTPException: 当文件夹不存在时抛出
+    """
     if current_user.id in [1, 2]:
         base_query_folder = db.query(Folder)
         base_query_document = db.query(Document)
@@ -280,6 +388,20 @@ async def get_folder(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """获取文件夹详情。
+
+    Args:
+        folderId: 文件夹ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        FileResponse: 文件夹详细信息
+
+    Raises:
+        HTTPException: 当文件夹不存在时抛出
+    """
     if settings.GLOBAL_MODE == "public":
         base_query_folder = db.query(Folder)
     else:
@@ -309,6 +431,20 @@ async def download_folder(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
+    """下载文件夹内容为ZIP文件。
+
+    Args:
+        folderId: 文件夹ID
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        StreamingResponse: ZIP文件流
+
+    Raises:
+        HTTPException: 当文件夹不存在时抛出
+    """
     if settings.GLOBAL_MODE == "public":
         base_query_folder = db.query(Folder)
         base_query_document = db.query(Document)
