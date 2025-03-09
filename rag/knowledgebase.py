@@ -39,13 +39,14 @@ Settings.llm = OpenAILike(
     api_key=os.getenv("OPENAI_API_KEY"),
     api_base=os.getenv("OPENAI_BASE_URL"),
     is_chat_model=True,
+    max_retries=64,
 )
 Settings.embed_model = SiliconFlowEmbedding(
     api_key=os.getenv("EMBEDDING_API_KEY"),
     api_base=os.getenv("EMBEDDING_BASE_URL"),
     model=os.getenv("EMBEDDING_MODEL"),
     timeout=30,
-    max_retries=5,
+    max_retries=64,
     num_workers=10,
 )
 
