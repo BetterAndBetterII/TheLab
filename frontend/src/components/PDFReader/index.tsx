@@ -263,7 +263,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   // 添加 useEffect 来处理键盘事件
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey) {
+      if (e.code === 'AltRight') {
         e.preventDefault();
         if (isInputVisible) {
           inputRef.current?.blur();
