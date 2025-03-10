@@ -5,6 +5,7 @@
 
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -15,7 +16,39 @@ from fastapi.staticfiles import StaticFiles
 
 from routers import auth, conversations, documents, folders, forum, search, settings
 
-logging.basicConfig(level=logging.DEBUG)
+# 配置根日志记录器
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.DEBUG)
+
+# 配置控制台处理器
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.DEBUG)
+console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(console_formatter)
+
+# 移除所有现有的处理器
+for handler in root_logger.handlers[:]:
+    root_logger.removeHandler(handler)
+
+# 添加新的处理器
+root_logger.addHandler(console_handler)
+
+if os.getenv("LOKI_URL", None):
+    import logging_loki
+
+    # 配置Loki处理器
+    loki_handler = logging_loki.LokiHandler(
+        url=os.getenv("LOKI_URL"),
+        tags={"application": os.getenv("LOKI_TAG", "ai_doc_system")},
+        version="1",
+        auth=None,
+    )
+    loki_handler.setLevel(logging.DEBUG)
+    root_logger.addHandler(loki_handler)
+
+
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 

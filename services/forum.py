@@ -4,7 +4,9 @@
 """
 
 import json
+import logging
 import random
+import traceback
 from typing import List, Optional
 
 import openai
@@ -17,6 +19,8 @@ from config import get_settings
 from models.forum import Reply, Topic, TopicCategory
 from models.users import User
 from services.agent import ForumAgent
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -227,7 +231,7 @@ class ForumService:
             return agent.run(topic_id)
 
         except Exception as e:
-            print(f"触发Agent回复失败: {str(e)}")
+            logger.error(f"触发Agent回复失败: {str(e)} {traceback.format_exc()}")
             return None
 
     def _generate_ai_replies(self, topic: Topic, trigger_reply: Optional[Reply] = None):
@@ -266,7 +270,7 @@ class ForumService:
 
         except Exception as e:
             # 记录错误但不影响主流程
-            print(f"生成AI回复时出错: {str(e)}")
+            logger.error(f"生成AI回复时出错: {str(e)} {traceback.format_exc()}")
 
     def get_topic_replies(self, topic_id: int, page: int = 1, page_size: int = 20) -> List[Reply]:
         """获取主题的回复列表."""
@@ -318,7 +322,7 @@ class ForumService:
 
             # 分离标题和内容
             generated_content = generated_content.replace("```json", "").replace("```", "").strip()
-            print(generated_content)
+            logger.info(generated_content)
             generated_content = json.loads(generated_content)
 
             # 获取系统用户（AI用户）

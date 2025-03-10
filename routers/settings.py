@@ -3,6 +3,7 @@
 提供用户设置的管理功能，包括基本设置和AI配置的更新、测试等功能。
 """
 
+import logging
 import traceback
 from datetime import datetime
 
@@ -15,6 +16,8 @@ from config import Settings, get_settings
 from database import ApiKey, get_db
 from models.users import User
 from services.session import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -153,6 +156,7 @@ async def test_ai_settings(
             return {"status": "success", "message": "连接测试成功"}
     except Exception as e:
         traceback.print_exc()
+        logger.error(f"测试AI设置时发生错误: {str(e)} {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"连接测试失败: {str(e)}",

@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     GLOBAL_MODE: Literal["public", "private"] = "public"
     GLOBAL_LLM: Literal["public", "private"] = "public"
 
+    # Loki设置
+    LOKI_URL: Optional[str] = None
+    LOKI_TAG: Optional[str] = None
+
     @property
     def DATABASE_URL(self) -> str:
         """获取数据库连接URL.

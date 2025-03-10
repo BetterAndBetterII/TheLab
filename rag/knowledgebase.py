@@ -5,6 +5,7 @@
 
 import asyncio
 import hashlib
+import logging
 import os
 import traceback
 from concurrent.futures.thread import ThreadPoolExecutor
@@ -27,6 +28,8 @@ from llama_index.vector_stores.postgres import PGVectorStore
 from pydantic import BaseModel
 
 from database import Document as DBDocument
+
+logger = logging.getLogger(__name__)
 
 # DEBUG日志
 
@@ -133,7 +136,7 @@ class KnowledgeBase:
         # 用于存储用户的查询和模型的回答，以支持上下文增强生成(RAG)。
         # 格式通常为[(用户查询, 模型回答), ...]，在后续查询中，历史上下文将拼接到用户的新查询中。
         self.history = []
-        print("RAG 初始化完成")
+        logger.info("RAG 初始化完成")
 
     # async：这是一个异步函数，允许通过await 调用异步操作，提高性能（特别是涉及I/O操作时，如数据库或网络访问）
     # text: str：用户提供的文本内容，通常为需要存储和处理的文档。
@@ -190,10 +193,10 @@ class KnowledgeBase:
         """
         docs = []
         for file_path in file_paths[:50]:
-            print(f"Ingesting file: {file_path}")
+            logger.info(f"Ingesting file: {file_path}")
             with open(file_path, "r", encoding="utf-8") as f:
                 text = f.read()
-                print(f"Text length: {len(text)}")
+                logger.info(f"Text length: {len(text)}")
                 doc_id = f"web_{os.path.basename(file_path)}_{hashlib.md5(text.encode()).hexdigest()}"
                 docs.append(
                     Document(
@@ -255,7 +258,7 @@ class KnowledgeBase:
         else:
             tasks = [self.remove_document_by_id(doc_id) for doc_id in all_docs.keys()]
             await asyncio.gather(*tasks)
-        print("All documents removed")
+        logger.info("All documents removed")
 
     async def retrieve(
         self,
@@ -418,6 +421,7 @@ async def query_documents(rag, request: QueryRequest):
         return QueryResponse(response=result["response"], sources=result["sources"])
     except Exception as e:
         traceback.print_exc()
+        logger.error(f"查询文档时发生错误: {str(e)} {traceback.format_exc()}")
         raise e
 
 
@@ -429,6 +433,7 @@ async def upload_text_to_rag(rag, text: str):
         return {"message": "文本上传成功", "doc_id": doc_id}
     except Exception as e:
         traceback.print_exc()
+        logger.error(f"上传纯文本时发生错误: {str(e)} {traceback.format_exc()}")
         raise e
 
 

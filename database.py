@@ -4,6 +4,7 @@
 """
 
 import enum
+import logging
 from datetime import datetime
 
 from alembic.migration import MigrationContext
@@ -28,6 +29,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
 from config import get_settings
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -381,7 +384,7 @@ def create_tables():
                 for table in Base.metadata.sorted_tables:
                     if table.name not in existing_tables:
                         # 如果表不存在，创建新表
-                        print(f"创建表 {table.name}")
+                        logger.info(f"创建表 {table.name}")
                         table.create(engine)
                     else:
                         # 如果表存在，更新表结构
@@ -393,12 +396,12 @@ def create_tables():
                             col,
                         ) in metadata_columns.items():
                             if col_name not in existing_columns:
-                                print(f"添加列 {col_name}")
+                                logger.info(f"添加列 {col_name}")
                                 try:
                                     op.add_column(table.name, col)
                                 except Exception as e:
-                                    print(f"添加列 {col_name} 时出错: {str(e)}")
-                print("表结构更新完成")
+                                    logger.error(f"添加列 {col_name} 时出错: {str(e)}")
+                logger.info("表结构更新完成")
             else:
                 # SQLite 数据库，由于 SQLite 限制，使用临时表进行迁移
                 Base.metadata.create_all(bind=engine)
@@ -408,7 +411,7 @@ def create_tables():
         except Exception as e:
             # 回滚事务
             trans.rollback()
-            print(f"更新表结构时出错: {str(e)}")
+            logger.error(f"更新表结构时出错: {str(e)}")
             raise
 
     # 初始化数据库数据

@@ -3,12 +3,16 @@
 提供邮件发送功能，支持验证码、密码重置等邮件模板。 使用SMTP协议发送邮件，支持TLS加密。
 """
 
+import logging
 import os
 import smtplib
+import traceback
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from typing import List, Optional, Union
+
+logger = logging.getLogger(__name__)
 
 
 class EmailService:
@@ -124,25 +128,25 @@ class EmailService:
                 is_html,
             )
 
-            print("Start send email")
+            logger.info("Start send email")
             # 连接SMTP服务器
             with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port) as server:
-                print("Start login")
+                logger.info("Start login")
                 # 登录认证
                 if self.smtp_user and self.smtp_password:
                     server.login(self.smtp_user, self.smtp_password)
-                print("Login Success")
+                logger.info("Login Success")
                 # 发送邮件
                 sender = from_address or self.default_sender
                 if isinstance(to_addresses, str):
                     to_addresses = [to_addresses]
 
                 server.sendmail(sender, to_addresses, msg.as_string())
-                print("Send Success")
+                logger.info("Send Success")
                 return True
 
         except Exception as e:
-            print(f"发送邮件失败: {str(e)}")
+            logger.error(f"发送邮件失败: {str(e)} {traceback.format_exc()}")
             return False
 
     def send_verification_email(

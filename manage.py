@@ -116,7 +116,7 @@ def migrate_legacy_db():
         cursor.execute("SELECT id, title, linked_file_path, linked_task_id, created_at, updated_at FROM api_document")
         documents = cursor.fetchall()
 
-        print(documents[:10])
+        logger.info(documents[:10])
 
         # 创建项目
         project_id_to_folder_id = {}
@@ -126,7 +126,7 @@ def migrate_legacy_db():
             project_name = project[1]
             project_created_at = project[2]
             project_updated_at = project[3]
-            print(
+            logger.info(
                 project_id,
                 project_name,
                 project_created_at,
@@ -146,7 +146,7 @@ def migrate_legacy_db():
             db.refresh(folder)
             project_id_to_folder_id[project_id] = folder.id
             project_id_to_project_name[project_id] = project_name
-            print(folder.id)
+            logger.info(folder.id)
 
         # 集合对应项目的映射
         collection_id_to_project_id = {}
@@ -170,7 +170,7 @@ def migrate_legacy_db():
             # 所属的项目
             project_id = collection_id_to_project_id[collection_id]
             project_name = project_id_to_project_name[project_id]
-            print(
+            logger.info(
                 collection_id,
                 collection_name,
                 collection_created_at,
@@ -212,7 +212,7 @@ def migrate_legacy_db():
             doc_persist_path = os.path.join(os.path.dirname(__file__), "./tmp/persist", doc_uuid)
             doc_abs_path = os.path.join(doc_persist_path, doc_title)
             doc_thumbnail_path = os.path.join(doc_persist_path, "thumbnail.png")
-            print(
+            logger.info(
                 doc_title,
                 doc_uuid,
                 doc_file_path,

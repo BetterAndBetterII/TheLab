@@ -4,6 +4,7 @@
 """
 
 import json
+import logging
 import re
 import traceback
 from datetime import datetime
@@ -21,6 +22,8 @@ from config import Settings, get_settings
 from database import Conversation, Document, QuizHistory, get_db
 from models.users import User
 from services.session import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -418,6 +421,7 @@ async def chat_stream(
         db.refresh(conversation)
     except Exception as e:
         traceback.print_exc()
+        logger.error(f"聊天时发生错误: {str(e)} {traceback.format_exc()}")
         error_response = {
             "error": {
                 "message": str(e),
@@ -619,6 +623,7 @@ async def generate_flow_stream(
         db.refresh(document)
     except Exception as e:
         traceback.print_exc()
+        logger.error(f"生成文档流程图时发生错误: {str(e)} {traceback.format_exc()}")
         raise e
 
 
@@ -769,7 +774,7 @@ async def generate_quiz_stream(
 
     # 解析生成的测验内容并保存到历史记录
     try:
-        print(content)
+        logger.info(content)
         # 清洗latex中的反斜杠，避免被转义
         quiz_data = json.loads(content.replace("```json", "").replace("```", "").strip())
         history_entry = {
@@ -792,6 +797,7 @@ async def generate_quiz_stream(
         db.commit()
     except Exception as e:
         traceback.print_exc()
+        logger.error(f"生成文档测验题时发生错误: {str(e)} {traceback.format_exc()}")
         raise e
 
 
@@ -840,7 +846,7 @@ async def generate_quiz(
         )
 
     # 如果请求流式响应
-    print("生成测验题流式响应")
+    logger.info("生成测验题流式响应")
     return StreamingResponse(
         generate_quiz_stream(
             content,
@@ -952,7 +958,7 @@ async def get_mindmap(
                 content += _c
 
         mindmap_data = json.loads(content.replace("```json", "").replace("```", "").strip())
-        print(mindmap_data)
+        logger.info(mindmap_data)
         document = db.query(Document).filter(Document.id == document_id).first()
         flag_modified(document, "mindmap")
         document.mindmap = {
@@ -966,8 +972,8 @@ async def get_mindmap(
     except Exception as e:
         traceback.print_exc()
         if "content" in locals():
-            print(content)
-        print(e)
+            logger.info(content)
+        logger.error(f"生成文档思维导图时发生错误: {str(e)} {traceback.format_exc()}")
         return "# 生成思维导图失败，请稍后再试。"
 
 

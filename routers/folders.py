@@ -69,6 +69,15 @@ class FolderUpdate(BaseModel):
     name: str
 
 
+class RenameFolderRequest(BaseModel):
+    """重命名文件夹请求模型。
+
+    包含重命名文件夹所需的参数。
+    """
+
+    newName: str
+
+
 class BatchDeleteRequest(BaseModel):
     """批量删除请求模型。
 
@@ -479,3 +488,55 @@ async def download_folder(
             "Access-Control-Expose-Headers": "Content-Disposition",  # 允许前端访问此头
         },
     )
+
+
+@router.put("/{folderId}/rename")
+async def rename_folder(
+    folderId: str,
+    request: RenameFolderRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+):
+    """重命名文件夹。
+
+    Args:
+        folderId: 文件夹ID
+        request: 重命名请求数据
+        db: 数据库会话
+        current_user: 当前用户
+        settings: 应用配置
+
+    Returns:
+        FileResponse: 更新后的文件信息
+
+    Raises:
+        HTTPException: 当文档不存在时抛出404错误
+    """
+    if settings.GLOBAL_MODE == "public":
+        base_query = db.query(Folder)
+    else:
+        base_query = db.query(Folder).filter(Folder.owner_id == current_user.id)
+    if current_user.id in [1, 2]:
+        base_query = db.query(Folder)
+    folder = base_query.filter(Folder.id == int(folderId)).first()
+    if not folder:
+        raise HTTPException(status_code=404, detail="文件夹未找到")
+
+    folder.name = request.newName
+    folder.path = f"/{request.newName}"  # 需要构建完整路径
+
+    db.commit()
+    db.refresh(folder)
+
+    return {
+        "id": str(folder.id),
+        "name": folder.name,
+        "type": "folder",
+        "size": 0,
+        "lastModified": folder.updated_at,
+        "owner": str(db.query(User).filter(User.id == folder.owner_id).first().username),
+        "parentId": (str(folder.parent_id) if folder.parent_id else None),
+        "path": folder.path,
+        "isFolder": True,
+    }

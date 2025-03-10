@@ -98,7 +98,7 @@ class DocsIngester:
 
     async def _process_pdf(self, file_path: Path) -> list[str]:
         """异步处理 PDF 文件，返回图片路径列表."""
-        print("PDF processing start")
+        logger.info("PDF processing start")
 
         # 打开PDF文件
         pdf = pdfium.PdfDocument(file_path)
@@ -166,7 +166,7 @@ class DocsIngester:
         # 确保页面顺序正确
         image_paths = [path for path in temp_paths if path is not None]
 
-        print("PDF processing end")
+        logger.info("PDF processing end")
         return image_paths
 
     async def process_document_async(self, file_path: str, title: str) -> Section:

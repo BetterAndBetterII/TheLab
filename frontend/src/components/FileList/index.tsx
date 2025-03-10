@@ -285,7 +285,8 @@ const FileList: React.FC<FileListProps> = ({
     }
   };
 
-  const handleRename = async (fileId: string, newName: string) => {
+  const handleRenameDocument = async (fileId: string, newName: string) => {
+    if (!fileId || !newName) return;
     try {
       setLoading(true);
       await fileApi.renameFile(fileId, { newName });
@@ -294,6 +295,22 @@ const FileList: React.FC<FileListProps> = ({
       (window as any).toast.success('重命名成功');
     } catch (error) {
       console.error('Error renaming file:', error);
+      (window as any).toast.error('重命名失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRenameFolder = async (folderId: string, newName: string) => {
+    if (!folderId || !newName) return;
+    try {
+      setLoading(true);
+      await fileApi.renameFolder(folderId, { newName });
+      setOperation(null);
+      fetchFiles(getCurrentFolderId());
+      (window as any).toast.success('重命名成功');
+    } catch (error) {
+      console.error('Error renaming folder:', error);
       (window as any).toast.error('重命名失败');
     } finally {
       setLoading(false);
@@ -714,7 +731,13 @@ const FileList: React.FC<FileListProps> = ({
             />
             <div className={styles.dialogActions}>
               <button onClick={() => setOperation(null)}>取消</button>
-              <button onClick={() => handleRename(operation.fileId || '', operation.data?.newName || '')}>
+              <button onClick={() => {
+                if (files.find(f => f.id === operation.fileId)?.isFolder) {
+                  handleRenameFolder(operation.fileId || '', operation.data?.newName || '');
+                } else {
+                  handleRenameDocument(operation.fileId || '', operation.data?.newName || '');
+                }
+              }}>
                 确定
               </button>
             </div>

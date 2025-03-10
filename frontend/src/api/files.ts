@@ -154,6 +154,15 @@ export const fileApi = {
     });
   },
 
+  // 重命名文件或文件夹
+  renameFolder: async (folderId: string, request: RenameFileRequest) => {
+    return handleRequest(`${BASE_URL}/folders/${folderId}/rename`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+  },
+
   // 移动文件或文件夹
   moveFile: async (fileId: string, request: MoveFileRequest) => {
     return handleRequest(`${BASE_URL}/documents/${fileId}/move`, {
