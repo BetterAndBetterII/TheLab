@@ -531,3 +531,51 @@
     font-size: 12px;
   }
 }
+
+/* 添加 Tooltip 样式 */
+.iconButton[data-tooltip] {
+  position: relative;
+}
+
+.iconButton[data-tooltip]::before {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  font-size: 12px;
+  white-space: nowrap;
+  border-radius: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 1000;
+}
+
+.iconButton[data-tooltip]::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.iconButton[data-tooltip]:hover::before {
+  opacity: 1;
+  visibility: visible;
+  bottom: calc(100% + 4px);
+}
+
+.iconButton[data-tooltip]:hover::after {
+  opacity: 1;
+  visibility: visible;
+  bottom: calc(100% - 5px);
+}

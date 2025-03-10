@@ -538,6 +538,8 @@ const FileList: React.FC<FileListProps> = ({
           <button
             className={styles.actionButton}
             onClick={() => setOperation({ type: 'upload' })}
+            title="上传新文件"
+            data-tooltip
           >
             <span>📤</span>
             上传文件
@@ -545,6 +547,8 @@ const FileList: React.FC<FileListProps> = ({
           <button
             className={styles.actionButton}
             onClick={() => setShowNewFolderDialog(true)}
+            title="创建新文件夹"
+            data-tooltip
           >
             <span>📁</span>
             新建文件夹
@@ -554,6 +558,8 @@ const FileList: React.FC<FileListProps> = ({
               <button
                 className={styles.actionButton}
                 onClick={handleDelete}
+                title="删除选中项"
+                data-tooltip
               >
                 <span>🗑️</span>
                 删除
@@ -561,6 +567,8 @@ const FileList: React.FC<FileListProps> = ({
               <button
                 className={styles.actionButton}
                 onClick={() => setOperation({ type: 'move', fileId: Array.from(selectedFiles)[0] })}
+                title="移动到其他文件夹"
+                data-tooltip
               >
                 <span>📦</span>
                 移动到
@@ -667,6 +675,8 @@ const FileList: React.FC<FileListProps> = ({
                     e.stopPropagation();
                     setOperation({ type: 'rename', fileId: file.id });
                   }}
+                  title="重命名"
+                  data-tooltip
                 >
                   ✏️
                 </button>
@@ -676,6 +686,8 @@ const FileList: React.FC<FileListProps> = ({
                     e.stopPropagation();
                     handleDownload(file.id, file.isFolder);
                   }}
+                  title="下载"
+                  data-tooltip
                 >
                   ⬇️
                 </button>
@@ -689,6 +701,7 @@ const FileList: React.FC<FileListProps> = ({
                           handleRetryProcessing(file.id);
                         }}
                         title="重试处理"
+                        data-tooltip
                       >
                         🔄
                       </button>

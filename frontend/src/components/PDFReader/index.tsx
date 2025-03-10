@@ -1129,13 +1129,14 @@ const PDFReader: React.FC<PDFReaderProps> = ({
             setIsInputVisible(prev => !prev);
           }
         }}
+        title={autoShowInput ? '鼠标放在屏幕下方自动呼出输入框' : '点按呼出输入框'}
       >
         <IoMdChatboxes size={24} />
       </button>
 
       <button
         className={`${styles.showInputButton} ${styles.fixedButton}`}
-        style={{ bottom: '80px' }}
+        style={{ bottom: '140px' }}
         onClick={() => setAutoShowInput(!autoShowInput)}
         title={autoShowInput ? '自动呼出已开启' : '自动呼出已关闭'}
       >
@@ -1144,7 +1145,9 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
       <button
         className={`${styles.showMindmapButton} ${styles.fixedButton}`}
+        style={{ bottom: '80px' }}
         onClick={() => handleMindmapClick()}
+        title="生成思维导图"
       >
         {mindmapLoading ? <span className={`${styles.fixedButtonText} ${styles.mindmapButtonTextLoading}`}>🔄</span> : <span className={styles.fixedButtonText}>🗺️</span>}
       </button>
@@ -1178,7 +1181,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
             placeholder="输入消息..."
             className={styles.chatInput}
           />
-          <button type="submit" className={styles.sendButton}>
+          <button type="submit" className={styles.sendButton} title="发送消息">
             <IoMdSend size={20} />
           </button>
         </form>
