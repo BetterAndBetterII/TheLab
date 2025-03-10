@@ -260,21 +260,31 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     };
   }, [inputValue, autoShowInput]); // 添加autoShowInput作为依赖
 
-  // 添加快捷键，Ctrl+Space呼出输入框
+  // 添加 useEffect 来处理键盘事件
   useEffect(() => {
-    document.addEventListener('keydown', (e) => {
-      if (e.ctrlKey && e.key === ' ') {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey) {
         e.preventDefault();
         if (isInputVisible) {
           inputRef.current?.blur();
           setIsInputVisible(false);
         } else {
-          inputRef.current?.focus();
           setIsInputVisible(true);
+          setTimeout(() => {
+            inputRef.current?.focus();
+          }, 100);
         }
       }
-    });
-  }, []);
+    };
+
+    // 添加事件监听器
+    document.addEventListener('keydown', handleKeyDown);
+
+    // 清理函数
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isInputVisible, autoShowInput]);
 
   // 监听状态变化并保存
   useEffect(() => {

@@ -112,6 +112,9 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
       const quizData = JSON.parse(strippedContent);
       quizData.page = currentPage;
       quizData.created_at = new Date().toISOString();
+      setSelectedAnswers({});
+      setShowAnswers({});
+      setAllCorrect(false);
       setCurrentQuizData(quizData);
       setShowHistory(false);
       await loadQuizHistory(); // 重新加载历史记录
