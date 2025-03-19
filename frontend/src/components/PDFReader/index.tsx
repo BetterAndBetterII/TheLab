@@ -616,52 +616,61 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   };
 
   // 高亮插件配置
-  const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
-    <div
-      className={styles.highlightTarget}
-      style={{
-          left: `${props.selectionRegion.left}%`,
-          top: `${props.selectionRegion.top + props.selectionRegion.height}%`,
-      }}
-    >
-      <div className={styles.highlightTargetInner}>
-        <div className={styles.highlightTargetOptions}>
-          <div
-            className={styles.highlightOption}
-            onClick={async () => {
-              try {
-                highlightOnlyRef.current = true;
-                props.toggle();
-              } catch (error) {
-                console.error('保存高亮失败:', error);
-              }
-            }}
-            title="高亮"
-          >
-            <span className={styles.highlightOptionIcon}><IoMdCreate /></span>
-            <span className={styles.highlightOptionText}>高亮</span>
-          </div>
-          <div
-            className={styles.highlightOption}
-            onClick={() => {
-              highlightOnlyRef.current = false;
-              props.toggle();
-              setTimeout(() => {
-                const noteInput = document.getElementById('note-input');
-                if (noteInput) {
-                  noteInput.focus();
+  const renderHighlightTarget = (props: RenderHighlightTargetProps) => {
+    // 判断高亮区域是否在页面下方
+    // 如果高亮区域的顶部位置+高度超过页面高度的70%，将按钮显示在上方
+    const isBottomHalf = (props.selectionRegion.top + props.selectionRegion.height) > 70;
+
+    return (
+      <div
+        className={styles.highlightTarget}
+        style={{
+            left: `${props.selectionRegion.left}%`,
+            // 根据高亮位置决定按钮显示在上方还是下方
+            top: isBottomHalf
+              ? `calc(${props.selectionRegion.top}% - 40px)` // 高亮在下方，按钮显示在上方
+              : `${props.selectionRegion.top + props.selectionRegion.height}%`, // 高亮在上方，按钮显示在下方
+        }}
+      >
+        <div className={styles.highlightTargetInner}>
+          <div className={styles.highlightTargetOptions}>
+            <div
+              className={styles.highlightOption}
+              onClick={async () => {
+                try {
+                  highlightOnlyRef.current = true;
+                  props.toggle();
+                } catch (error) {
+                  console.error('保存高亮失败:', error);
                 }
-              }, 100);
-            }}
-            title="添加批注"
-          >
-            <span className={styles.highlightOptionIcon}><MessageIcon /></span>
-            <span className={styles.highlightOptionText}>添加批注</span>
+              }}
+              title="高亮"
+            >
+              <span className={styles.highlightOptionIcon}><IoMdCreate /></span>
+              <span className={styles.highlightOptionText}>高亮</span>
+            </div>
+            <div
+              className={styles.highlightOption}
+              onClick={() => {
+                highlightOnlyRef.current = false;
+                props.toggle();
+                setTimeout(() => {
+                  const noteInput = document.getElementById('note-input');
+                  if (noteInput) {
+                    noteInput.focus();
+                  }
+                }, 100);
+              }}
+              title="添加批注"
+            >
+              <span className={styles.highlightOptionIcon}><MessageIcon /></span>
+              <span className={styles.highlightOptionText}>添加批注</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderHighlightContent = (props: RenderHighlightContentProps) => {
     if (highlightOnlyRef.current) {
@@ -688,13 +697,21 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       props.cancel();
       return <></>;
     }
+
+    // 判断高亮区域是否在页面下方
+    // 如果高亮区域的顶部位置+高度超过页面高度的70%，将输入框显示在上方
+    const isBottomHalf = (props.selectionRegion.top + props.selectionRegion.height) > 70;
+
     return (
       <div
         className={styles.highlightContent}
         style={{
             position: 'absolute',
             left: `${props.selectionRegion.left}%`,
-            top: `${props.selectionRegion.top + props.selectionRegion.height}%`,
+            // 根据高亮位置决定输入框显示在上方还是下方
+            top: isBottomHalf
+              ? `${props.selectionRegion.top - 20}%` // 高亮在下方，输入框显示在上方
+              : `${props.selectionRegion.top + props.selectionRegion.height}%`, // 高亮在上方，输入框显示在下方
             zIndex: 5,
         }}
       >
