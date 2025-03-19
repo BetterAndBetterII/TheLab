@@ -570,30 +570,33 @@ const FileList: React.FC<FileListProps> = ({
         </div>
         <div className={styles.gridFileContent}>
           <div className={styles.gridFileName}>{file.name}</div>
-          <div className={styles.gridFileMeta}>
-            {!file.isFolder && formatFileSize(file.size)}
-          </div>
-          <div className={styles.gridFileMeta}>
-            {new Date(file.lastModified).toLocaleDateString()}
-          </div>
-          {file.processingStatus && (
-            <div className={styles.gridProcessingStatus}>
-              <span
-                className={styles[
-                  file.processingStatus.toLowerCase() as ProcessingStatus
-                ]}
-                title={file.errorMessage || TOOLTIPS[file.processingStatus.toLowerCase() as ProcessingStatus]}
-              >
-                {ICONS[file.processingStatus.toLowerCase() as ProcessingStatus]}
-              </span>
-              {file.processingStatus === "processing" && <div className={styles.progressBar} style={{width: '80px'}}>
-                <div
-                  className={styles.progressFill}
-                  style={{ width: `${PROGRESS[file.processingStatus.toLowerCase() as ProcessingStatus]}%` }}
-                />
-              </div>}
+          <div className={styles.gridFileMetaList}>
+            {!file.isFolder && <div className={styles.gridFileMeta}>
+              {formatFileSize(file.size)}
+            </div>}
+            <div className={styles.gridFileMeta}>{file.owner}</div>
+            <div className={styles.gridFileMeta}>
+              {new Date(file.lastModified).toLocaleDateString()}
             </div>
-          )}
+            {file.processingStatus && (
+              <div className={styles.gridProcessingStatus}>
+                <span
+                  className={styles[
+                    file.processingStatus.toLowerCase() as ProcessingStatus
+                  ]}
+                  title={file.errorMessage || TOOLTIPS[file.processingStatus.toLowerCase() as ProcessingStatus]}
+                >
+                  {ICONS[file.processingStatus.toLowerCase() as ProcessingStatus]}
+                </span>
+                {file.processingStatus === "processing" && <div className={styles.progressBar} style={{width: '80px'}}>
+                  <div
+                    className={styles.progressFill}
+                    style={{ width: `${PROGRESS[file.processingStatus.toLowerCase() as ProcessingStatus]}%` }}
+                  />
+                </div>}
+              </div>
+            )}
+          </div>
         </div>
         <div className={styles.gridFileActions}>
           <button

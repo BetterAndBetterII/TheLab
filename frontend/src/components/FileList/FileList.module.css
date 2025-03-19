@@ -696,6 +696,13 @@
   height: 36px;
 }
 
+.gridFileMetaList {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  align-items: center;
+  gap: 4px;
+}
+
 .gridFileMeta {
   font-size: 12px;
   color: #999;
