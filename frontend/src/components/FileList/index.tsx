@@ -695,29 +695,6 @@ const FileList: React.FC<FileListProps> = ({
             </>
           )}
         </div>
-      </div>
-
-      <div className={styles.breadcrumb}>
-        <span
-          className={styles.breadcrumbItem}
-          onClick={() => handleBreadcrumbClick(null)}
-        >
-          根目录
-        </span>
-        {folderPath.map((folder) => (
-          <React.Fragment key={folder.id}>
-            <span className={styles.breadcrumbSeparator}>/</span>
-            <span
-              className={styles.breadcrumbItem}
-              onClick={() => handleBreadcrumbClick(folder.id)}
-            >
-              {folder.name}
-            </span>
-          </React.Fragment>
-        ))}
-      </div>
-
-      <div className={styles.content}>
         <div className={styles.toolbar}>
           <button
             className={styles.sortButton}
@@ -755,7 +732,29 @@ const FileList: React.FC<FileListProps> = ({
             </button>
           </div>
         </div>
+      </div>
 
+      <div className={styles.breadcrumb}>
+        <span
+          className={styles.breadcrumbItem}
+          onClick={() => handleBreadcrumbClick(null)}
+        >
+          根目录
+        </span>
+        {folderPath.map((folder) => (
+          <React.Fragment key={folder.id}>
+            <span className={styles.breadcrumbSeparator}>/</span>
+            <span
+              className={styles.breadcrumbItem}
+              onClick={() => handleBreadcrumbClick(folder.id)}
+            >
+              {folder.name}
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
+
+      <div className={styles.content}>
         {viewMode === 'list' ? (
           <div className={styles.fileList} ref={fileListRef}>
             {sortedFiles.map((file) => (

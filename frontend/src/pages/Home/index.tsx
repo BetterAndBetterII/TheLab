@@ -147,27 +147,29 @@ const Home: React.FC = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <h1 className={styles.title}>欢迎回来</h1>
-          <p className={styles.subtitle}>
-            这里是您的工作空间，可以方便地管理文件和查看最近的活动。
-          </p>
+          <div className={styles.titleGroup}>
+            <h1 className={styles.title}>欢迎回来</h1>
+            <p className={styles.subtitle}>
+              这里是您的工作空间，可以方便地管理文件和查看最近的活动。
+            </p>
+          </div>
           {confettiShown && (
             <div className={styles.openSourceNotice}>
-              🎉 重要通知：我们已正式开源！感谢您的支持与信任。如果觉得好用，欢迎给个Star！
+              🎉 重要通知：我们已正式开源！
               <a
                 href="https://github.com/BetterAndBetterII/TheLab"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={styles.githubLink}
               >
-                <FaGithub /> 访问 GitHub 仓库
+                <FaGithub /> Star
               </a>
             </div>
           )}
         </div>
         <Link to="/about" className={styles.aboutLink}>
           <RiBookmarkLine />
-          <span className={styles.aboutLinkText}>关于我们</span>
+          <span>关于我们</span>
         </Link>
       </div>
 

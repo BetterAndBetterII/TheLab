@@ -9,7 +9,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .title {
@@ -21,14 +22,15 @@
 
 .actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  align-items: center;
 }
 
 .actionButton {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 6px;
+  padding: 6px 12px;
   border: none;
   border-radius: 6px;
   background-color: #f5f5f5;
@@ -36,6 +38,7 @@
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
+  height: 32px;
 }
 
 .actionButton:hover {
@@ -43,7 +46,7 @@
 }
 
 .actionButton span {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .breadcrumb {
@@ -81,10 +84,10 @@
 }
 
 .toolbar {
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
 }
 
 .sortButton {
@@ -96,6 +99,9 @@
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
+  height: 32px;
+  display: flex;
+  align-items: center;
 }
 
 .sortButton:hover {
@@ -584,8 +590,10 @@
 .viewToggle {
   display: flex;
   align-items: center;
-  margin-left: auto;
-  gap: 8px;
+  gap: 4px;
+  margin-left: 8px;
+  border-left: 1px solid #d9d9d9;
+  padding-left: 8px;
 }
 
 .viewToggleButton {
@@ -600,6 +608,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 32px;
+  width: 32px;
 }
 
 .viewToggleButton:hover {
@@ -653,7 +663,7 @@
 }
 
 .gridFileIcon {
-  font-size: 48px;
+  font-size: 64px;
   margin-bottom: 16px;
   display: flex;
   align-items: center;
