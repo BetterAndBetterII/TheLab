@@ -7,22 +7,14 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const [isNavCollapsed, setIsNavCollapsed] = useState(false);
-
-  useEffect(() => {
-    const handleNavToggle = (e: CustomEvent<{ isCollapsed: boolean }>) => {
-      setIsNavCollapsed(e.detail.isCollapsed);
-    };
-
-    window.addEventListener('navbarToggle', handleNavToggle as EventListener);
-    return () => {
-      window.removeEventListener('navbarToggle', handleNavToggle as EventListener);
-    };
-  }, []);
+  const [isNavCollapsed, setIsNavCollapsed] = useState<boolean>(() => {
+    const stored = localStorage.getItem('isNavCollapsed');
+    return stored !== undefined ? stored === 'true' : false;
+  });
 
   return (
     <>
-      <Navbar />
+      <Navbar isCollapsed={isNavCollapsed} setIsCollapsed={setIsNavCollapsed} />
       <main className={`${styles.mainContent} ${isNavCollapsed ? styles.navCollapsed : ''}`}>
         {children}
       </main>

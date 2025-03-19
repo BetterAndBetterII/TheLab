@@ -3,10 +3,17 @@ import { Link, useLocation } from 'react-router-dom';
 import styles from './Navbar.module.css';
 import { FiHome, FiMail, FiMessageSquare, FiSettings, FiMenu, FiChevronLeft, FiChevronRight, FiUsers, FiSearch } from 'react-icons/fi';
 
-export default function Navbar() {
+export default function Navbar(
+  {
+    isCollapsed,
+    setIsCollapsed,
+  }: {
+    isCollapsed: boolean;
+    setIsCollapsed: (isCollapsed: boolean) => void;
+  }
+) {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -15,6 +22,7 @@ export default function Navbar() {
       setIsMobile(mobile);
       if (mobile) {
         setIsCollapsed(false);
+        localStorage.setItem('isNavCollapsed', 'false');
       }
     };
 
@@ -43,6 +51,7 @@ export default function Navbar() {
   const toggleCollapse = () => {
     if (!isMobile) {
       setIsCollapsed(!isCollapsed);
+      localStorage.setItem('isNavCollapsed', !isCollapsed ? 'true' : 'false');
       // 触发一个自定义事件，通知其他组件导航栏状态改变
       window.dispatchEvent(new CustomEvent('navbarToggle', { detail: { isCollapsed: !isCollapsed } }));
     }
