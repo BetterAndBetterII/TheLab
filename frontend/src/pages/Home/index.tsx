@@ -153,14 +153,14 @@ const Home: React.FC = () => {
           </p>
           {confettiShown && (
             <div className={styles.openSourceNotice}>
-              🎉 重要通知：我们已正式开源！感谢您的支持与信任。
+              🎉 重要通知：我们已正式开源！感谢您的支持与信任。如果觉得好用，欢迎给个Star！
               <a
                 href="https://github.com/BetterAndBetterII/TheLab"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={styles.githubLink}
               >
-                <FaGithub /> 访问我们的 GitHub 仓库
+                <FaGithub /> 访问 GitHub 仓库
               </a>
             </div>
           )}
