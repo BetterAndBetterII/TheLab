@@ -836,24 +836,23 @@ async def batch_move_files(
         if not folder:
             raise HTTPException(status_code=404, detail="目标文件夹不存在")
 
+    # 处理文件移动 - 使用update语句而不是修改查询结果对象
     for file_id in request.fileIds:
-        document = (
-            base_query_document.filter(Document.id == int(file_id))
-            .with_entities(Document.id, Document.folder_id)
-            .first()
+        base_query_document.filter(Document.id == int(file_id)).update(
+            {"folder_id": int(request.targetFolderId) if request.targetFolderId else None}
         )
-        if document:
-            document.folder_id = int(request.targetFolderId) if request.targetFolderId else None
 
+    # 处理文件夹移动
     for folder_id in request.folderIds:
         folder = base_query_folder.filter(Folder.id == int(folder_id)).first()
-
         if folder:
-            # 不能自动到自己里面
-            if folder.id != int(request.targetFolderId):
-                folder.parent_id = int(request.targetFolderId) if request.targetFolderId else None
-            else:
+            # 不能移动到自己里面
+            if folder.id == int(request.targetFolderId) if request.targetFolderId else False:
                 raise HTTPException(status_code=400, detail="不能移动到自己里面")
+            else:
+                base_query_folder.filter(Folder.id == int(folder_id)).update(
+                    {"parent_id": int(request.targetFolderId) if request.targetFolderId else None}
+                )
 
     db.commit()
     return {"message": "文件已批量移动"}
