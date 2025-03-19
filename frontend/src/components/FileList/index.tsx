@@ -4,6 +4,8 @@ import Loading from '../Loading';
 import { fileApi, type FileItem, type FolderTree } from '../../api';
 import DragZone from './DragZone';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { FaList, FaTh } from 'react-icons/fa';
+import { BASE_URL } from '../../api/config';
 
 interface FileOperation {
   type: 'rename' | 'move' | 'upload';
@@ -73,6 +75,10 @@ const FileList: React.FC<FileListProps> = ({
     const savedSortOrder = localStorage.getItem('fileSortOrder');
     return (savedSortOrder as 'asc' | 'desc') || 'desc';
   });
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    const savedViewMode = localStorage.getItem('fileViewMode');
+    return (savedViewMode as 'list' | 'grid') || 'grid';
+  });
   const [operation, setOperation] = useState<FileOperation | null>(null);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -80,6 +86,9 @@ const FileList: React.FC<FileListProps> = ({
   const [folderTree, setFolderTree] = useState<FolderTree[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 添加缩略图加载错误状态
+  const [thumbnailErrors, setThumbnailErrors] = useState<Set<string>>(new Set());
 
   // 从URL路径获取当前文件夹ID
   const getCurrentFolderId = () => {
@@ -123,7 +132,8 @@ const FileList: React.FC<FileListProps> = ({
   useEffect(() => {
     localStorage.setItem('fileSortBy', sortBy);
     localStorage.setItem('fileSortOrder', sortOrder);
-  }, [sortBy, sortOrder]);
+    localStorage.setItem('fileViewMode', viewMode);
+  }, [sortBy, sortOrder, viewMode]);
 
   const updateProcessingStatus = async () => {
     const targetFiles = files.filter(file => file.processingStatus === 'pending' || file.processingStatus === 'processing')
@@ -520,6 +530,112 @@ const FileList: React.FC<FileListProps> = ({
     }
   };
 
+  // 处理缩略图加载错误
+  const handleThumbnailError = (fileId: string) => {
+    setThumbnailErrors(prev => new Set([...prev, fileId]));
+  };
+
+  // 获取缩略图URL
+  const getThumbnailUrl = (fileId: string) => {
+    return `${BASE_URL}/documents/${fileId}/thumbnail`;
+  };
+
+  // 修改渲染网格视图的部分
+  const renderGridItem = (file: FileItem) => {
+    const showThumbnail = !file.isFolder && !thumbnailErrors.has(file.id);
+
+    return (
+      <div
+        key={file.id}
+        className={`${styles.gridFileItem} ${
+          selectedFiles.has(getItemKey({ id: file.id, type: file.isFolder ? 'folder' : 'file' })) ? styles.gridFileItemActive : ''
+        }`}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleFileSelect(file, e);
+        }}
+        onDoubleClick={() => handleFileDoubleClick(file)}
+      >
+        <div className={styles.gridFileIcon}>
+          {showThumbnail ? (
+            <img
+              src={getThumbnailUrl(file.id)}
+              alt={file.name}
+              className={styles.thumbnailImage}
+              onError={() => handleThumbnailError(file.id)}
+            />
+          ) : (
+            getFileIcon(file)
+          )}
+        </div>
+        <div className={styles.gridFileContent}>
+          <div className={styles.gridFileName}>{file.name}</div>
+          <div className={styles.gridFileMeta}>
+            {!file.isFolder && formatFileSize(file.size)}
+          </div>
+          <div className={styles.gridFileMeta}>
+            {new Date(file.lastModified).toLocaleDateString()}
+          </div>
+          {file.processingStatus && (
+            <div className={styles.gridProcessingStatus}>
+              <span
+                className={styles[
+                  file.processingStatus.toLowerCase() as ProcessingStatus
+                ]}
+                title={file.errorMessage || TOOLTIPS[file.processingStatus.toLowerCase() as ProcessingStatus]}
+              >
+                {ICONS[file.processingStatus.toLowerCase() as ProcessingStatus]}
+              </span>
+              {file.processingStatus === "processing" && <div className={styles.progressBar} style={{width: '80px'}}>
+                <div
+                  className={styles.progressFill}
+                  style={{ width: `${PROGRESS[file.processingStatus.toLowerCase() as ProcessingStatus]}%` }}
+                />
+              </div>}
+            </div>
+          )}
+        </div>
+        <div className={styles.gridFileActions}>
+          <button
+            className={styles.iconButton}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOperation({ type: 'rename', fileId: file.id });
+            }}
+            title="重命名"
+            data-tooltip
+          >
+            ✏️
+          </button>
+          <button
+            className={styles.iconButton}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownload(file.id, file.isFolder);
+            }}
+            title="下载"
+            data-tooltip
+          >
+            ⬇️
+          </button>
+          {!file.isFolder && file.processingStatus === 'failed' && (
+            <button
+              className={styles.iconButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRetryProcessing(file.id);
+              }}
+              title="重试处理"
+              data-tooltip
+            >
+              🔄
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className={`${styles.container} ${className || ''}`}>
@@ -618,100 +734,123 @@ const FileList: React.FC<FileListProps> = ({
               <span>{sortOrder === 'asc' ? ' ↑' : ' ↓'}</span>
             )}
           </button>
+
+          <div className={styles.viewToggle}>
+            <button
+              className={`${styles.viewToggleButton} ${viewMode === 'list' ? styles.viewToggleButtonActive : ''}`}
+              onClick={() => setViewMode('list')}
+              title="列表视图"
+            >
+              <FaList />
+            </button>
+            <button
+              className={`${styles.viewToggleButton} ${viewMode === 'grid' ? styles.viewToggleButtonActive : ''}`}
+              onClick={() => setViewMode('grid')}
+              title="网格视图"
+            >
+              <FaTh />
+            </button>
+          </div>
         </div>
 
-        <div className={styles.fileList} ref={fileListRef}>
-          {sortedFiles.map((file) => (
-            <div
-              key={file.id}
-              className={`${styles.fileItem} ${
-                selectedFiles.has(getItemKey({ id: file.id, type: file.isFolder ? 'folder' : 'file' })) ? styles.fileItemActive : ''
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleFileSelect(file, e);
-              }}
-              onDoubleClick={() => handleFileDoubleClick(file)}
-            >
-              <div className={styles.fileIcon}>
-                {getFileIcon(file)}
-              </div>
-              <div className={styles.fileInfo}>
-                <div className={styles.fileName}>{file.name}</div>
-                <div className={styles.fileMeta}>
-                  {!file.isFolder && <span>{formatFileSize(file.size)}</span>}
-                  <span>•</span>
-                  <span>{new Date(file.lastModified).toLocaleString()}</span>
-                  {file.processingStatus && (
-                    <div className={styles.processingStatus}>
-                      <span>•</span>
-                      {file.processingStatus && (
-                        <>
-                          <span
-                            className={styles[
-                              file.processingStatus.toLowerCase() as ProcessingStatus
-                            ]}
-                            title={file.errorMessage || TOOLTIPS[file.processingStatus.toLowerCase() as ProcessingStatus]}
-                          >
-                            {ICONS[file.processingStatus.toLowerCase() as ProcessingStatus]} {file.processingStatus}
-                          </span>
-                          {file.processingStatus === "processing" && <div className={styles.progressBar}>
-                            <div
-                              className={styles.progressFill}
-                              style={{ width: `${PROGRESS[file.processingStatus.toLowerCase() as ProcessingStatus]}%` }}
-                            />
-                          </div>}
-                        </>
+        {viewMode === 'list' ? (
+          <div className={styles.fileList} ref={fileListRef}>
+            {sortedFiles.map((file) => (
+              <div
+                key={file.id}
+                className={`${styles.fileItem} ${
+                  selectedFiles.has(getItemKey({ id: file.id, type: file.isFolder ? 'folder' : 'file' })) ? styles.fileItemActive : ''
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFileSelect(file, e);
+                }}
+                onDoubleClick={() => handleFileDoubleClick(file)}
+              >
+                <div className={styles.fileIcon}>
+                  {getFileIcon(file)}
+                </div>
+                <div className={styles.fileInfo}>
+                  <div className={styles.fileName}>{file.name}</div>
+                  <div className={styles.fileMeta}>
+                    {!file.isFolder && <span>{formatFileSize(file.size)}</span>}
+                    <span>•</span>
+                    <span>{new Date(file.lastModified).toLocaleString()}</span>
+                    {file.processingStatus && (
+                      <div className={styles.processingStatus}>
+                        <span>•</span>
+                        {file.processingStatus && (
+                          <>
+                            <span
+                              className={styles[
+                                file.processingStatus.toLowerCase() as ProcessingStatus
+                              ]}
+                              title={file.errorMessage || TOOLTIPS[file.processingStatus.toLowerCase() as ProcessingStatus]}
+                            >
+                              {ICONS[file.processingStatus.toLowerCase() as ProcessingStatus]} {file.processingStatus}
+                            </span>
+                            {file.processingStatus === "processing" && <div className={styles.progressBar}>
+                              <div
+                                className={styles.progressFill}
+                                style={{ width: `${PROGRESS[file.processingStatus.toLowerCase() as ProcessingStatus]}%` }}
+                              />
+                            </div>}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className={styles.fileOwner}>{file.owner}</div>
+                <div className={styles.fileActions}>
+                  <button
+                    className={styles.iconButton}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOperation({ type: 'rename', fileId: file.id });
+                    }}
+                    title="重命名"
+                    data-tooltip
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    className={styles.iconButton}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(file.id, file.isFolder);
+                    }}
+                    title="下载"
+                    data-tooltip
+                  >
+                    ⬇️
+                  </button>
+                  {!file.isFolder && (
+                    <>
+                      {file.processingStatus === 'failed' && (
+                        <button
+                          className={styles.iconButton}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRetryProcessing(file.id);
+                          }}
+                          title="重试处理"
+                          data-tooltip
+                        >
+                          🔄
+                        </button>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
               </div>
-              <div className={styles.fileOwner}>{file.owner}</div>
-              <div className={styles.fileActions}>
-                <button
-                  className={styles.iconButton}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOperation({ type: 'rename', fileId: file.id });
-                  }}
-                  title="重命名"
-                  data-tooltip
-                >
-                  ✏️
-                </button>
-                <button
-                  className={styles.iconButton}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDownload(file.id, file.isFolder);
-                  }}
-                  title="下载"
-                  data-tooltip
-                >
-                  ⬇️
-                </button>
-                {!file.isFolder && (
-                  <>
-                    {file.processingStatus === 'failed' && (
-                      <button
-                        className={styles.iconButton}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRetryProcessing(file.id);
-                        }}
-                        title="重试处理"
-                        data-tooltip
-                      >
-                        🔄
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className={styles.gridView} ref={fileListRef}>
+            {sortedFiles.map(renderGridItem)}
+          </div>
+        )}
       </div>
 
       {showNewFolderDialog && (

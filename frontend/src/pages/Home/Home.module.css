@@ -177,6 +177,8 @@
 .fileList {
   flex: 1;
   min-height: 0;
+  overflow: auto;
+  height: 100%;
 }
 
 .fileItem {

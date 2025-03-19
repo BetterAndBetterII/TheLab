@@ -36,7 +36,7 @@ const Home: React.FC = () => {
       const endDate = new Date('2025-03-27');
 
       // 如果没有显示过，并且当前日期在截止日期之前，显示彩带
-      if (hasShownConfetti && currentDate < endDate) {
+      if (!hasShownConfetti && currentDate < endDate) {
         setTimeout(() => {
           // 多彩的彩带效果
           const duration = 1000;
@@ -179,24 +179,6 @@ const Home: React.FC = () => {
             className={styles.fileList}
           />
         </div>
-
-        {/* 最近活动 */}
-        {/* <div className={styles.recentActivities}>
-          <h2 className={styles.sectionTitle}>最近活动</h2>
-          <div className={styles.activityGrid}>
-            {recentActivities.map((activity) => (
-              <Link key={activity.id} to={activity.link} className={styles.card}>
-                <div className={styles.cardHeader}>
-                  {getActivityIcon(activity.type)}
-                  <div>
-                    <h3 className={styles.cardTitle}>{activity.title}</h3>
-                    <p className={styles.cardDate}>{activity.date}</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div> */}
       </div>
     </div>
   );

@@ -161,6 +161,15 @@ class NoteUpdate(BaseModel):
     highlight_areas: List[dict]
 
 
+class ThumbnailResponse(BaseModel):
+    """缩略图响应模型。
+
+    包含缩略图的二进制数据。
+    """
+
+    thumbnail: bytes
+
+
 @router.post("/{documentId}/read")
 async def record_read(
     documentId: str,
@@ -1101,3 +1110,18 @@ async def update_note(
         created_at=db_note.created_at,
         updated_at=db_note.updated_at,
     )
+
+
+@router.get("/{documentId}/thumbnail")
+async def get_thumbnail(
+    documentId: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """获取文档缩略图."""
+    document = db.query(Document).filter(Document.id == int(documentId)).with_entities(Document.thumbnail).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="文档未找到")
+    if not document.thumbnail:
+        raise HTTPException(status_code=404, detail="缩略图不存在")
+    return Response(content=document.thumbnail, media_type="image/png")

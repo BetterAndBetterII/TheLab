@@ -579,3 +579,220 @@
   visibility: visible;
   bottom: calc(100% - 5px);
 }
+
+/* 视图切换按钮样式 */
+.viewToggle {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 8px;
+}
+
+.viewToggleButton {
+  padding: 6px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #1a1a1a;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.viewToggleButton:hover {
+  border-color: #1976d2;
+  color: #1976d2;
+}
+
+.viewToggleButtonActive {
+  background-color: #1976d2;
+  color: white;
+  border-color: #1976d2;
+}
+
+.viewToggleButtonActive:hover {
+  color: white;
+}
+
+/* 网格视图样式 */
+.gridView {
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.gridFileItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  border: 1px solid transparent;
+  height: 240px;
+  box-sizing: border-box;
+  justify-content: flex-start;
+}
+
+.gridFileItem:hover {
+  background-color: #f5f5f5;
+}
+
+.gridFileItemActive {
+  background-color: #e3f2fd;
+  border: 1px solid #1976d2;
+}
+
+.gridFileIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  width: 100%;
+  position: relative;
+}
+
+.thumbnailImage {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: #f5f5f5;
+}
+
+.gridFileContent {
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gridFileName {
+  text-align: center;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+  height: 36px;
+}
+
+.gridFileMeta {
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+  width: 100%;
+}
+
+.gridFileActions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+  padding: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.gridFileItem:hover .gridFileActions {
+  opacity: 1;
+}
+
+.gridProcessingStatus {
+  position: relative;
+  margin-top: 8px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 11px;
+  gap: 4px;
+}
+
+/* 单独为文件名等内容添加溢出控制 */
+.gridFileItem .iconButton[data-tooltip]::before,
+.gridFileItem .iconButton[data-tooltip]::after {
+  z-index: 100;
+}
+
+.gridFileItem .iconButton[data-tooltip]::before {
+  white-space: nowrap;
+  bottom: auto;
+  top: -30px;
+}
+
+.gridFileItem .iconButton[data-tooltip]::after {
+  bottom: auto;
+  top: -8px;
+  border-bottom-color: rgba(0, 0, 0, 0.8);
+  border-top-color: transparent;
+}
+
+.gridFileItem .iconButton[data-tooltip]:hover::before {
+  bottom: auto;
+  top: -35px;
+  visibility: visible;
+  opacity: 1;
+}
+
+.gridFileItem .iconButton[data-tooltip]:hover::after {
+  bottom: auto;
+  top: -8px;
+  visibility: visible;
+  opacity: 1;
+}
+
+/* 响应式网格布局 */
+@media screen and (max-width: 1200px) {
+  .gridView {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .gridView {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .gridView {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 在移动端调整尺寸 */
+@media screen and (max-width: 768px) {
+  .gridFileItem {
+    height: 220px;
+  }
+
+  .gridFileIcon {
+    height: 80px;
+    font-size: 40px;
+  }
+}
