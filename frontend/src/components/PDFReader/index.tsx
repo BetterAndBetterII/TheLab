@@ -141,6 +141,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const markmapRef = useRef<Markmap | null>(null) as MutableRefObject<Markmap | null>;
   const resizerHorizontalRef = useRef<HTMLDivElement>(null);
   const highlightOnlyRef = useRef<boolean>(false);
+  const lastHighlightAreas = useRef<HighlightArea[]>([]);
 
   const [isDraggingVertical, setIsDraggingVertical] = useState(false);
   const [isNotesPanelCollapsed, setIsNotesPanelCollapsed] = useState(() => {
@@ -665,6 +666,12 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const renderHighlightContent = (props: RenderHighlightContentProps) => {
     if (highlightOnlyRef.current) {
       setTimeout(async () => {
+        if (lastHighlightAreas.current.length > 0) {
+          if (lastHighlightAreas.current.every((area) => props.highlightAreas.includes(area))) {
+            return <></>;
+          }
+        }
+        lastHighlightAreas.current = props.highlightAreas;
         const note = await documentApi.createNote(documentId, {
           content: "",
           quote: props.selectedText,
@@ -677,8 +684,8 @@ const PDFReader: React.FC<PDFReaderProps> = ({
           quote: note.quote,
           highlightAreas: note.highlight_areas,
         }]);
-        props.cancel();
       }, 100);
+      props.cancel();
       return <></>;
     }
     return (
