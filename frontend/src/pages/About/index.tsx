@@ -2,6 +2,7 @@ import React from 'react';
 import styles from './About.module.css';
 import { Link } from 'react-router-dom';
 import { RiHome5Line } from 'react-icons/ri';
+import { FaGithub } from 'react-icons/fa';
 
 const About: React.FC = () => {
   return (
@@ -15,9 +16,18 @@ const About: React.FC = () => {
           TheLab是一个将AI与交互放在首位的平台，致力于为用户提供最佳的学习体验。TheLab承诺长期免费，只要Google Gemini API免费层还在，TheLab就会一直免费。
         </p>
       </div>
-      <div className={styles.aboutLink}>
-        <Link to="/">
+      <div className={styles.headerButtons}>
+        <a
+          href="https://github.com/BetterAndBetterII/TheLab"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.githubLink}
+        >
+          <FaGithub /> 访问 GitHub 仓库
+        </a>
+        <Link to="/" className={styles.homeLink}>
           <RiHome5Line />
+          <span>返回首页</span>
         </Link>
       </div>
 
@@ -25,7 +35,7 @@ const About: React.FC = () => {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>我的初衷</h2>
           <p className={styles.text}>
-            TheLab目标是以最低的成本保持运营，理想成本（包括电费）控制在5元/天。若遇到上传文件过慢或失败，请耐心重试，或电邮hi@gitfetch.dev协助排查。
+            TheLab目标是以最低的成本保持运营，理想成本（包括电费）控制在1元/天。若遇到上传文件过慢或失败，请耐心重试，或电邮hi@gitfetch.dev协助排查。
             我会在第一时间响应，并尽可能在24小时内尽力解决问题。
             我做的软件都是为了自己的兴趣还有自己的需求，既希望有多点同学可以体验到免费的有意思的AI工具，但又不希望太多人使用。（Gemini 免费API不太多）
             希望大家可以多多支持，多多反馈，多多交流。
@@ -67,7 +77,7 @@ const About: React.FC = () => {
               <div>
                 <h3 className={styles.featureTitle}>开源计划</h3>
                 <p className={styles.featureText}>
-                  目前TheLab功能还未完善（从TheReader继承过来的），所以暂时还没整理好代码，开放仓库。但我保证，所有功能都将在两周内开源，欢迎大家来贡献代码。
+                  TheLab已开源！点击上方Github仓库链接，点个Star吧~ 欢迎大家来贡献代码。
                 </p>
               </div>
             </li>
