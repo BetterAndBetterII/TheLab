@@ -14,7 +14,7 @@ import {
 } from '@react-pdf-viewer/highlight';
 import { Transformer } from 'markmap-lib';
 import { Markmap } from 'markmap-view';
-import { IoMdSend, IoMdChatboxes, IoMdDownload, IoMdRefresh, IoMdClose } from 'react-icons/io';
+import { IoMdSend, IoMdChatboxes, IoMdDownload, IoMdRefresh, IoMdClose, IoMdCreate } from 'react-icons/io';
 import { FiChevronRight, FiChevronLeft, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -140,6 +140,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const mindmapRef = useRef<SVGSVGElement>(null);
   const markmapRef = useRef<Markmap | null>(null) as MutableRefObject<Markmap | null>;
   const resizerHorizontalRef = useRef<HTMLDivElement>(null);
+  const highlightOnlyRef = useRef<boolean>(false);
 
   const [isDraggingVertical, setIsDraggingVertical] = useState(false);
   const [isNotesPanelCollapsed, setIsNotesPanelCollapsed] = useState(() => {
@@ -617,29 +618,69 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
     <div
       className={styles.highlightTarget}
-      onClick={() => {
-        props.toggle();
-        setTimeout(() => {
-          const noteInput = document.getElementById('note-input');
-          if (noteInput) {
-            noteInput.focus();
-          }
-        }, 100);
-      }}
-      title="添加批注"
       style={{
           left: `${props.selectionRegion.left}%`,
           top: `${props.selectionRegion.top + props.selectionRegion.height}%`,
       }}
     >
       <div className={styles.highlightTargetInner}>
-        <MessageIcon />
-        <span className={styles.highlightTargetText}>添加批注</span>
+        <div className={styles.highlightTargetOptions}>
+          <div
+            className={styles.highlightOption}
+            onClick={async () => {
+              try {
+                highlightOnlyRef.current = true;
+                props.toggle();
+              } catch (error) {
+                console.error('保存高亮失败:', error);
+              }
+            }}
+            title="高亮"
+          >
+            <span className={styles.highlightOptionIcon}><IoMdCreate /></span>
+            <span className={styles.highlightOptionText}>高亮</span>
+          </div>
+          <div
+            className={styles.highlightOption}
+            onClick={() => {
+              highlightOnlyRef.current = false;
+              props.toggle();
+              setTimeout(() => {
+                const noteInput = document.getElementById('note-input');
+                if (noteInput) {
+                  noteInput.focus();
+                }
+              }, 100);
+            }}
+            title="添加批注"
+          >
+            <span className={styles.highlightOptionIcon}><MessageIcon /></span>
+            <span className={styles.highlightOptionText}>添加批注</span>
+          </div>
+        </div>
       </div>
     </div>
   );
 
   const renderHighlightContent = (props: RenderHighlightContentProps) => {
+    if (highlightOnlyRef.current) {
+      setTimeout(async () => {
+        const note = await documentApi.createNote(documentId, {
+          content: "",
+          quote: props.selectedText,
+          highlight_areas: props.highlightAreas,
+        });
+
+        setNotes([...notes, {
+          id: note.id,
+          content: "",
+          quote: note.quote,
+          highlightAreas: note.highlight_areas,
+        }]);
+        props.cancel();
+      }, 100);
+      return <></>;
+    }
     return (
       <div
         className={styles.highlightContent}
@@ -652,11 +693,11 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       >
         <textarea
           id="note-input"
-          placeholder="添加批注..."
+          placeholder="添加批注... (按住Ctrl/Shift+Enter换行，Enter保存；支持Markdown语法)"
           value={currentNote}
           onChange={(e) => setCurrentNote(e.target.value)}
           onKeyDown={async (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
               e.preventDefault();
               try {
                 const note = await documentApi.createNote(documentId, {
@@ -739,8 +780,6 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                                 {},
                                 props.getCssProperties(area, props.rotation),
                                 {
-                                    // background: 'yellow',
-                                    // opacity: 0.4,
                                     background: 'rgba(255, 255, 0, 0.3)',
                                     position: 'absolute',
                                     left: `${area.left}%`,
@@ -751,22 +790,30 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                                 }
                             )}
                             onClick={() => {
-                              jumpToNote(note);
-                              console.log(note);
+                              if (note.content) {
+                                jumpToNote(note);
+                                console.log(note);
+                              }
                             }}
                             ref={(ref): void => {
-                              noteEles.set(Number(note.id), ref as HTMLElement);
-                            }}  // 设置笔记元素的引用
+                              if (note.content) {
+                                noteEles.set(Number(note.id), ref as HTMLElement);
+                              }
+                            }}
                         >
-                          <div className={styles.highlightAreaText} style={{
-                            opacity: 1,
-                            zIndex: 6,
-                          }}>{<ReactMarkdown
-                            remarkPlugins={[remarkGfm, remarkMath]}
-                            rehypePlugins={[rehypeKatex, rehypeRaw]}
-                          >
-                            {note.content}
-                          </ReactMarkdown>}</div>
+                          {note.content && (
+                            <div className={styles.highlightAreaText} style={{
+                              opacity: 1,
+                              zIndex: 6,
+                            }}>
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm, remarkMath]}
+                                rehypePlugins={[rehypeKatex, rehypeRaw]}
+                              >
+                                {note.content}
+                              </ReactMarkdown>
+                            </div>
+                          )}
                         </div>
                     ))}
             </React.Fragment>

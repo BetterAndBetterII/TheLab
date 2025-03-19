@@ -992,7 +992,7 @@ async def create_note(
         base_query_document = db.query(Document)
     else:
         base_query_document = db.query(Document).filter(Document.owner_id == current_user.id)
-    document = base_query_document.filter(Document.id == int(documentId)).first()
+    document = base_query_document.filter(Document.id == int(documentId)).with_entities(Document.id).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
 
@@ -1062,12 +1062,13 @@ async def delete_note(
             Note.document_id == int(documentId),
             Note.user_id == current_user.id,
         )
+        .with_entities(Note.id)
         .first()
     )
     if not note:
         raise HTTPException(status_code=404, detail="笔记未找到")
 
-    db.delete(note)
+    db.query(Note).filter(Note.id == int(noteId)).delete(synchronize_session=False)
     db.commit()
     return {"message": "笔记已删除"}
 

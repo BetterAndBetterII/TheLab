@@ -40,27 +40,24 @@
 /* 高亮目标样式 */
 .highlightTarget {
   position: absolute;
-  background: white;
+  background: transparent;
   border-radius: 8px;
-  padding: 8px 12px;
+  /* padding: 8px 12px; */
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); */
+  /* border: 1px solid rgba(0, 0, 0, 0.1); */
+
   transition: all 0.2s ease;
   z-index: 1000;
   transform: translateY(-100%);
   margin-top: 36px;
 }
 
-.highlightTarget:hover {
-  background: #f8f9fa;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  transform: translateY(-100%) scale(1.02);
-}
 
 .highlightTargetInner {
   display: flex;
   align-items: center;
+  border-radius: 8px;
   gap: 8px;
   color: #1976d2;
 }
@@ -1211,4 +1208,44 @@
     width: 32px;
     height: 32px;
   }
+}
+
+.highlightTargetOptions {
+  display: flex;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: white;
+  border: none;
+}
+
+.highlightOption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.highlightOption:hover {
+  background: rgba(0, 0, 0, 0.05);
+  /* transform: translateY(-2px) scale(1.02); */
+}
+
+.highlightOption span {
+  font-size: 16px;
+}
+
+.highlightOptionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.highlightOptionText {
+  font-size: 16px;
+  color: #666;
+  margin-left: 8px;
 }
