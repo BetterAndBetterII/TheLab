@@ -54,12 +54,20 @@
   overflow-y: auto;
 }
 
+.copyButtons {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
 .copyButtonGroup {
   position: relative;
   display: flex;
   gap: 8px;
   padding-top: 45px;
   margin-top: -45px;
+  margin-left: auto;
+  width: min-content;
 }
 
 .copyButton {

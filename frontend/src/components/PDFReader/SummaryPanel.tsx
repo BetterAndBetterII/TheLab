@@ -78,83 +78,83 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
         >
           {isEnglish ? 'EN' : '中'}
         </button>
-
-        <div className={styles.copyAllButtonGroup}>
-          <button
-            ref={buttonRefs.copyAll}
-            className={`${styles.copyButton} ${copyAllStatus === 'current' ? styles.copied : ''}`}
-            onClick={() => handleCopyAllWithStatus(isEnglish ? 'en' : 'cn', 'current')}
-            title={`复制全部${isEnglish ? '英文' : '中文'}内容`}
-            onMouseEnter={() => updateButtonPosition()}
-          >
-            <div className={styles.buttonContent}>
-              {copyAllStatus === 'current' ? (
-                <CheckIcon className={styles.icon} />
-              ) : (
-                <DocumentDuplicateIcon className={styles.icon} />
-              )}
-              <span>复制全部{isEnglish ? '英文' : '中文'}</span>
-            </div>
-          </button>
-
-          <button
-            className={`${styles.copyButton} ${styles.alternateButton} ${copyAllStatus === 'alternate' ? styles.copied : ''}`}
-            onClick={() => handleCopyAllWithStatus(isEnglish ? 'cn' : 'en', 'alternate')}
-            title={`复制全部${isEnglish ? '中文' : '英文'}内容`}
-            style={buttonPositions.copyAll}
-          >
-            <div className={styles.buttonContent}>
-              {copyAllStatus === 'alternate' ? (
-                <CheckIcon className={styles.icon} />
-              ) : (
-                <>
-                  {/* <DocumentDuplicateIcon className={styles.icon} /> */}
-                  <LanguageIcon className={`${styles.icon} ${styles.smallIcon}`} />
-                </>
-              )}
-              <span>复制全部{isEnglish ? '中文' : '英文'}</span>
-            </div>
-          </button>
-        </div>
       </div>
-
       <div className={styles.markdownContainer}>
-        <div className={styles.copyButtonGroup}>
-          <button
-            ref={buttonRefs.copy}
-            className={`${styles.copyButton} ${isCopied === 'current' ? styles.copied : ''}`}
-            onClick={() => handleCopy(isEnglish ? summaryEn : summaryCn, 'current')}
-            title={`复制${isEnglish ? '英文' : '中文'}内容`}
-            onMouseEnter={() => updateButtonPosition()}
-          >
-            <div className={styles.buttonContent}>
-              {isCopied === 'current' ? (
-                <CheckIcon className={styles.icon} />
-              ) : (
-                <ClipboardIcon className={styles.icon} />
-              )}
-              <span>复制{isEnglish ? '英文' : '中文'}</span>
-            </div>
-          </button>
+        <div className={styles.copyButtons}>
+          <div className={styles.copyAllButtonGroup}>
+            <button
+              ref={buttonRefs.copyAll}
+              className={`${styles.copyButton} ${copyAllStatus === 'current' ? styles.copied : ''}`}
+              onClick={() => handleCopyAllWithStatus(isEnglish ? 'en' : 'cn', 'current')}
+              title={`复制全部${isEnglish ? '英文' : '中文'}内容`}
+              onMouseEnter={() => updateButtonPosition()}
+            >
+              <div className={styles.buttonContent}>
+                {copyAllStatus === 'current' ? (
+                  <CheckIcon className={styles.icon} />
+                ) : (
+                  <DocumentDuplicateIcon className={styles.icon} />
+                )}
+                <span>复制全部{isEnglish ? '英文' : '中文'}</span>
+              </div>
+            </button>
 
-          <button
-            className={`${styles.copyButton} ${styles.alternateButton} ${isCopied === 'alternate' ? styles.copied : ''}`}
-            onClick={() => handleCopy(isEnglish ? summaryCn : summaryEn, 'alternate')}
-            title={`复制${isEnglish ? '中文' : '英文'}内容`}
-            style={buttonPositions.copy}
-          >
-            <div className={styles.buttonContent}>
-              {isCopied === 'alternate' ? (
-                <CheckIcon className={styles.icon} />
-              ) : (
-                <>
-                  {/* <ClipboardIcon className={styles.icon} /> */}
-                  <LanguageIcon className={`${styles.icon} ${styles.smallIcon}`} />
-                </>
-              )}
-              <span>复制{isEnglish ? '中文' : '英文'}</span>
-            </div>
-          </button>
+            <button
+              className={`${styles.copyButton} ${styles.alternateButton} ${copyAllStatus === 'alternate' ? styles.copied : ''}`}
+              onClick={() => handleCopyAllWithStatus(isEnglish ? 'cn' : 'en', 'alternate')}
+              title={`复制全部${isEnglish ? '中文' : '英文'}内容`}
+              style={buttonPositions.copyAll}
+            >
+              <div className={styles.buttonContent}>
+                {copyAllStatus === 'alternate' ? (
+                  <CheckIcon className={styles.icon} />
+                ) : (
+                  <>
+                    {/* <DocumentDuplicateIcon className={styles.icon} /> */}
+                    <LanguageIcon className={`${styles.icon} ${styles.smallIcon}`} />
+                  </>
+                )}
+                <span>复制全部{isEnglish ? '中文' : '英文'}</span>
+              </div>
+            </button>
+          </div>
+          <div className={styles.copyButtonGroup}>
+            <button
+              ref={buttonRefs.copy}
+              className={`${styles.copyButton} ${isCopied === 'current' ? styles.copied : ''}`}
+              onClick={() => handleCopy(isEnglish ? summaryEn : summaryCn, 'current')}
+              title={`复制${isEnglish ? '英文' : '中文'}内容`}
+              onMouseEnter={() => updateButtonPosition()}
+            >
+              <div className={styles.buttonContent}>
+                {isCopied === 'current' ? (
+                  <CheckIcon className={styles.icon} />
+                ) : (
+                  <ClipboardIcon className={styles.icon} />
+                )}
+                <span>复制{isEnglish ? '英文' : '中文'}</span>
+              </div>
+            </button>
+
+            <button
+              className={`${styles.copyButton} ${styles.alternateButton} ${isCopied === 'alternate' ? styles.copied : ''}`}
+              onClick={() => handleCopy(isEnglish ? summaryCn : summaryEn, 'alternate')}
+              title={`复制${isEnglish ? '中文' : '英文'}内容`}
+              style={buttonPositions.copy}
+            >
+              <div className={styles.buttonContent}>
+                {isCopied === 'alternate' ? (
+                  <CheckIcon className={styles.icon} />
+                ) : (
+                  <>
+                    {/* <ClipboardIcon className={styles.icon} /> */}
+                    <LanguageIcon className={`${styles.icon} ${styles.smallIcon}`} />
+                  </>
+                )}
+                <span>复制{isEnglish ? '中文' : '英文'}</span>
+              </div>
+            </button>
+          </div>
         </div>
         <div className={styles.markdownContent}>
           <ReactMarkdown
