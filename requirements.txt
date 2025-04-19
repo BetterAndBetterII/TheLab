@@ -18,7 +18,6 @@ llama-index-vector-stores-postgres
 llama_index-postprocessor-siliconflow_rerank
 openai==1.65.2
 passlib[bcrypt]==1.7.4
-passlib[bcrypt]==1.7.4
 pdf2image~=1.17.0
 
 # AI和图像处理
