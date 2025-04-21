@@ -14,6 +14,22 @@ TheLab 是一个基于 FastAPI 的 AI 文档处理系统，提供文档上传、
 - 📊 思维导图知识图谱
 - 🔒 安全的用户认证和权限管理
 
+## 速览
+
+![image](https://github.com/user-attachments/assets/68e7a45c-47ef-4d7c-9cd4-03610be1547e)
+
+![image](https://github.com/user-attachments/assets/9bef7521-93a4-4ee2-a350-ad5c597a7f0b)
+
+![image](https://github.com/user-attachments/assets/13dd7742-d7c6-4957-b6ab-bb424916da6d)
+
+![image](https://github.com/user-attachments/assets/57e4b39f-a8db-4087-b6a1-2bc194b811ab)
+
+![image](https://github.com/user-attachments/assets/bc325d0e-617c-450b-a465-75d3938d47c9)
+
+![image](https://github.com/user-attachments/assets/9efddb92-e61a-4bb3-baf8-3547cbfdc34f)
+
+![image](https://github.com/user-attachments/assets/f42300f1-1b89-4a46-8f94-3489c555bdcd)
+
 ## 快速开始
 
 ### 使用 Docker（推荐）
