@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { 
   Home, 
   MessageSquare, 
@@ -72,14 +73,17 @@ export default function Navbar(
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-4 right-4 z-50 md:hidden"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <Menu size={24} />
-      </Button>
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <ThemeToggle />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <Menu size={24} />
+        </Button>
+      </div>
 
       <nav className={cn(
         "fixed top-0 left-0 h-full bg-background border-r border-border transition-all duration-300 z-40",

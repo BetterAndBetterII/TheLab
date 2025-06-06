@@ -21,6 +21,13 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    // 允许所有主机访问
+    host: '0.0.0.0',
+    // 允许特定主机访问
+    allowedHosts: [
+      '5173-ip0dm3bsf477vyvvj97qw-39386b98.manusvm.computer',
+      '.manusvm.computer'
+    ],
   },
   build: {
     // 生产环境打包配置
@@ -49,3 +56,4 @@ export default defineConfig({
     sourcemap: false
   }
 });
+
