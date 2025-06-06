@@ -1,56 +1,69 @@
-import React, { useState, useCallback } from 'react';
-import Toast, { ToastType } from './index';
-import styles from './ToastManager.module.css';
+import React, { createContext, useContext, useState } from 'react';
+import { 
+  Toast, 
+  ToastProvider, 
+  ToastViewport, 
+  ToastTitle, 
+  ToastDescription, 
+  ToastClose 
+} from '@/components/ui/toast';
 
-export interface ToastItem {
-  id: number;
-  message: string;
-  type: ToastType;
-  duration?: number;
-}
+type ToastType = {
+  id: string;
+  title: string;
+  description: string;
+  type: 'default' | 'destructive';
+};
 
-let toastCounter = 0;
+type ToastContextType = {
+  toasts: ToastType[];
+  addToast: (toast: Omit<ToastType, 'id'>) => void;
+  removeToast: (id: string) => void;
+};
 
-const ToastManager: React.FC = () => {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
+const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-  const removeToast = useCallback((id: number) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
+export const useToast = () => {
+  const context = useContext(ToastContext);
+  if (!context) {
+    throw new Error('useToast must be used within a ToastProvider');
+  }
+  return context;
+};
 
-  // 导出到 window 对象，以便全局调用
-  (window as any).toast = {
-    show: (message: string, type: ToastType = 'info', duration: number = 3000) => {
-      const id = ++toastCounter;
-      setToasts(prev => [...prev, { id, message, type, duration }]);
-    },
-    success: (message: string, duration?: number) => {
-      (window as any).toast.show(message, 'success', duration);
-    },
-    error: (message: string, duration?: number) => {
-      (window as any).toast.show(message, 'error', duration);
-    },
-    warning: (message: string, duration?: number) => {
-      (window as any).toast.show(message, 'warning', duration);
-    },
-    info: (message: string, duration?: number) => {
-      (window as any).toast.show(message, 'info', duration);
-    },
+export default function ToastManager({ children }: { children?: React.ReactNode }) {
+  const [toasts, setToasts] = useState<ToastType[]>([]);
+
+  const addToast = (toast: Omit<ToastType, 'id'>) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { ...toast, id }]);
+    
+    // 自动移除
+    setTimeout(() => {
+      removeToast(id);
+    }, 5000);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
   return (
-    <div className={styles.container}>
-      {toasts.map(toast => (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          type={toast.type}
-          duration={toast.duration}
-          onClose={() => removeToast(toast.id)}
-        />
-      ))}
-    </div>
+    <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
+      <ToastProvider>
+        {children}
+        {toasts.map((toast) => (
+          <Toast key={toast.id} variant={toast.type}>
+            <div className="grid gap-1">
+              {toast.title && <ToastTitle>{toast.title}</ToastTitle>}
+              {toast.description && <ToastDescription>{toast.description}</ToastDescription>}
+            </div>
+            <ToastClose onClick={() => removeToast(toast.id)} />
+          </Toast>
+        ))}
+        <ToastViewport />
+      </ToastProvider>
+    </ToastContext.Provider>
   );
-};
+}
 
-export default ToastManager;
