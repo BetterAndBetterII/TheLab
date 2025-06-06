@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import styles from './FlowPanel.module.css';
 import { conversationApi } from '../../api/conversations';
 
 interface Keyword {
@@ -33,11 +32,11 @@ const FlowPanel: React.FC<FlowPanelProps> = ({
   const getKeywordColor = (type: string) => {
     switch (type) {
       case 'disruptive':
-        return styles.keywordRed;
+        return 'bg-red-50 text-red-600 border border-red-200';
       case 'innovative':
-        return styles.keywordBlue;
+        return 'bg-blue-50 text-blue-600 border border-blue-200';
       case 'potential':
-        return styles.keywordGreen;
+        return 'bg-green-50 text-green-600 border border-green-200';
       default:
         return '';
     }
@@ -63,9 +62,11 @@ const FlowPanel: React.FC<FlowPanelProps> = ({
     }
     const decoder = new TextDecoder();
     let content = '';
-    while (true) {
+    let reading = true;
+    while (reading) {
       const { done, value } = await reader.read();
       if (done) {
+        reading = false;
         break;
       }
       const chunk = decoder.decode(value);
@@ -92,29 +93,33 @@ const FlowPanel: React.FC<FlowPanelProps> = ({
     setFlowData(data);
   };
 
+  useEffect(() => {
+    if (!flowData && !isLoading && documentId) {
+      onGenerate();
+    }
+  }, [documentId, flowData, isLoading]);
+
   if (!flowData && !documentId) {
     return null;
   }
 
-  useEffect(() => {
-    if (!flowData && !isLoading) {
-      onGenerate();
-    }
-  }, [documentId]);
-
-  if (isLoading || streamContent && !flowData) {
+  if (isLoading || (streamContent && !flowData)) {
     return (
       <>
-        {isLoading && <div className={styles.typingIndicator}>
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>}
-        {streamContent && <div className={styles.loadingState}>
-          <div className={styles.streamContent}>
-            {streamContent}
+        {isLoading && (
+          <div className="flex justify-center items-center gap-1 py-12 px-16 rounded-xl">
+            <span className="w-1.5 h-1.5 bg-gray-600 rounded-full inline-block animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+            <span className="w-1.5 h-1.5 bg-gray-600 rounded-full inline-block animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+            <span className="w-1.5 h-1.5 bg-gray-600 rounded-full inline-block animate-bounce" style={{ animationDelay: '0.3s' }}></span>
           </div>
-        </div>}
+        )}
+        {streamContent && (
+          <div className="p-5">
+            <div className="whitespace-pre-wrap font-mono leading-6 text-gray-800">
+              {streamContent}
+            </div>
+          </div>
+        )}
       </>
     );
   }
@@ -124,12 +129,12 @@ const FlowPanel: React.FC<FlowPanelProps> = ({
   }
 
   return (
-    <div className={styles.flowPanel}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>{flowData.title}</h1>
-        <div className={styles.authors}>
+    <div className="p-5 gap-5 flex flex-col items-center justify-center mb-8">
+      <div className="text-center pb-5 border-b-2 border-gray-100">
+        <h1 className="text-2xl font-bold text-gray-800 mb-3 leading-snug">{flowData.title}</h1>
+        <div className="text-gray-600 text-sm">
           {flowData.authors.map((author, index) => (
-            <span key={index} className={styles.author}>
+            <span key={index} className="inline-block py-0.5 px-2 bg-gray-100 rounded-xl mx-1">
               {author}
               {index < flowData.authors.length - 1 && ', '}
             </span>
@@ -137,45 +142,49 @@ const FlowPanel: React.FC<FlowPanelProps> = ({
         </div>
       </div>
 
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>核心贡献</h2>
-        <div className={styles.contributions}>
+      <div className="bg-gray-50 rounded-xl p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">核心贡献</h2>
+        <div className="flex flex-col gap-3">
           {flowData.coreContributions.map((contribution, index) => (
-            <div key={index} className={styles.contribution}>
-              <span className={styles.contributionNumber}>{index + 1}</span>
-              <p>{contribution}</p>
+            <div key={index} className="flex items-start gap-3 bg-white p-4 rounded-lg border border-gray-200">
+              <span className="w-6 h-6 bg-blue-700 text-white rounded-full flex items-center justify-center font-semibold flex-shrink-0">
+                {index + 1}
+              </span>
+              <p className="flex-1">{contribution}</p>
             </div>
           ))}
         </div>
       </div>
 
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>质疑点</h2>
-        <div className={styles.questions}>
+      <div className="bg-gray-50 rounded-xl p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">质疑点</h2>
+        <div className="flex flex-col gap-3">
           {flowData.questions.map((question, index) => (
-            <div key={index} className={styles.question}>
-              <span className={styles.questionMark}>?</span>
-              <p>{question}</p>
+            <div key={index} className="flex items-start gap-3 bg-white p-4 rounded-lg border border-gray-200">
+              <span className="w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center font-semibold flex-shrink-0">
+                ?
+              </span>
+              <p className="flex-1">{question}</p>
             </div>
           ))}
         </div>
       </div>
 
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>应用场景</h2>
-        <div className={styles.application}>
-          <div className={styles.applicationIcon}>🎯</div>
-          <p>{flowData.application}</p>
+      <div className="bg-gray-50 rounded-xl p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">应用场景</h2>
+        <div className="flex items-start gap-4 bg-white p-5 rounded-lg border border-gray-200">
+          <div className="text-2xl flex-shrink-0">🎯</div>
+          <p className="flex-1">{flowData.application}</p>
         </div>
       </div>
 
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>关键词</h2>
-        <div className={styles.keywords}>
+      <div className="bg-gray-50 rounded-xl p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">关键词</h2>
+        <div className="flex flex-wrap gap-2">
           {flowData.keywords.map((keyword, index) => (
             <span
               key={index}
-              className={`${styles.keyword} ${getKeywordColor(keyword.type)}`}
+              className={`py-1.5 px-3 rounded-2xl text-sm font-medium cursor-default transition-all duration-200 hover:scale-105 ${getKeywordColor(keyword.type)}`}
             >
               {keyword.text}
             </span>

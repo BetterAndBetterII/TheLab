@@ -64,8 +64,14 @@ module.exports = {
           to: { height: 0 },
         },
         "fadeIn": {
-          from: { opacity: 0 },
-          to: { opacity: 1 },
+          from: {
+            opacity: '0',
+            transform: 'translateY(-110%)',
+          },
+          to: {
+            opacity: '1',
+            transform: 'translateY(-100%)',
+          },
         },
         "fadeInUp": {
           from: { opacity: 0, transform: "translateY(10px)" },
@@ -81,17 +87,58 @@ module.exports = {
           "50%": { opacity: 1 },
           "100%": { opacity: 0.7 },
         },
+        tabActivate: {
+          from: {
+            transform: 'scaleX(0)',
+          },
+          to: {
+            transform: 'scaleX(1)',
+          },
+        },
+        tooltipFadeIn: {
+          from: {
+            opacity: '0',
+            transform: 'translateY(-90%)',
+          },
+          to: {
+            opacity: '1',
+            transform: 'translateY(-100%)',
+          },
+        },
+        spin: {
+          from: {
+            transform: 'rotate(0deg)',
+          },
+          to: {
+            transform: 'rotate(360deg)',
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fadeIn": "fadeIn 0.3s ease-in forwards",
+        "fadeIn": "fadeIn 0.2s ease-out",
         "fadeInUp": "fadeInUp 0.5s ease-out forwards",
         "pulse": "pulse 2s ease-in-out infinite",
         "pulse-text": "pulse-text 2s ease-in-out infinite",
+        "tabActivate": "tabActivate 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "tooltipFadeIn": "tooltipFadeIn 0.2s ease-out",
+        "spin": "spin 1s linear infinite",
+      },
+      zIndex: {
+        '1000': '1000',
+      },
+      backdropBlur: {
+        'lg': '8px',
       },
     },
   },
   plugins: [require("tailwindcss-animate")],
+  safelist: [
+    'pdf-container-mobile',
+    'resizer-horizontal-mobile',
+    'tabs-container-mobile',
+    'mindmap-container',
+    'highlight-area-tooltip',
+  ],
 }
-

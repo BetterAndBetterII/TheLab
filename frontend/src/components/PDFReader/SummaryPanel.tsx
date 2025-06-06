@@ -6,7 +6,6 @@ import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import { Clipboard, Languages, Copy, Check } from 'lucide-react';
 import 'katex/dist/katex.min.css';
-import styles from './SummaryPanel.module.css';
 
 interface SummaryPanelProps {
   summaryEn: string;
@@ -23,6 +22,9 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
   const [isCopied, setIsCopied] = useState<'none' | 'current' | 'alternate'>('none');
   const [copyAllStatus, setCopyAllStatus] = useState<'none' | 'current' | 'alternate'>('none');
   const [buttonPositions, setButtonPositions] = useState<{ [key: string]: { top: number; left: number } }>({});
+  const [isHoveringCopyGroup, setIsHoveringCopyGroup] = useState(false);
+  const [isHoveringCopyAllGroup, setIsHoveringCopyAllGroup] = useState(false);
+
   const buttonRefs = {
     copyAll: React.useRef<HTMLButtonElement>(null),
     copy: React.useRef<HTMLButtonElement>(null),
@@ -69,93 +71,121 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
   };
 
   return (
-    <div className={styles.summaryPanel}>
-      <div className={styles.languageToggle}>
+    <div className="flex flex-col h-full gap-4 p-5">
+      <div className="flex justify-start items-center gap-3">
         <button
-          className={`${styles.langToggleButton} ${isEnglish ? styles.english : styles.chinese}`}
+          className={`w-20 h-7 border-2 rounded-xl bg-transparent cursor-pointer text-base font-semibold flex items-center justify-center transition-all duration-300 ease-in-out hover:scale-105 ${
+            isEnglish
+              ? 'text-green-700 border-green-700 bg-green-50'
+              : 'text-blue-600 border-blue-600 bg-blue-50'
+          }`}
           onClick={() => setIsEnglish(!isEnglish)}
         >
           {isEnglish ? 'EN' : '中'}
         </button>
       </div>
-      <div className={styles.markdownContainer}>
-        <div className={styles.copyButtons}>
-          <div className={styles.copyAllButtonGroup}>
+      <div className="max-h-[90%] relative flex-1 bg-gray-50 rounded-lg p-4 overflow-y-auto">
+        <div className="flex flex-row gap-2">
+          <div
+            className="relative flex gap-2 pt-11 -mt-11"
+            onMouseEnter={() => {
+              setIsHoveringCopyAllGroup(true);
+              updateButtonPosition();
+            }}
+            onMouseLeave={() => {
+              setIsHoveringCopyAllGroup(false);
+              updateButtonPosition();
+            }}
+          >
             <button
               ref={buttonRefs.copyAll}
-              className={`${styles.copyButton} ${copyAllStatus === 'current' ? styles.copied : ''}`}
+              className={`flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg cursor-pointer transition-all duration-200 ease-in-out text-sm text-gray-600 whitespace-nowrap select-none hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-md ${
+                copyAllStatus === 'current' ? 'bg-green-500 border-green-500 text-white hover:bg-green-600' : ''
+              }`}
               onClick={() => handleCopyAllWithStatus(isEnglish ? 'en' : 'cn', 'current')}
               title={`复制全部${isEnglish ? '英文' : '中文'}内容`}
-              onMouseEnter={() => updateButtonPosition()}
             >
-              <div className={styles.buttonContent}>
+              <div className="flex items-center gap-1.5">
                 {copyAllStatus === 'current' ? (
-                  <Check className={styles.icon} />
+                  <Check className="w-4 h-4" />
                 ) : (
-                  <Copy className={styles.icon} />
+                  <Copy className="w-4 h-4" />
                 )}
                 <span>复制全部{isEnglish ? '英文' : '中文'}</span>
               </div>
             </button>
 
             <button
-              className={`${styles.copyButton} ${styles.alternateButton} ${copyAllStatus === 'alternate' ? styles.copied : ''}`}
+              className={`fixed transition-all duration-300 ease-in-out bg-white border border-gray-300 shadow-lg z-[1000] flex items-center px-4 py-2 rounded-lg cursor-pointer text-sm text-gray-600 whitespace-nowrap select-none hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-xl ${
+                isHoveringCopyAllGroup ? 'opacity-100 visible pointer-events-auto translate-y-0' : 'opacity-0 invisible pointer-events-none translate-y-2.5'
+              } ${
+                copyAllStatus === 'alternate' ? 'bg-green-500 border-green-500 text-white hover:bg-green-600' : ''
+              }`}
               onClick={() => handleCopyAllWithStatus(isEnglish ? 'cn' : 'en', 'alternate')}
               title={`复制全部${isEnglish ? '中文' : '英文'}内容`}
               style={buttonPositions.copyAll}
             >
-              <div className={styles.buttonContent}>
+              <div className="flex items-center gap-1.5">
                 {copyAllStatus === 'alternate' ? (
-                  <Check className={styles.icon} />
+                  <Check className="w-4 h-4" />
                 ) : (
-                  <>
-                    {/* <DocumentDuplicateIcon className={styles.icon} /> */}
-                    <Languages className={`${styles.icon} ${styles.smallIcon}`} />
-                  </>
+                  <Languages className="w-3.5 h-3.5 -ml-1" />
                 )}
                 <span>复制全部{isEnglish ? '中文' : '英文'}</span>
               </div>
             </button>
           </div>
-          <div className={styles.copyButtonGroup}>
+          <div
+            className="relative flex gap-2 pt-11 -mt-11 ml-auto w-min"
+            onMouseEnter={() => {
+              setIsHoveringCopyGroup(true);
+              updateButtonPosition();
+            }}
+            onMouseLeave={() => {
+              setIsHoveringCopyGroup(false);
+              updateButtonPosition();
+            }}
+          >
             <button
               ref={buttonRefs.copy}
-              className={`${styles.copyButton} ${isCopied === 'current' ? styles.copied : ''}`}
+              className={`flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg cursor-pointer transition-all duration-200 ease-in-out text-sm text-gray-600 whitespace-nowrap select-none hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-md ${
+                isCopied === 'current' ? 'bg-green-500 border-green-500 text-white hover:bg-green-600' : ''
+              }`}
               onClick={() => handleCopy(isEnglish ? summaryEn : summaryCn, 'current')}
               title={`复制${isEnglish ? '英文' : '中文'}内容`}
-              onMouseEnter={() => updateButtonPosition()}
             >
-              <div className={styles.buttonContent}>
+              <div className="flex items-center gap-1.5">
                 {isCopied === 'current' ? (
-                  <Check className={styles.icon} />
+                  <Check className="w-4 h-4" />
                 ) : (
-                  <Clipboard className={styles.icon} />
+                  <Clipboard className="w-4 h-4" />
                 )}
                 <span>复制{isEnglish ? '英文' : '中文'}</span>
               </div>
             </button>
 
             <button
-              className={`${styles.copyButton} ${styles.alternateButton} ${isCopied === 'alternate' ? styles.copied : ''}`}
+              className={`fixed transition-all duration-300 ease-in-out bg-white border border-gray-300 shadow-lg z-[1000] flex items-center px-4 py-2 rounded-lg cursor-pointer text-sm text-gray-600 whitespace-nowrap select-none hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-xl ${
+                isHoveringCopyGroup ? 'opacity-100 visible pointer-events-auto translate-y-0' : 'opacity-0 invisible pointer-events-none translate-y-2.5'
+              } ${
+                isCopied === 'alternate' ? 'bg-green-500 border-green-500 text-white hover:bg-green-600' : ''
+              }`}
               onClick={() => handleCopy(isEnglish ? summaryCn : summaryEn, 'alternate')}
               title={`复制${isEnglish ? '中文' : '英文'}内容`}
               style={buttonPositions.copy}
             >
-              <div className={styles.buttonContent}>
+              <div className="flex items-center gap-1.5">
                 {isCopied === 'alternate' ? (
-                  <Check className={styles.icon} />
+                  <Check className="w-4 h-4" />
                 ) : (
-                  <>
-                    {/* <ClipboardIcon className={styles.icon} /> */}
-                    <Languages className={`${styles.icon} ${styles.smallIcon}`} />
-                  </>
+                  <Languages className="w-3.5 h-3.5 -ml-1" />
                 )}
                 <span>复制{isEnglish ? '中文' : '英文'}</span>
               </div>
             </button>
           </div>
         </div>
-        <div className={styles.markdownContent}>
+        <div className="prose prose-sm max-w-none [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:mt-4 [&_h3]:mb-2 [&_h4]:mt-4 [&_h4]:mb-2 [&_h5]:mt-4 [&_h5]:mb-2 [&_h6]:mt-4 [&_h6]:mb-2 [&_p]:my-2 [&_p]:leading-relaxed [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:pl-6 [&_ol]:my-2 [&_code]:bg-gray-200 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_pre]:bg-gray-100 [&_pre]:p-4 [&_pre]:rounded [&_pre]:overflow-x-auto [&_blockquote]:my-2 [&_blockquote]:pl-4 [&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 [&_blockquote]:text-gray-600 [&_table]:w-full [&_table]:border-separate [&_table]:border-spacing-0 [&_table]:my-4 [&_table]:text-sm [&_table]:rounded-lg [&_table]:overflow-hidden [&_table]:shadow-sm [&_th]:bg-gray-100 [&_th]:text-gray-700 [&_th]:font-semibold [&_th]:px-4 [&_th]:py-3 [&_th]:text-left [&_th]:border-b-2 [&_th]:border-gray-200 [&_th]:whitespace-nowrap [&_td]:px-4 [&_td]:py-3 [&_td]:border-b [&_td]:border-gray-200 [&_td]:text-gray-600 [&_tr:last-child_td]:border-b-0 [&_tr:nth-child(even)]:bg-gray-50 [&_tr:hover]:bg-gray-100 [&_td:first-child]:pl-5 [&_th:first-child]:pl-5 [&_td:last-child]:pr-5 [&_th:last-child]:pr-5">
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkMath]}
             rehypePlugins={[rehypeKatex, rehypeRaw]}
