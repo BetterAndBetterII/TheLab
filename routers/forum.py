@@ -257,23 +257,6 @@ async def get_topic_replies(
     return forum_service.get_topic_replies(topic_id, page, page_size)
 
 
-@router.post("/topics/{topic_id}/trigger-agent", response_model=ReplyResponse)
-async def trigger_agent_reply(
-    topic_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """手动触发Agent回复."""
-    forum_service = ForumService(db)
-    reply = forum_service._trigger_agent_reply(topic_id)
-    if not reply:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Agent回复生成失败",
-        )
-    return reply
-
-
 @router.post("/generate-ai-topic", response_model=TopicResponse)
 async def generate_ai_topic(
     db: Session = Depends(get_db),

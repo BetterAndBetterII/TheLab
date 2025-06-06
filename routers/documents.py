@@ -1113,16 +1113,3 @@ async def update_note(
     )
 
 
-@router.get("/{documentId}/thumbnail")
-async def get_thumbnail(
-    documentId: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """获取文档缩略图."""
-    document = db.query(Document).filter(Document.id == int(documentId)).with_entities(Document.thumbnail).first()
-    if not document:
-        raise HTTPException(status_code=404, detail="文档未找到")
-    if not document.thumbnail:
-        raise HTTPException(status_code=404, detail="缩略图不存在")
-    return Response(content=document.thumbnail, media_type="image/png")
