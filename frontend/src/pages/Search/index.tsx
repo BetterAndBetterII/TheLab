@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styles from './Search.module.css';
-import { FiSearch, FiFileText, FiExternalLink, FiPercent, FiSettings } from 'react-icons/fi';
+import { Search as SearchIcon, FileText, ExternalLink, Percent, Settings } from 'lucide-react';
 import { searchApi, type SearchResult } from '../../api/search';
 
 export default function Search() {
@@ -67,11 +67,11 @@ export default function Search() {
                 onClick={() => setShowOptions(!showOptions)}
                 title="搜索选项"
               >
-                <FiSettings size={20} className={showOptions ? styles.active : ''} />
+                <Settings size={20} className={showOptions ? styles.active : ''} />
               </button>
             </div>
             <button type="submit" className={styles.searchButton} disabled={isLoading}>
-              <FiSearch size={20} />
+              <SearchIcon size={20} />
               {isLoading ? '搜索中...' : '搜索'}
             </button>
           </div>
@@ -134,12 +134,12 @@ export default function Search() {
                     <div className={styles.resultHeader}>
                       {result.metadata.title && (
                         <h3>
-                          <FiFileText className={styles.icon} />
+                          <FileText className={styles.icon} size={18} />
                           {result.metadata.title}
                         </h3>
                       )}
                       <div className={styles.score}>
-                        <FiPercent className={styles.icon} />
+                        <Percent className={styles.icon} size={18} />
                         {(result.score * 100).toFixed(1)}% 相关
                       </div>
                     </div>
@@ -161,7 +161,7 @@ export default function Search() {
                         rel="noopener noreferrer"
                       >
                         查看完整文档
-                        <FiExternalLink size={16} />
+                        <ExternalLink size={16} />
                       </a>
                     </div>
                   </div>
@@ -169,7 +169,7 @@ export default function Search() {
               </div>
             ) : searchQuery && hasSearched && (
               <div className={styles.noResults}>
-                <FiSearch size={24} />
+                <SearchIcon size={24} />
                 <p>未找到相关结果</p>
                 <span>请尝试使用其他关键词搜索</span>
               </div>
@@ -180,3 +180,4 @@ export default function Search() {
     </div>
   );
 }
+

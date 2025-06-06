@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import styles from './Settings.module.css';
-import { FiLogOut, FiAlertCircle } from 'react-icons/fi';
+import { LogOut, AlertCircle } from 'lucide-react';
 import { settingsApi } from '../../api';
 
 interface UserSettings {
@@ -222,7 +222,7 @@ const Settings: React.FC = () => {
             onClick={logout}
             className={`${styles.button} ${styles.dangerButton}`}
           >
-            <FiLogOut size={20} />
+            <LogOut size={20} />
             <span>退出登录</span>
           </button>
         </div>
@@ -277,7 +277,7 @@ const Settings: React.FC = () => {
       <div className={styles.form}>
         {message && message.type === 'error' && (
           <div className={styles.errorMessage}>
-            <FiAlertCircle className={styles.errorIcon} size={16} />
+            <AlertCircle className={styles.errorIcon} size={16} />
             {message.text}
           </div>
         )}
@@ -433,3 +433,4 @@ const Settings: React.FC = () => {
 };
 
 export default Settings;
+

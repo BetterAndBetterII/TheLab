@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './Email.module.css';
-import { IoMdAdd } from 'react-icons/io';
+import { Plus } from 'lucide-react';
 import Loading from '../../components/Loading';
 
 interface Email {
@@ -86,7 +86,7 @@ const Email: React.FC = () => {
       <div className={styles.header}>
         <h1 className={styles.title}>收件箱</h1>
         <button className={styles.composeButton} onClick={handleCompose}>
-          <IoMdAdd />
+          <Plus size={18} />
           写邮件
         </button>
       </div>
@@ -143,3 +143,4 @@ const Email: React.FC = () => {
 };
 
 export default Email;
+

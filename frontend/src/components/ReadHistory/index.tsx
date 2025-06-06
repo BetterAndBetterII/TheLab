@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { List, Empty, Spin, message, Tooltip } from 'antd';
-import {
-  FileTextOutlined,
-  ClockCircleOutlined,
-  FileZipOutlined,
-  FilePdfOutlined,
-  FileWordOutlined,
-  FileExcelOutlined,
-  FileImageOutlined,
-  FileUnknownOutlined,
-  LoadingOutlined
-} from '@ant-design/icons';
 import { documentApi } from '../../api/documents';
 import styles from './ReadHistory.module.css';
 import { useNavigate } from 'react-router-dom';
+import { 
+  FileText, 
+  Clock, 
+  Archive, 
+  FileType, 
+  FileText as FileWord, 
+  FileSpreadsheet, 
+  Image, 
+  File, 
+  Loader2
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Tooltip } from '@/components/ui/tooltip';
+import Loading from '../Loading';
 
 interface ReadRecord {
   id: string;
@@ -48,7 +50,8 @@ const ReadHistory: React.FC = () => {
 
       setHasMore(response.records.length === pageSize);
     } catch (error) {
-      message.error('获取阅读历史失败');
+      // 使用console.error代替message
+      console.error('获取阅读历史失败');
     } finally {
       setLoading(false);
     }
@@ -100,24 +103,24 @@ const ReadHistory: React.FC = () => {
     const type = mimeType.split('/')[1]?.toLowerCase();
     switch (type) {
       case 'pdf':
-        return <FilePdfOutlined className={styles.fileIcon} />;
+        return <FileType className={styles.fileIcon} size={18} />;
       case 'msword':
       case 'docx':
-        return <FileWordOutlined className={styles.fileIcon} />;
+        return <FileWord className={styles.fileIcon} size={18} />;
       case 'excel':
       case 'xlsx':
-        return <FileExcelOutlined className={styles.fileIcon} />;
+        return <FileSpreadsheet className={styles.fileIcon} size={18} />;
       case 'zip':
       case 'rar':
       case '7z':
-        return <FileZipOutlined className={styles.fileIcon} />;
+        return <Archive className={styles.fileIcon} size={18} />;
       case 'png':
       case 'jpg':
       case 'jpeg':
       case 'gif':
-        return <FileImageOutlined className={styles.fileIcon} />;
+        return <Image className={styles.fileIcon} size={18} />;
       default:
-        return <FileTextOutlined className={styles.fileIcon} />;
+        return <FileText className={styles.fileIcon} size={18} />;
     }
   };
 
@@ -128,53 +131,58 @@ const ReadHistory: React.FC = () => {
       </div>
 
       {records.length === 0 && !loading ? (
-        <Empty
-          description="暂无阅读记录"
-          className={styles.empty}
-        />
+        <div className={styles.empty}>
+          <FileText size={48} className="text-muted-foreground" />
+          <p className="text-muted-foreground">暂无阅读记录</p>
+        </div>
       ) : (
-        <List
-          className={styles.list}
-          dataSource={records}
-          loading={{
-            spinning: loading,
-            indicator: <LoadingOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-          }}
-          renderItem={(record) => (
-            <List.Item className={styles.listItem} onClick={() => {
-              navigate(`/chat/${record.document_id}`);
-            }}>
+        <div className={styles.list}>
+          {loading && records.length === 0 && (
+            <div className={styles.loadingContainer}>
+              <Loading size="medium" text="加载中..." />
+            </div>
+          )}
+          
+          {records.map((record) => (
+            <div 
+              key={record.id}
+              className={styles.listItem} 
+              onClick={() => navigate(`/chat/${record.document_id}`)}
+            >
               <div className={styles.sessionInfo}>
                 <div className={styles.sessionTitle}>
                   {getFileIcon(record.document_type)}
-                  <Tooltip title={record.document_name}>
+                  <span className="truncate" title={record.document_name}>
                     {record.document_name}
-                  </Tooltip>
+                  </span>
                   <span className={styles.badge}>
                     {record.document_type.split('/')[1]?.toUpperCase()}
                   </span>
                 </div>
                 <div className={styles.sessionMeta}>
                   <span className={styles.lastMessage}>
-                    <ClockCircleOutlined />
+                    <Clock size={14} />
                     {formatTime(record.read_at)}
                   </span>
-                  <Tooltip title="文件大小">
-                    <span className={styles.time}>
-                      <FileUnknownOutlined />
-                      {formatFileSize(record.document_size)}
-                    </span>
-                  </Tooltip>
+                  <span className={styles.time} title="文件大小">
+                    <File size={14} />
+                    {formatFileSize(record.document_size)}
+                  </span>
                 </div>
               </div>
-            </List.Item>
-          )}
-        />
+            </div>
+          ))}
+        </div>
       )}
 
       {hasMore && records.length > 0 && (
         <div className={styles.loadMore}>
-          <button onClick={handleLoadMore} disabled={loading}>
+          <button 
+            onClick={handleLoadMore} 
+            disabled={loading}
+            className="flex items-center justify-center gap-2"
+          >
+            {loading && <Loader2 size={16} className="animate-spin" />}
             {loading ? '加载中...' : '加载更多'}
           </button>
         </div>
@@ -184,3 +192,4 @@ const ReadHistory: React.FC = () => {
 };
 
 export default ReadHistory;
+

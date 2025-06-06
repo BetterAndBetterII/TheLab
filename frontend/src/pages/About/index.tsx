@@ -1,8 +1,7 @@
 import React from 'react';
 import styles from './About.module.css';
 import { Link } from 'react-router-dom';
-import { RiHome5Line } from 'react-icons/ri';
-import { FaGithub } from 'react-icons/fa';
+import { Home, Github } from 'lucide-react';
 
 const About: React.FC = () => {
   return (
@@ -23,10 +22,10 @@ const About: React.FC = () => {
           rel="noopener noreferrer"
           className={styles.githubLink}
         >
-          <FaGithub /> 访问 GitHub 仓库
+          <Github size={20} /> 访问 GitHub 仓库
         </a>
         <Link to="/" className={styles.homeLink}>
-          <RiHome5Line />
+          <Home size={20} />
           <span>返回首页</span>
         </Link>
       </div>
@@ -101,3 +100,4 @@ const About: React.FC = () => {
 };
 
 export default About;
+

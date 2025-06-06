@@ -5,8 +5,7 @@ import type { Message, Post, FileItem } from '../../api';
 import styles from './Home.module.css';
 import Loading from '../../components/Loading';
 import FileList from '../../components/FileList';
-import { RiBookmarkLine } from 'react-icons/ri';
-import { FaGithub } from 'react-icons/fa';
+import { Bookmark, Github } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface RecentActivity {
@@ -162,13 +161,13 @@ const Home: React.FC = () => {
                 rel="noopener noreferrer"
                 className={styles.githubLink}
               >
-                <FaGithub /> Star
+                <Github size={18} /> Star
               </a>
             </div>
           )}
         </div>
         <Link to="/about" className={styles.aboutLink}>
-          <RiBookmarkLine />
+          <Bookmark size={18} />
           <span>关于我们</span>
         </Link>
       </div>
@@ -187,3 +186,4 @@ const Home: React.FC = () => {
 };
 
 export default Home;
+

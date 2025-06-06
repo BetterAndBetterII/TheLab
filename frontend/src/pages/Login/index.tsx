@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
 import Loading from '../../components/Loading';
 import { authApi } from '../../api';
-import { FaGithub, FaGoogle } from 'react-icons/fa';
+import { Github, Mail } from 'lucide-react';
 
 interface Provider {
   name: string;
@@ -25,8 +25,8 @@ const Login: React.FC = () => {
   const [providers, setProviders] = useState<Provider[]>([]);
 
   const ICON_MAP = {
-    github: <FaGithub />,
-    google: <FaGoogle />,
+    github: <Github size={18} />,
+    google: <Mail size={18} />,
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,3 +187,4 @@ const Login: React.FC = () => {
 };
 
 export default Login;
+
