@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Navbar from '../Navbar';
 import { cn } from '@/lib/utils';
 
@@ -18,12 +18,9 @@ export default function Layout({ children }: LayoutProps) {
       <main className={cn(
         "min-h-screen transition-all duration-300",
         isNavCollapsed ? "ml-[85px]" : "ml-[240px]",
-        "md:p-6 p-4",
-        "md:pt-8 pt-16"
       )}>
         {children}
       </main>
     </div>
   );
 }
-
