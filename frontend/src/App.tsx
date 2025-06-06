@@ -12,7 +12,9 @@ const App: React.FC = () => {
     <Router>
       <AuthProvider>
         <ToastManager>
-          <AppRoutes />
+          <div className="max-w-7xl mx-auto p-8 text-center">
+            <AppRoutes />
+          </div>
         </ToastManager>
       </AuthProvider>
     </Router>
