@@ -7,7 +7,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import { conversationApi } from '../../api/conversations';
-import { IoIosArrowBack } from 'react-icons/io';
+import { ArrowLeft } from 'lucide-react';
 
 interface Option {
   id: string;
@@ -215,7 +215,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
             <div className={styles.activeQuizPanel}>
               <div className={styles.header}>
                 <div className={styles.backButton} onClick={() => setShowHistory(true)}>
-                  <IoIosArrowBack />
+                  <ArrowLeft />
                 </div>
                 <h2 className={styles.pageTitle}>第 {currentQuizData.page} 页测验</h2>
                 <button

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import styles from './Login.module.css';
 import Loading from '../../components/Loading';
 import { authApi } from '../../api';
@@ -170,7 +170,7 @@ const Login: React.FC = () => {
               className={styles.socialButton}
               onClick={() => window.location.href = provider.url}
             >
-              <span>{ICON_MAP[provider.name as keyof typeof ICON_MAP]} {provider.name} 登录</span>
+              <span className="flex items-center gap-2">{ICON_MAP[provider.name as keyof typeof ICON_MAP]} {provider.name} 登录</span>
             </button>
           ))}
         </div>
@@ -187,4 +187,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-

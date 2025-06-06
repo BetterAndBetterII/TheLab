@@ -4,8 +4,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
-import { ClipboardIcon, LanguageIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
-import { CheckIcon } from '@heroicons/react/24/solid';
+import { Clipboard, Languages, Copy, Check } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 import styles from './SummaryPanel.module.css';
 
@@ -91,9 +90,9 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
             >
               <div className={styles.buttonContent}>
                 {copyAllStatus === 'current' ? (
-                  <CheckIcon className={styles.icon} />
+                  <Check className={styles.icon} />
                 ) : (
-                  <DocumentDuplicateIcon className={styles.icon} />
+                  <Copy className={styles.icon} />
                 )}
                 <span>复制全部{isEnglish ? '英文' : '中文'}</span>
               </div>
@@ -107,11 +106,11 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
             >
               <div className={styles.buttonContent}>
                 {copyAllStatus === 'alternate' ? (
-                  <CheckIcon className={styles.icon} />
+                  <Check className={styles.icon} />
                 ) : (
                   <>
                     {/* <DocumentDuplicateIcon className={styles.icon} /> */}
-                    <LanguageIcon className={`${styles.icon} ${styles.smallIcon}`} />
+                    <Languages className={`${styles.icon} ${styles.smallIcon}`} />
                   </>
                 )}
                 <span>复制全部{isEnglish ? '中文' : '英文'}</span>
@@ -128,9 +127,9 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
             >
               <div className={styles.buttonContent}>
                 {isCopied === 'current' ? (
-                  <CheckIcon className={styles.icon} />
+                  <Check className={styles.icon} />
                 ) : (
-                  <ClipboardIcon className={styles.icon} />
+                  <Clipboard className={styles.icon} />
                 )}
                 <span>复制{isEnglish ? '英文' : '中文'}</span>
               </div>
@@ -144,11 +143,11 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
             >
               <div className={styles.buttonContent}>
                 {isCopied === 'alternate' ? (
-                  <CheckIcon className={styles.icon} />
+                  <Check className={styles.icon} />
                 ) : (
                   <>
                     {/* <ClipboardIcon className={styles.icon} /> */}
-                    <LanguageIcon className={`${styles.icon} ${styles.smallIcon}`} />
+                    <Languages className={`${styles.icon} ${styles.smallIcon}`} />
                   </>
                 )}
                 <span>复制{isEnglish ? '中文' : '英文'}</span>

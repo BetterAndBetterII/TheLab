@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { IoMdTime, IoMdClose, IoMdTrash } from 'react-icons/io';
+import { Clock, X, Trash } from 'lucide-react';
 import styles from './ChatPanel.module.css';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -229,7 +229,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         onClick={() => setIsHistoryVisible(!isHistoryVisible)}
         title="聊天历史"
       >
-        <IoMdTime size={24} />
+        <Clock size={24} />
       </button>
 
       <button
@@ -237,7 +237,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         onClick={() => onClearChat?.()}
         title="清空对话"
       >
-        <IoMdTrash size={24} />
+        <Trash size={24} />
       </button>
 
       {/* 历史记录侧边栏 */}
@@ -251,7 +251,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             className={styles.closeButton}
             onClick={() => setIsHistoryVisible(false)}
           >
-            <IoMdClose size={18} />
+            <X size={18} />
           </button>
         </div>
         <div className={styles.historyList}>
