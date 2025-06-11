@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, MutableRefObject } from 'react';
-import { Viewer, Worker } from '@react-pdf-viewer/core';
+import { Viewer, Worker, RenderPageProps } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import { searchPlugin, RenderHighlightsProps as SearchRenderHighlightsProps, OnHighlightKeyword } from '@react-pdf-viewer/search';
 import { zoomPlugin } from '@react-pdf-viewer/zoom';
@@ -21,6 +21,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import { throttle } from 'lodash';
+import { useTheme } from '../../contexts/ThemeContext';
 
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
@@ -65,6 +66,37 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   documentId,
   onPageChange,
 }) => {
+  // 获取主题设置
+  const { theme } = useTheme();
+  
+  // 计算实际的主题（处理system选项）
+  const [actualTheme, setActualTheme] = useState<'light' | 'dark'>(() => {
+    if (theme === 'system') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return theme as 'light' | 'dark';
+  });
+
+  // 监听主题变化
+  useEffect(() => {
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      
+      const handleChange = () => {
+        setActualTheme(mediaQuery.matches ? 'dark' : 'light');
+      };
+
+      // 设置初始值
+      setActualTheme(mediaQuery.matches ? 'dark' : 'light');
+      
+      // 监听系统主题变化
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    } else {
+      setActualTheme(theme as 'light' | 'dark');
+    }
+  }, [theme]);
+
   // 定义状态持久化配置
   const STORAGE_KEY = `pdf_reader_state`;
 
@@ -478,19 +510,24 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     const svgClone = svg.cloneNode(true) as SVGElement;
 
     // 应用计算后的样式
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const primaryColor = isDarkMode ? '96, 165, 250' : '37, 99, 235'; // blue-400 : blue-600
+    const textColor = isDarkMode ? getComputedStyle(document.documentElement).getPropertyValue('--gray-200') : getComputedStyle(document.documentElement).getPropertyValue('--gray-800');
+    const bgColor = isDarkMode ? '#1f2937' : 'white'; // gray-800 : white
+    
     const styleElement = document.createElement('style');
     styleElement.textContent = `
-        .markmap-node { color: ${getComputedStyle(document.documentElement).getPropertyValue('--text-color')}; font-size: 18px; font-weight: 400; }
-        .markmap-node line { stroke: rgba(25, 118, 210, 0.4); }
-        .markmap-fold circle { fill: rgba(25, 118, 210, 1); }
-        .markmap-node circle { stroke: rgba(25, 118, 210, 1); }
-        .markmap-node-line { stroke: rgba(25, 118, 210, 0.6); }
-        .markmap-link { stroke: rgba(25, 118, 210, 0.4); }
+        .markmap-node { color: ${textColor}; font-size: 18px; font-weight: 400; }
+        .markmap-node line { stroke: rgba(${primaryColor}, 0.4); }
+        .markmap-fold circle { fill: rgba(${primaryColor}, 1); }
+        .markmap-node circle { stroke: rgba(${primaryColor}, 1); }
+        .markmap-node-line { stroke: rgba(${primaryColor}, 0.6); }
+        .markmap-link { stroke: rgba(${primaryColor}, 0.4); }
     `;
     svgClone.insertBefore(styleElement, svgClone.firstChild);
 
     // 设置背景色
-    svgClone.style.backgroundColor = 'white';
+    svgClone.style.backgroundColor = bgColor;
 
     // 设置合适的视图框和尺寸
     const bbox = (svg as SVGSVGElement).getBBox();
@@ -514,7 +551,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
       // 绘制图片
       ctx.scale(scale, scale);
-      ctx.fillStyle = 'white';
+      ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, bbox.width + 20, bbox.height + 20);
 
@@ -525,7 +562,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       link.click();
     };
 
-    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    img.src = 'data:image/svg+xml;base64,' + btoa(decodeURIComponent(encodeURIComponent(svgData)));
   };
 
   const handleCopyAll = (lang: string) => {
@@ -636,10 +673,10 @@ const PDFReader: React.FC<PDFReaderProps> = ({
               : `${props.selectionRegion.top + props.selectionRegion.height}%`, // 高亮在上方，按钮显示在下方
         }}
       >
-        <div className="flex items-center rounded-lg gap-2 text-blue-600">
-          <div className="flex rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.2)] bg-white border-none">
+        <div className="flex items-center rounded-lg gap-2 text-blue-600 dark:text-blue-400">
+          <div className="flex rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.2)] bg-white dark:bg-gray-800 border-none">
             <div
-              className="flex items-center justify-center bg-transparent px-3 py-2 cursor-pointer transition-all duration-200 hover:bg-black hover:bg-opacity-5"
+              className="flex items-center justify-center bg-transparent px-3 py-2 cursor-pointer transition-all duration-200 hover:bg-black hover:bg-opacity-5 dark:hover:bg-white dark:hover:bg-opacity-10"
               onClick={async () => {
                 try {
                   highlightOnlyRef.current = true;
@@ -651,10 +688,10 @@ const PDFReader: React.FC<PDFReaderProps> = ({
               title="高亮"
             >
               <span className="flex items-center justify-center text-base"><Plus /></span>
-              <span className="text-base text-gray-600 ml-2">高亮</span>
+              <span className="text-base text-gray-600 dark:text-gray-400 ml-2">高亮</span>
             </div>
             <div
-              className="flex items-center justify-center bg-transparent px-3 py-2 cursor-pointer transition-all duration-200 hover:bg-black hover:bg-opacity-5"
+              className="flex items-center justify-center bg-transparent px-3 py-2 cursor-pointer transition-all duration-200 hover:bg-black hover:bg-opacity-5 dark:hover:bg-white dark:hover:bg-opacity-10"
               onClick={() => {
                 highlightOnlyRef.current = false;
                 props.toggle();
@@ -668,7 +705,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
               title="添加批注"
             >
               <span className="flex items-center justify-center text-base"><MessageCircle /></span>
-              <span className="text-base text-gray-600 ml-2">添加批注</span>
+              <span className="text-base text-gray-600 dark:text-gray-400 ml-2">添加批注</span>
             </div>
           </div>
         </div>
@@ -708,7 +745,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
     return (
       <div
-        className="absolute bg-white p-4 rounded-lg shadow-[0_4px_16px_rgba(0,0,0,0.15)] w-80 border border-black border-opacity-10 z-[5]"
+        className="absolute bg-white dark:bg-gray-800 p-4 rounded-lg shadow-[0_4px_16px_rgba(0,0,0,0.15)] w-80 border border-gray-300 dark:border-gray-600 z-[5]"
         style={{
             left: `${props.selectionRegion.left}%`,
             // 根据高亮位置决定输入框显示在上方还是下方
@@ -746,7 +783,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
               }
             }
           }}
-          className="w-full min-h-[120px] p-3 border border-gray-300 rounded-md mb-3 resize-y text-sm leading-6 transition-colors duration-200 focus:outline-none focus:border-blue-600 focus:shadow-[0_0_0_2px_rgba(25,118,210,0.1)]"
+          className="w-full min-h-[120px] p-3 border border-gray-300 dark:border-gray-600 rounded-md mb-3 resize-y text-sm leading-6 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-colors duration-200 focus:outline-none focus:border-blue-600 dark:focus:border-blue-400 focus:shadow-[0_0_0_2px_rgba(25,118,210,0.1)] dark:focus:shadow-[0_0_0_2px_rgba(59,130,246,0.2)]"
         />
         <div className="flex gap-2 justify-end">
           <button
@@ -780,7 +817,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
               setCurrentNote('');
               props.cancel();
             }}
-            className="px-4 py-2 border-none rounded-md cursor-pointer font-medium text-sm transition-all duration-200 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800"
+            className="px-4 py-2 border-none rounded-md cursor-pointer font-medium text-sm transition-all duration-200 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-800 dark:hover:text-gray-100"
           >
             取消
           </button>
@@ -831,7 +868,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                             }}
                         >
                           {note.content && (
-                            <div className="hidden group-hover:block absolute left-0 -top-2.5 -translate-y-full bg-white bg-opacity-90 backdrop-blur-lg px-4 py-3 rounded-lg shadow-[0_4px_16px_rgba(0,0,0,0.15)] min-w-[200px] max-w-[300px] z-[1000] text-sm leading-6 text-gray-800 border border-black border-opacity-10 after:content-[''] after:absolute after:-bottom-2 after:left-5 after:w-0 after:h-0 after:border-l-2 after:border-r-2 after:border-t-2 after:border-l-transparent after:border-r-transparent after:border-t-white after:filter after:drop-shadow-[0_2px_2px_rgba(0,0,0,0.1)]">
+                            <div className="hidden group-hover:block absolute left-0 -top-2.5 -translate-y-full bg-white dark:bg-gray-800 bg-opacity-90 backdrop-blur-lg px-4 py-3 rounded-lg shadow-[0_4px_16px_rgba(0,0,0,0.15)] min-w-[200px] max-w-[300px] z-[1000] text-sm leading-6 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 after:content-[''] after:absolute after:-bottom-2 after:left-5 after:w-0 after:h-0 after:border-l-2 after:border-r-2 after:border-t-2 after:border-l-transparent after:border-r-transparent after:border-t-white dark:after:border-t-gray-800 after:filter after:drop-shadow-[0_2px_2px_rgba(0,0,0,0.1)]">
                               <ReactMarkdown
                                 remarkPlugins={[remarkGfm, remarkMath]}
                                 rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -1013,7 +1050,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   };
 
   return (
-    <div className="h-screen flex flex-col md:flex-row overflow-hidden bg-gray-50" ref={containerRef}>
+    <div className="h-screen flex flex-col md:flex-row overflow-hidden bg-gray-50 dark:bg-gray-900" ref={containerRef}>
       <div
         className="relative overflow-hidden"
         ref={pdfContainerRef}
@@ -1025,6 +1062,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
         <Worker workerUrl={workerUrl}>
           <Viewer
             fileUrl={pdfUrl}
+            theme={actualTheme}
             plugins={[
               defaultLayoutPluginInstance,
               searchPluginInstance,
@@ -1040,18 +1078,18 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
       <div
         ref={resizerRef}
-        className={`w-1 cursor-col-resize bg-gray-300 transition-colors hover:bg-blue-600 hidden md:block ${isDragging ? 'bg-blue-600' : ''}`}
+        className={`w-1 cursor-col-resize bg-gray-300 dark:bg-gray-600 transition-colors hover:bg-blue-600 dark:hover:bg-blue-400 hidden md:block ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : ''}`}
         style={{ display: isNotesPanelCollapsed ? 'none' : undefined }}
       />
 
       <div
         ref={resizerHorizontalRef}
-        className={`h-1 w-full cursor-row-resize bg-gray-300 transition-colors hover:bg-blue-600 block md:hidden ${isDraggingVertical ? 'bg-blue-600' : ''}`}
+        className={`h-1 w-full cursor-row-resize bg-gray-300 dark:bg-gray-600 transition-colors hover:bg-blue-600 dark:hover:bg-blue-400 block md:hidden ${isDraggingVertical ? 'bg-blue-600 dark:bg-blue-400' : ''}`}
         style={{ display: isNotesPanelCollapsed ? 'none' : undefined }}
       />
 
       <button
-        className={`fixed z-[1000] w-6 h-6 rounded-full bg-white border border-gray-300 shadow-sm flex items-center justify-center cursor-pointer text-gray-500 transition-all duration-200 hover:text-gray-800 hover:shadow-md hover:scale-110 ${window.innerWidth <= 768 ? 'right-5 bottom-[140px]' : 'right-1.5 top-20'}`}
+        className={`fixed z-[1000] w-6 h-6 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm flex items-center justify-center cursor-pointer text-gray-500 dark:text-gray-400 transition-all duration-200 hover:text-gray-800 dark:hover:text-gray-200 hover:shadow-md hover:scale-110 ${window.innerWidth <= 768 ? 'right-5 bottom-[140px]' : 'right-1.5 top-20'}`}
         onClick={() => setIsNotesPanelCollapsed(!isNotesPanelCollapsed)}
         title={isNotesPanelCollapsed ? '展开笔记面板' : '收起笔记面板'}
       >
@@ -1062,7 +1100,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       </button>
 
       <div
-        className={`flex flex-col bg-white overflow-hidden transition-all duration-300 md:flex-1 md:border-l border-gray-200
+        className={`flex flex-col bg-white dark:bg-gray-900 overflow-hidden transition-all duration-300 md:flex-1 md:border-l border-gray-200 dark:border-gray-700
             ${isNotesPanelCollapsed
                 ? 'opacity-0 max-h-0 p-0 border-0'
                 : ''
@@ -1076,33 +1114,33 @@ const PDFReader: React.FC<PDFReaderProps> = ({
         <div className="h-full overflow-hidden">
           {!isNotesPanelCollapsed && (
             <>
-              <div className={`flex w-full border-b border-gray-300 bg-gray-100 ${window.innerWidth <= 768 ? 'tabs-container-mobile' : ''}`}>
+              <div className={`flex w-full border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 ${window.innerWidth <= 768 ? 'tabs-container-mobile' : ''}`}>
                 <button
-                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'summary' ? "text-blue-500 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 after:origin-center after:animate-tabActivate" : ''}`}
+                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 dark:text-gray-400 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 dark:before:bg-blue-400 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'summary' ? "text-blue-500 dark:text-blue-400 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 dark:after:bg-blue-400 after:origin-center after:animate-tabActivate" : ''}`}
                   onClick={() => setActiveTab('summary')}
                 >
                   总结
                 </button>
                 <button
-                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'notes' ? "text-blue-500 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 after:origin-center after:animate-tabActivate" : ''}`}
+                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 dark:text-gray-400 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 dark:before:bg-blue-400 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'notes' ? "text-blue-500 dark:text-blue-400 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 dark:after:bg-blue-400 after:origin-center after:animate-tabActivate" : ''}`}
                   onClick={() => setActiveTab('notes')}
                 >
                   笔记
                 </button>
                 <button
-                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'chat' ? "text-blue-500 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 after:origin-center after:animate-tabActivate" : ''}`}
+                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 dark:text-gray-400 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 dark:before:bg-blue-400 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'chat' ? "text-blue-500 dark:text-blue-400 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 dark:after:bg-blue-400 after:origin-center after:animate-tabActivate" : ''}`}
                   onClick={() => setActiveTab('chat')}
                 >
                   对话
                 </button>
                 <button
-                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'flow' ? "text-blue-500 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 after:origin-center after:animate-tabActivate" : ''}`}
+                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 dark:text-gray-400 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 dark:before:bg-blue-400 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'flow' ? "text-blue-500 dark:text-blue-400 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 dark:after:bg-blue-400 after:origin-center after:animate-tabActivate" : ''}`}
                   onClick={() => setActiveTab('flow')}
                 >
                   心流
                 </button>
                 <button
-                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'quiz' ? "text-blue-500 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 after:origin-center after:animate-tabActivate" : ''}`}
+                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 dark:text-gray-400 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 dark:before:bg-blue-400 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'quiz' ? "text-blue-500 dark:text-blue-400 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 dark:after:bg-blue-400 after:origin-center after:animate-tabActivate" : ''}`}
                   onClick={() => setActiveTab('quiz')}
                 >
                   测验
@@ -1237,12 +1275,12 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
       <div
         ref={chatInputContainerRef}
-        className={`fixed left-1/2 transform -translate-x-1/2 p-2 bg-white rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-all duration-300 ease-in-out z-[1000] w-[40rem] max-w-[90vw] ${isInputVisible ? 'bottom-5' : '-bottom-[100px]'}`}
+        className={`fixed left-1/2 transform -translate-x-1/2 p-2 bg-white dark:bg-gray-800 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-all duration-300 ease-in-out z-[1000] w-[40rem] max-w-[90vw] ${isInputVisible ? 'bottom-5' : '-bottom-[100px]'}`}
       >
         <form onSubmit={handleMessageSend} className="flex leading-[1.5] gap-2">
           <button
             type="button"
-            className="bg-transparent border-none cursor-pointer w-11 h-11 flex items-center justify-center p-0.5 text-4xl rounded-md gap-1 text-gray-600 text-base relative transition-all duration-200 ease-in-out hover:bg-gray-100"
+            className="bg-transparent border-none cursor-pointer w-11 h-11 flex items-center justify-center p-0.5 text-4xl rounded-md gap-1 text-gray-600 dark:text-gray-400 text-base relative transition-all duration-200 ease-in-out hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={() => setCurrentModel(prev => prev === 'standard' ? 'advanced' : 'standard')}
             title={currentModel === 'standard' ? '标准模型' : '高级模型'}
           >
@@ -1250,7 +1288,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
           </button>
           <button
             type="button"
-            className="bg-transparent border-none cursor-pointer w-11 h-11 flex items-center justify-center p-0.5 text-4xl rounded-md gap-1 text-gray-600 text-base relative transition-all duration-200 ease-in-out hover:bg-gray-100"
+            className="bg-transparent border-none cursor-pointer w-11 h-11 flex items-center justify-center p-0.5 text-4xl rounded-md gap-1 text-gray-600 dark:text-gray-400 text-base relative transition-all duration-200 ease-in-out hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={() => setAddNotes(prev => !prev)}
             title={addNotes ? '自动添加笔记' : '不自动添加笔记'}
           >
@@ -1262,7 +1300,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="输入消息..."
-            className="flex-1 p-3 border border-gray-300 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out min-h-[45px] max-h-[150px] resize-y focus:outline-none focus:border-blue-600 focus:shadow-[0_0_0_2px_rgba(25,118,210,0.1)]"
+            className="flex-1 p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out min-h-[45px] max-h-[150px] resize-y focus:outline-none focus:border-blue-600 dark:focus:border-blue-400 focus:shadow-[0_0_0_2px_rgba(25,118,210,0.1)] dark:focus:shadow-[0_0_0_2px_rgba(59,130,246,0.2)]"
           />
           <button
             type="submit"
@@ -1276,9 +1314,9 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
       {showMindmap && (
         <div className="fixed top-0 left-0 w-screen h-screen bg-black bg-opacity-50 flex justify-center items-center z-[1000]">
-          <div className="bg-white rounded-lg w-[90vw] h-[90vh] flex flex-col shadow-[0_4px_6px_rgba(0,0,0,0.1)]">
-            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 gap-3">
-              <h2 className="m-0 text-xl text-gray-800 flex-1">思维导图</h2>
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-[90vw] h-[90vh] flex flex-col shadow-[0_4px_6px_rgba(0,0,0,0.1)]">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 gap-3">
+              <h2 className="m-0 text-xl text-gray-800 dark:text-gray-200 flex-1">思维导图</h2>
               <div className="flex gap-3 flex-row">
                 <button
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 ease-in-out border-none bg-blue-600 text-white hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-md active:translate-y-px active:shadow-none"
@@ -1288,7 +1326,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                   <span className="ml-2 hidden md:inline">导出图片</span>
                 </button>
                 <button
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 ease-in-out border-none bg-green-500 text-white hover:bg-green-600 hover:-translate-y-0.5 hover:shadow-md active:translate-y-px active:shadow-none disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 ease-in-out border-none bg-green-500 dark:bg-green-600 text-white hover:bg-green-600 dark:hover:bg-green-700 hover:-translate-y-0.5 hover:shadow-md active:translate-y-px active:shadow-none disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-70"
                   onClick={() => handleMindmapClick(true)}
                   disabled={mindmapLoading}
                 >
@@ -1296,7 +1334,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                   <span className="ml-2 hidden md:inline">{mindmapLoading ? '生成中...' : '重新生成'}</span>
                 </button>
                 <button
-                  className="flex items-center gap-2 p-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 ease-in-out border-none bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 hover:-translate-y-0.5 active:translate-y-px"
+                  className="flex items-center gap-2 p-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 ease-in-out border-none bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-800 dark:hover:text-gray-100 hover:-translate-y-0.5 active:translate-y-px"
                   onClick={closeMindmap}
                 >
                   <X size={20} />

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import styles from './Forum.module.css';
 import Loading from '../../components/Loading';
 import { forumApi } from '../../api/forum';
 import type { Post } from '../../api/types';
@@ -79,24 +78,27 @@ const Forum: React.FC = () => {
   }, [activeCategory]);
 
   return (
-    <div className={styles.container}>
+    <div className="max-w-[1400px] mx-auto p-2 md:p-4 min-h-[calc(100vh-80px)]">
       {/* 顶部分类栏 */}
-      <div className={styles.categoryBar}>
-        <div className={styles.categories}>
+      <div className="sticky top-2 z-10 bg-white dark:bg-gray-800 p-2 md:p-4 mb-4 flex justify-between items-center rounded-2xl border-b border-gray-200 dark:border-gray-700 h-12">
+        <div className="flex gap-2 overflow-x-auto mr-4 scrollbar-hide">
           {categories.map(category => (
             <button
               key={category.id}
-              className={styles.categoryButton + ' ' +
-                (activeCategory === category.id ? styles.categoryButtonActive : '')}
+              className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium cursor-pointer transition-all duration-200 whitespace-nowrap ${
+                activeCategory === category.id 
+                  ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+              }`}
               onClick={() => setActiveCategory(category.id)}
             >
-              <span className={styles.categoryIcon}>{category.icon}</span>
+              <span className="text-base md:text-xl">{category.icon}</span>
               <span>{category.name}</span>
             </button>
           ))}
         </div>
         <button
-          className={styles.refreshButton}
+          className="px-3 md:px-4 py-2 bg-gray-100 dark:bg-gray-700 border-none rounded-lg text-gray-600 dark:text-gray-400 text-xs md:text-sm font-medium cursor-pointer transition-all duration-200 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-900 dark:hover:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleRefresh}
           disabled={refreshing}
         >
@@ -105,7 +107,7 @@ const Forum: React.FC = () => {
       </div>
 
       {/* 帖子瀑布流 */}
-      <div className={styles.postsGrid}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 p-2">
         {posts.map((post, index) => (
           <div
             key={post.id}
@@ -113,19 +115,23 @@ const Forum: React.FC = () => {
           >
             <Link
               to={'/forum/post/' + post.id}
-              className={styles.postCard}
+              className="flex flex-col bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 no-underline text-inherit h-full hover:-translate-y-1"
             >
-              <div className={styles.postContent}>
-                <h2 className={styles.postTitle}>{post.title}</h2>
-                <p className={styles.postPreview}>{post.content}</p>
-                <div className={styles.postMeta}>
-                  <span className={styles.postAuthor}>{post.username}</span>
-                  <span className={styles.postTime}>
+              <div className="p-4 flex-1 flex flex-col">
+                <h2 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 line-clamp-2">
+                  {post.title}
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-3 leading-relaxed">
+                  {post.content}
+                </p>
+                <div className="flex justify-between items-center mb-4 text-xs text-gray-500 dark:text-gray-500">
+                  <span className="font-medium text-blue-600 dark:text-blue-400">{post.username}</span>
+                  <span>
                     {new Date(post.created_at).toLocaleString()}
                   </span>
                 </div>
-                <div className={styles.postFooter}>
-                  <div className={styles.postStats}>
+                <div className="flex justify-between items-center mt-auto">
+                  <div className="flex gap-4 text-sm text-gray-500 dark:text-gray-500">
                     <span>👁️ {post.views}</span>
                     <span>💬 {post.replies.length}</span>
                   </div>
@@ -138,17 +144,27 @@ const Forum: React.FC = () => {
 
       {/* 加载状态 */}
       {loading && (
-        <div ref={loadingRef} className={styles.loading}>
+        <div ref={loadingRef} className="flex justify-center items-center py-8 text-gray-500 dark:text-gray-400">
           <Loading size="medium" text="加载中..." />
         </div>
       )}
 
       {/* 没有更多数据 */}
       {!hasMore && !loading && (
-        <div className={styles.noMore}>
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           没有更多内容了
         </div>
       )}
+
+      <style jsx>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 };

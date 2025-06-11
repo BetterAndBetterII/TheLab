@@ -1,29 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { messageApi, forumApi } from '../../api';
-import type { Message, Post, FileItem } from '../../api';
-import styles from './Home.module.css';
 import Loading from '../../components/Loading';
 import FileList from '../../components/FileList';
-import { Bookmark, Github } from 'lucide-react';
+import { Github } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-interface RecentActivity {
-  id: string;
-  type: 'file' | 'message' | 'post';
-  title: string;
-  date: string;
-  link: string;
-}
-
 const Home: React.FC = () => {
-  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [confettiShown, setConfettiShown] = useState(false);
 
   useEffect(() => {
-    fetchRecentActivities();
+    // 设置加载状态
+    setLoading(false);
 
     // 彩带显示逻辑
     const checkConfettiDisplay = () => {
@@ -85,105 +72,145 @@ const Home: React.FC = () => {
     checkConfettiDisplay();
   }, []);
 
-  const fetchRecentActivities = async () => {
-    try {
-      const [messages, posts] = await Promise.all([
-        messageApi.getMessages(),
-        forumApi.getRecentPosts(),
-      ]);
-
-      const activities: RecentActivity[] = [
-        ...messages.slice(0, 3).map((message: Message) => ({
-          id: message.id.toString(),
-          type: 'message' as const,
-          title: message.subject,
-          date: message.createdAt,
-          link: `/email`,
-        })),
-        ...posts.slice(0, 3).map((post: Post) => ({
-          id: post.id.toString(),
-          type: 'post' as const,
-          title: post.title,
-          date: post.created_at,
-          link: `/forum/post/${post.id}`,
-        })),
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-      setRecentActivities(activities);
-    } catch (error) {
-      console.error('Error fetching recent activities:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFileSelect = (file: FileItem) => {
-    setSelectedFile(file);
-  };
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'file':
-        return <div className={`${styles.icon} ${styles.fileIcon}`}>📄</div>;
-      case 'message':
-        return <div className={`${styles.icon} ${styles.messageIcon}`}>✉️</div>;
-      case 'post':
-        return <div className={`${styles.icon} ${styles.postIcon}`}>📝</div>;
-      default:
-        return null;
-    }
-  };
-
   if (loading) {
     return (
-      <div className={styles.container}>
+      <div className="p-3 sm:p-4 md:p-6 lg:p-8 h-screen flex flex-col">
         <Loading size="large" text="加载中..." />
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <div className={styles.titleGroup}>
-            <h1 className={styles.title}>欢迎回来</h1>
-            <p className={styles.subtitle}>
-              这里是您的工作空间，可以方便地管理文件和查看最近的活动。
-            </p>
-          </div>
-          {confettiShown && (
-            <div className={styles.openSourceNotice}>
-              🎉 重要通知：我们已正式开源！
-              <a
-                href="https://github.com/BetterAndBetterII/TheLab"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.githubLink}
-              >
-                <Github size={18} /> Star
-              </a>
-            </div>
-          )}
+    <div className="p-3 sm:p-4 h-screen flex flex-col overflow-hidden">
+      {/* 头部区域 */}
+      <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-gray-100 dark:border-gray-800">
+        {/* 标题区域 */}
+        <div className="flex flex-col gap-2">
+          <h1 className="m-0 text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 dark:text-gray-100">
+            欢迎回来
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+            这里是您的工作空间，可以方便地管理文件和查看最近的活动。
+          </p>
         </div>
-        <Link to="/about" className={styles.aboutLink}>
-          <Bookmark size={18} />
-          <span>关于我们</span>
-        </Link>
+        
+        {/* 通知区域 */}
+        {confettiShown && (
+          <div className="w-full">
+            <div className="p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-900/10 dark:to-sky-900/10 border-l-4 border-blue-500 dark:border-blue-400 rounded-lg text-blue-600 dark:text-blue-400 font-medium home-notice-animation">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+                <div className="flex-1 text-sm sm:text-base">
+                  🎉 重要通知：我们已正式开源！
+                </div>
+                <a
+                  href="https://github.com/BetterAndBetterII/TheLab"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm font-medium no-underline transition-all duration-200 shadow-sm hover:bg-gray-800 hover:dark:bg-gray-700 hover:border-gray-800 hover:dark:border-gray-700 hover:text-white hover:shadow-md hover:-translate-y-0.5 min-w-[80px] touch-manipulation"
+                >
+                  <Github size={16} className="sm:w-[18px] sm:h-[18px]" />
+                  <span>Star</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className={styles.content}>
+      {/* 主内容区域 */}
+      <div className="flex-1 min-h-0 overflow-hidden">
         {/* 文件管理器 */}
-        <div className={styles.fileManager} style={{ width: '100%' }}>
+        <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-sm sm:shadow-md border border-gray-100 dark:border-gray-700 overflow-hidden h-full flex flex-col">
           <FileList
-            onFileSelect={handleFileSelect}
-            className={styles.fileList}
+            className="flex-1 min-h-0 overflow-auto h-full"
           />
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .home-notice-animation {
+          animation: fadeIn 0.5s ease-in-out;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 640px) {
+          .touch-manipulation {
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+          }
+          
+          /* 确保移动端按钮有足够的点击区域 */
+          .touch-manipulation {
+            min-height: 44px;
+          }
+          
+          /* 优化移动端滚动 */
+          .overflow-auto {
+            -webkit-overflow-scrolling: touch;
+          }
+          
+          /* 防止双击缩放 */
+          * {
+            touch-action: manipulation;
+          }
+          
+          /* 优化移动端字体渲染 */
+          body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+          }
+          
+          /* 移动端聚焦时防止页面缩放 */
+          input, textarea, select {
+            font-size: 16px;
+          }
+        }
+        
+        /* 通用移动端优化 */
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        /* 触摸友好的交互反馈 */
+        @media (hover: none) and (pointer: coarse) {
+          .hover\:bg-gray-50:hover {
+            background-color: transparent;
+          }
+          
+          .hover\:bg-gray-200:hover {
+            background-color: transparent;
+          }
+          
+          /* 激活状态反馈 */
+          button:active {
+            transform: scale(0.98);
+            transition: transform 0.1s ease;
+          }
+        }
+      `}</style>
     </div>
   );
 };
 
 export default Home;
-

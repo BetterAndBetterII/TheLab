@@ -17,7 +17,7 @@ export default function Layout({ children }: LayoutProps) {
       <Navbar isCollapsed={isNavCollapsed} setIsCollapsed={setIsNavCollapsed} />
       <main className={cn(
         "min-h-screen transition-all duration-300",
-        isNavCollapsed ? "ml-[85px]" : "ml-[240px]",
+        isNavCollapsed ? "ml-0 md:ml-[85px]" : "ml-0 md:ml-[240px]",
       )}>
         {children}
       </main>

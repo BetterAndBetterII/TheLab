@@ -192,7 +192,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     return (
       <>
         {(thinkProcess || isThinking) &&
-          (<div className="p-3 rounded-xl text-xs leading-relaxed bg-gray-100 text-gray-700 mb-3">
+          (<div className="p-3 rounded-xl text-xs leading-relaxed bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mb-3">
             {thinkProcess}
           </div>)
         }
@@ -203,10 +203,10 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           {response}
         </ReactMarkdown>
         {notes && notes.length > 0 && (
-          <div className="text-xs mt-4 p-4 bg-gray-50 rounded-lg border-l-4 border-gray-500">
+          <div className="text-xs mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-l-4 border-gray-500 dark:border-gray-400">
             {notes.map((note, index) => (
               <div key={index} className="mb-3 last:mb-0">
-                <strong className="text-gray-600 mr-2">{note.keyword}:</strong>
+                <strong className="text-gray-600 dark:text-gray-400 mr-2">{note.keyword}:</strong>
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -224,7 +224,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   return (
     <div className="flex flex-col h-full relative overflow-hidden p-5">
       <button
-        className="absolute left-0 top-0 w-12 h-12 bg-transparent border-none p-0 cursor-pointer text-gray-600 rounded-full transition-all duration-200 flex items-center justify-center z-[2] opacity-60 hover:opacity-100 hover:scale-110 hover:text-blue-600"
+        className="absolute left-0 top-0 w-12 h-12 bg-transparent border-none p-0 cursor-pointer text-gray-600 dark:text-gray-400 rounded-full transition-all duration-200 flex items-center justify-center z-[2] opacity-60 hover:opacity-100 hover:scale-110 hover:text-blue-600 dark:hover:text-blue-400"
         onClick={() => setIsHistoryVisible(!isHistoryVisible)}
         title="聊天历史"
       >
@@ -232,7 +232,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       </button>
 
       <button
-        className="absolute left-0 top-[42px] w-12 h-12 bg-transparent border-none p-0 cursor-pointer text-gray-600 rounded-full transition-all duration-200 flex items-center justify-center z-[2] opacity-60 hover:opacity-100 hover:scale-110 hover:text-red-600"
+        className="absolute left-0 top-[42px] w-12 h-12 bg-transparent border-none p-0 cursor-pointer text-gray-600 dark:text-gray-400 rounded-full transition-all duration-200 flex items-center justify-center z-[2] opacity-60 hover:opacity-100 hover:scale-110 hover:text-red-600 dark:hover:text-red-400"
         onClick={() => onClearChat?.()}
         title="清空对话"
       >
@@ -242,14 +242,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       {/* 历史记录侧边栏 */}
       <div
         ref={historyPanelRef}
-        className={`fixed -left-80 top-0 w-80 h-screen bg-white shadow-lg transition-transform duration-300 ease-out z-[1000] flex flex-col ${
+        className={`fixed -left-80 top-0 w-80 h-screen bg-white dark:bg-gray-900 shadow-lg transition-transform duration-300 ease-out z-[1000] flex flex-col ${
           isHistoryVisible ? 'translate-x-80' : ''
         }`}
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h3 className="m-0 text-base font-medium text-gray-800">聊天历史</h3>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="m-0 text-base font-medium text-gray-800 dark:text-gray-200">聊天历史</h3>
           <button
-            className="bg-transparent border-none w-8 h-8 text-gray-600 cursor-pointer p-1 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-gray-100 hover:text-gray-800"
+            className="bg-transparent border-none w-8 h-8 text-gray-600 dark:text-gray-400 cursor-pointer p-1 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200"
             onClick={() => setIsHistoryVisible(false)}
           >
             <X size={18} />
@@ -257,19 +257,19 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {isHistoryLoading ? (
-            <div className="flex flex-col items-center justify-center text-gray-600">加载中...</div>
+            <div className="flex flex-col items-center justify-center text-gray-600 dark:text-gray-400">加载中...</div>
           ) : chatHistory.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-gray-600">暂无聊天记录</div>
+            <div className="flex flex-col items-center justify-center text-gray-600 dark:text-gray-400">暂无聊天记录</div>
           ) : (
             chatHistory
               .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
               .map((chat, index) => (
-              <div key={index} className="p-4 bg-gray-50 rounded-xl mb-3 cursor-pointer transition-all duration-200 border border-transparent hover:bg-white hover:border-blue-600 hover:-translate-y-0.5 hover:shadow-lg" onClick={() => {
+              <div key={index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl mb-3 cursor-pointer transition-all duration-200 border border-transparent hover:bg-white dark:hover:bg-gray-700 hover:border-blue-600 dark:hover:border-blue-400 hover:-translate-y-0.5 hover:shadow-lg" onClick={() => {
                 onSelectChat(chat.id);
               }}>
-                <h4 className="m-0 mb-2 text-sm text-gray-800 font-medium">{chat.title.length > 35 ? chat.title.slice(0, 20) + '...' : chat.title}</h4>
-                <p className="m-0 mb-2 text-xs text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">{getMessageLength(chat.messages)}</p>
-                <span className="text-xs text-gray-400 block">{formatDate(chat.created_at)}</span>
+                <h4 className="m-0 mb-2 text-sm text-gray-800 dark:text-gray-200 font-medium">{chat.title.length > 35 ? chat.title.slice(0, 20) + '...' : chat.title}</h4>
+                <p className="m-0 mb-2 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap overflow-hidden text-ellipsis">{getMessageLength(chat.messages)}</p>
+                <span className="text-xs text-gray-400 dark:text-gray-500 block">{formatDate(chat.created_at)}</span>
               </div>
             ))
           )}
@@ -279,9 +279,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       {/* 消息列表 */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col" ref={messageListRef}>
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-gray-600">
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-600 dark:text-gray-400">
             <div className="text-5xl mb-4 animate-bounce">💭</div>
-            <div className="text-base text-gray-600">我可以帮到你吗？</div>
+            <div className="text-base text-gray-600 dark:text-gray-400">我可以帮到你吗？</div>
           </div>
         ) : (
           messages.map((message, index) => (
@@ -297,7 +297,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               {message.type === 'assistant' ? (
                 assistantMessage(message)
               ) : (
-                <div className="p-3 rounded-xl text-sm leading-relaxed break-all bg-blue-600 text-white">
+                <div className="p-3 rounded-xl text-sm leading-relaxed break-all bg-blue-600 dark:bg-blue-500 text-white">
                   {message.content}
                 </div>
               )}
@@ -307,15 +307,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         {isLoading && (
           <div className="py-12 px-16 rounded-xl flex gap-1">
             <span
-              className="w-1.5 h-1.5 bg-gray-600 rounded-full inline-block animate-bounce"
+              className="w-1.5 h-1.5 bg-gray-600 dark:bg-gray-400 rounded-full inline-block animate-bounce"
               style={{ animationDelay: '0.1s' }}
             ></span>
             <span
-              className="w-1.5 h-1.5 bg-gray-600 rounded-full inline-block animate-bounce"
+              className="w-1.5 h-1.5 bg-gray-600 dark:bg-gray-400 rounded-full inline-block animate-bounce"
               style={{ animationDelay: '0.2s' }}
             ></span>
             <span
-              className="w-1.5 h-1.5 bg-gray-600 rounded-full inline-block animate-bounce"
+              className="w-1.5 h-1.5 bg-gray-600 dark:bg-gray-400 rounded-full inline-block animate-bounce"
               style={{ animationDelay: '0.3s' }}
             ></span>
           </div>
@@ -335,17 +335,27 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         }
 
         pre {
-          background: #f5f5f5 !important;
-          color: #333 !important;
+          background: rgb(var(--gray-100)) !important;
+          color: rgb(var(--gray-800)) !important;
           padding: 2px 4px !important;
           border-radius: 4px !important;
         }
 
+        .dark pre {
+          background: rgb(var(--gray-700)) !important;
+          color: rgb(var(--gray-200)) !important;
+        }
+
         code {
-          background: #f5f5f5 !important;
-          color: #333 !important;
+          background: rgb(var(--gray-100)) !important;
+          color: rgb(var(--gray-800)) !important;
           padding: 2px 4px !important;
           border-radius: 4px !important;
+        }
+
+        .dark code {
+          background: rgb(var(--gray-700)) !important;
+          color: rgb(var(--gray-200)) !important;
         }
       `}</style>
     </div>

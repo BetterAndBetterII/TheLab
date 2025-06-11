@@ -482,7 +482,7 @@ const FileList: React.FC<FileListProps> = ({
         {folders.filter(folder => !selectedItems.has(getItemKey({ id: folder.id, type: 'folder' }))).map(folder => (
           <div key={folder.id} style={{ paddingLeft: `${level * 20}px` }}>
             <div
-              className="flex items-center p-2 cursor-pointer rounded transition-colors hover:bg-gray-100"
+              className="flex items-center p-2 cursor-pointer rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => handleMove(folder.id)}
             >
               <span className="mr-2 text-lg">
@@ -558,23 +558,23 @@ const FileList: React.FC<FileListProps> = ({
     return (
       <div
         key={file.id}
-        className={`flex flex-col items-center p-4 rounded-lg cursor-pointer transition-all relative border h-60 box-border justify-start group ${
+        className={`flex flex-col items-center p-3 sm:p-4 rounded-lg cursor-pointer transition-all relative border box-border justify-start group touch-manipulation ${
           isSelected
-            ? 'bg-blue-50 border-blue-500'
-            : 'border-transparent hover:bg-gray-50'
-        }`}
+            ? 'bg-blue-50 dark:bg-gray-700 border-blue-500 dark:border-gray-500'
+            : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
+        } h-32 sm:h-40 md:h-48`}
         onClick={(e) => {
           e.stopPropagation();
           handleFileSelect(file, e);
         }}
         onDoubleClick={() => handleFileDoubleClick(file)}
       >
-        <div className="text-6xl mb-4 flex items-center justify-center h-25 w-full relative">
+        <div className="text-3xl sm:text-4xl md:text-5xl mb-2 flex items-center justify-center flex-1 w-full relative">
           {showThumbnail ? (
             <img
               src={getThumbnailUrl(file.id)}
               alt={file.name}
-              className="max-w-full max-h-full object-contain rounded shadow-sm bg-gray-50"
+              className="max-w-full max-h-full object-contain rounded shadow-sm bg-gray-50 dark:bg-gray-800"
               onError={() => handleThumbnailError(file.id)}
             />
           ) : (
@@ -582,19 +582,21 @@ const FileList: React.FC<FileListProps> = ({
           )}
         </div>
         <div className="w-full overflow-hidden flex flex-col items-center">
-          <div className="text-center w-full text-sm font-medium text-gray-900 mb-2 overflow-hidden text-ellipsis line-clamp-2 h-9 break-words">
+          <div className="text-center w-full text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 sm:mb-2 overflow-hidden text-ellipsis line-clamp-2 break-words leading-tight">
             {file.name}
           </div>
-          <div className="grid grid-cols-2 items-center gap-1">
-            {!file.isFolder && <div className="text-xs text-gray-500 text-center w-full">
-              {formatFileSize(file.size)}
-            </div>}
-            <div className="text-xs text-gray-500 text-center w-full">{file.owner}</div>
-            <div className="text-xs text-gray-500 text-center w-full col-span-2">
+          <div className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs text-gray-500 dark:text-gray-400">
+            {!file.isFolder && (
+              <div className="text-center">
+                {formatFileSize(file.size)}
+              </div>
+            )}
+            <div className="text-center hidden sm:block">{file.owner}</div>
+            <div className="text-center">
               {new Date(file.lastModified).toLocaleDateString()}
             </div>
             {file.processingStatus && (
-              <div className="relative mt-2 w-full flex flex-col items-center text-xs gap-1 col-span-2">
+              <div className="relative mt-1 sm:mt-2 w-full flex flex-col items-center text-xs gap-1">
                 <span
                   className={`${
                     file.processingStatus === 'pending' ? 'text-yellow-500' :
@@ -607,7 +609,7 @@ const FileList: React.FC<FileListProps> = ({
                   {ICONS[file.processingStatus.toLowerCase() as ProcessingStatus]}
                 </span>
                 {file.processingStatus === "processing" && (
-                  <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="w-16 sm:w-20 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-blue-500 rounded-full transition-all duration-300"
                       style={{ width: `${PROGRESS[file.processingStatus.toLowerCase() as ProcessingStatus]}%` }}
@@ -618,9 +620,9 @@ const FileList: React.FC<FileListProps> = ({
             )}
           </div>
         </div>
-        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white bg-opacity-80 rounded p-1 shadow-sm z-10">
+        <div className="absolute top-1 sm:top-2 right-1 sm:right-2 flex gap-0.5 sm:gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 rounded p-1 shadow-sm z-10">
           <button
-            className="p-1 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200"
+            className="p-1.5 sm:p-1 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 touch-manipulation min-h-[36px] min-w-[36px] sm:min-h-auto sm:min-w-auto flex items-center justify-center"
             onClick={(e) => {
               e.stopPropagation();
               setOperation({ type: 'rename', fileId: file.id });
@@ -630,7 +632,7 @@ const FileList: React.FC<FileListProps> = ({
             ✏️
           </button>
           <button
-            className="p-1 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200"
+            className="p-1.5 sm:p-1 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 touch-manipulation min-h-[36px] min-w-[36px] sm:min-h-auto sm:min-w-auto flex items-center justify-center"
             onClick={(e) => {
               e.stopPropagation();
               handleDownload(file.id, file.isFolder);
@@ -641,7 +643,7 @@ const FileList: React.FC<FileListProps> = ({
           </button>
           {!file.isFolder && file.processingStatus === 'failed' && (
             <button
-              className="p-1 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200"
+              className="p-1.5 sm:p-1 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 touch-manipulation min-h-[36px] min-w-[36px] sm:min-h-auto sm:min-w-auto flex items-center justify-center"
               onClick={(e) => {
                 e.stopPropagation();
                 handleRetryProcessing(file.id);
@@ -658,7 +660,7 @@ const FileList: React.FC<FileListProps> = ({
 
   if (loading) {
     return (
-      <div className={`p-6 h-full flex flex-col ${className || ''}`}>
+      <div className={`p-3 sm:p-4 md:p-6 h-full flex flex-col ${className || ''}`}>
         <Loading size="large" text="加载中..." />
       </div>
     );
@@ -666,103 +668,112 @@ const FileList: React.FC<FileListProps> = ({
 
   return (
     <div
-      className={`p-6 h-full flex flex-col ${className || ''}`}
+      className={`p-3 sm:p-4 md:p-6 h-full flex flex-col ${className || ''}`}
       onClick={handleContainerClick}
     >
-      <div className="flex justify-between items-center p-3 pb-3 border-b border-gray-200">
-        <div className="flex gap-2 items-center">
+      {/* 工具栏 - 移动端优化 */}
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center p-2 sm:p-3 pb-3 border-b border-gray-200 dark:border-gray-700 gap-3 sm:gap-0">
+        {/* 操作按钮区域 */}
+        <div className="flex flex-wrap gap-2 items-center">
           <button
-            className="flex items-center gap-1.5 px-3 py-1.5 border-none rounded-md bg-gray-100 text-gray-900 text-sm cursor-pointer transition-all h-8 hover:bg-gray-200"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 border-none rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] hover:bg-gray-200 dark:hover:bg-gray-600 touch-manipulation flex-1 sm:flex-initial"
             onClick={() => setOperation({ type: 'upload' })}
             title="上传新文件"
           >
             <span>📤</span>
-            上传文件
+            <span className="hidden xs:inline">上传文件</span>
           </button>
           <button
-            className="flex items-center gap-1.5 px-3 py-1.5 border-none rounded-md bg-gray-100 text-gray-900 text-sm cursor-pointer transition-all h-8 hover:bg-gray-200"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 border-none rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] hover:bg-gray-200 dark:hover:bg-gray-600 touch-manipulation flex-1 sm:flex-initial"
             onClick={() => setShowNewFolderDialog(true)}
             title="创建新文件夹"
           >
             <span>📁</span>
-            新建文件夹
+            <span className="hidden xs:inline">新建文件夹</span>
           </button>
           {selectedFiles.size > 0 && (
             <>
               <button
-                className="flex items-center gap-1.5 px-3 py-1.5 border-none rounded-md bg-gray-100 text-gray-900 text-sm cursor-pointer transition-all h-8 hover:bg-gray-200"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 border-none rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] hover:bg-red-200 dark:hover:bg-red-900/50 touch-manipulation"
                 onClick={handleDelete}
                 title="删除选中项"
               >
                 <span>🗑️</span>
-                删除
+                <span className="hidden xs:inline">删除</span>
               </button>
               <button
-                className="flex items-center gap-1.5 px-3 py-1.5 border-none rounded-md bg-gray-100 text-gray-900 text-sm cursor-pointer transition-all h-8 hover:bg-gray-200"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 border-none rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] hover:bg-blue-200 dark:hover:bg-blue-900/50 touch-manipulation"
                 onClick={() => setOperation({ type: 'move', fileId: Array.from(selectedFiles)[0] })}
                 title="移动到其他文件夹"
               >
                 <span>📦</span>
-                移动到
+                <span className="hidden xs:inline">移动</span>
               </button>
             </>
           )}
         </div>
-        <div className="flex gap-2 items-center ml-auto">
-          <button
-            className="px-3 py-1.5 border border-gray-300 rounded bg-white text-gray-900 text-sm cursor-pointer transition-all h-8 flex items-center hover:border-blue-500 hover:text-blue-500"
-            onClick={() => handleSort('name')}
-          >
-            按名称排序
-            {sortBy === 'name' && (
-              <span>{sortOrder === 'asc' ? ' ↑' : ' ↓'}</span>
-            )}
-          </button>
-          <button
-            className="px-3 py-1.5 border border-gray-300 rounded bg-white text-gray-900 text-sm cursor-pointer transition-all h-8 flex items-center hover:border-blue-500 hover:text-blue-500"
-            onClick={() => handleSort('date')}
-          >
-            按日期排序
-            {sortBy === 'date' && (
-              <span>{sortOrder === 'asc' ? ' ↑' : ' ↓'}</span>
-            )}
-          </button>
 
-          <div className="flex items-center gap-1 ml-2 border-l border-gray-300 pl-2">
+        {/* 排序和视图控制区域 */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex gap-1 sm:gap-2 flex-1 sm:flex-initial">
             <button
-              className={`p-1.5 border border-gray-300 rounded bg-white text-gray-900 text-sm cursor-pointer transition-all flex items-center justify-center h-8 w-8 ${
-                viewMode === 'list' ? 'bg-blue-500 text-white border-blue-500' : 'hover:border-blue-500 hover:text-blue-500'
+              className="px-2 sm:px-3 py-2 sm:py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs sm:text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] flex items-center justify-center hover:border-blue-500 hover:text-blue-500 touch-manipulation flex-1 sm:flex-initial"
+              onClick={() => handleSort('name')}
+            >
+              <span className="hidden sm:inline">按名称排序</span>
+              <span className="sm:hidden">名称</span>
+              {sortBy === 'name' && (
+                <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+              )}
+            </button>
+            <button
+              className="px-2 sm:px-3 py-2 sm:py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs sm:text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] flex items-center justify-center hover:border-blue-500 hover:text-blue-500 touch-manipulation flex-1 sm:flex-initial"
+              onClick={() => handleSort('date')}
+            >
+              <span className="hidden sm:inline">按日期排序</span>
+              <span className="sm:hidden">日期</span>
+              {sortBy === 'date' && (
+                <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+              )}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 border-l border-gray-300 dark:border-gray-600 pl-2">
+            <button
+              className={`p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-pointer transition-all flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] touch-manipulation ${
+                viewMode === 'list' ? 'bg-blue-50 text-blue-500 border-blue-500 dark:bg-blue-900/30' : 'hover:border-blue-500 hover:text-blue-500'
               }`}
               onClick={() => setViewMode('list')}
               title="列表视图"
             >
-              <List />
+              <List size={16} className="sm:w-4 sm:h-4" />
             </button>
             <button
-              className={`p-1.5 border border-gray-300 rounded bg-white text-gray-900 text-sm cursor-pointer transition-all flex items-center justify-center h-8 w-8 ${
-                viewMode === 'grid' ? 'bg-blue-500 text-white border-blue-500' : 'hover:border-blue-500 hover:text-blue-500'
+              className={`p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-pointer transition-all flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] touch-manipulation ${
+                viewMode === 'grid' ? 'bg-blue-50 text-blue-500 border-blue-500 dark:bg-blue-900/30' : 'hover:border-blue-500 hover:text-blue-500'
               }`}
               onClick={() => setViewMode('grid')}
               title="网格视图"
             >
-              <Grid />
+              <Grid size={16} className="sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-6 p-2 bg-gray-100 rounded-md">
+      {/* 面包屑导航 - 移动端优化 */}
+      <div className="flex items-center gap-1 sm:gap-2 mb-4 sm:mb-6 p-2 bg-gray-100 dark:bg-gray-700 rounded-md overflow-x-auto scrollbar-hide">
         <span
-          className="text-gray-900 cursor-pointer transition-colors hover:text-blue-500"
+          className="text-gray-900 dark:text-gray-100 cursor-pointer transition-colors hover:text-blue-500 whitespace-nowrap px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 touch-manipulation"
           onClick={() => handleBreadcrumbClick(null)}
         >
           根目录
         </span>
         {folderPath.map((folder) => (
           <React.Fragment key={folder.id}>
-            <span className="text-gray-500">/</span>
+            <span className="text-gray-500 dark:text-gray-400 text-sm">/</span>
             <span
-              className="text-gray-900 cursor-pointer transition-colors hover:text-blue-500"
+              className="text-gray-900 dark:text-gray-100 cursor-pointer transition-colors hover:text-blue-500 whitespace-nowrap px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 touch-manipulation"
               onClick={() => handleBreadcrumbClick(folder.id)}
             >
               {folder.name}
@@ -771,16 +782,17 @@ const FileList: React.FC<FileListProps> = ({
         ))}
       </div>
 
-      <div className="flex-1 bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+      {/* 文件列表区域 */}
+      <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm sm:shadow-md border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col">
         {viewMode === 'list' ? (
-          <div className="p-4 flex flex-col gap-2 flex-1 overflow-y-auto min-h-0" ref={fileListRef}>
+          <div className="p-2 sm:p-4 flex flex-col gap-1 sm:gap-2 flex-1 overflow-y-auto min-h-0 touch-scroll" ref={fileListRef}>
             {sortedFiles.map((file) => {
               const isSelected = selectedFiles.has(getItemKey({ id: file.id, type: file.isFolder ? 'folder' : 'file' }));
               return (
                 <div
                   key={file.id}
-                  className={`flex items-center p-3 rounded-md cursor-pointer transition-all group ${
-                    isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  className={`flex items-center p-3 sm:p-3 rounded-md cursor-pointer transition-all group touch-manipulation ${
+                    isSelected ? 'bg-blue-50 dark:bg-gray-700 border border-blue-200 dark:border-gray-600' : 'hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -788,22 +800,25 @@ const FileList: React.FC<FileListProps> = ({
                   }}
                   onDoubleClick={() => handleFileDoubleClick(file)}
                 >
-                  <div className="text-2xl mr-4 w-6 text-center flex items-center justify-center">
+                  <div className="text-xl sm:text-2xl mr-3 sm:mr-4 w-6 text-center flex items-center justify-center">
                     {getFileIcon(file)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="h-4.5 text-sm font-medium text-gray-900 mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                    <div className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                       {file.name}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      {!file.isFolder && <span>{formatFileSize(file.size)}</span>}
-                      <span>•</span>
-                      <span>{new Date(file.lastModified).toLocaleString()}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-2">
+                        {!file.isFolder && <span>{formatFileSize(file.size)}</span>}
+                        {!file.isFolder && <span>•</span>}
+                        <span className="hidden sm:inline">{new Date(file.lastModified).toLocaleString()}</span>
+                        <span className="sm:hidden">{new Date(file.lastModified).toLocaleDateString()}</span>
+                      </div>
                       {file.processingStatus && (
-                        <div className="flex items-center gap-2 ml-2">
-                          <span>•</span>
+                        <div className="flex items-center gap-2">
+                          <span className="hidden sm:inline">•</span>
                           <span
-                            className={`${
+                            className={`flex items-center gap-1 ${
                               file.processingStatus === 'pending' ? 'text-yellow-500' :
                               file.processingStatus === 'processing' ? 'text-blue-500' :
                               file.processingStatus === 'completed' ? 'text-green-500' :
@@ -811,10 +826,11 @@ const FileList: React.FC<FileListProps> = ({
                             }`}
                             title={file.errorMessage || TOOLTIPS[file.processingStatus.toLowerCase() as ProcessingStatus]}
                           >
-                            {ICONS[file.processingStatus.toLowerCase() as ProcessingStatus]} {file.processingStatus}
+                            {ICONS[file.processingStatus.toLowerCase() as ProcessingStatus]}
+                            <span className="hidden sm:inline">{file.processingStatus}</span>
                           </span>
                           {file.processingStatus === "processing" && (
-                            <div className="w-25 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="w-16 sm:w-20 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-blue-500 rounded-full transition-all duration-300"
                                 style={{ width: `${PROGRESS[file.processingStatus.toLowerCase() as ProcessingStatus]}%` }}
@@ -825,10 +841,10 @@ const FileList: React.FC<FileListProps> = ({
                       )}
                     </div>
                   </div>
-                  <div className="text-sm text-gray-600 mx-6">{file.owner}</div>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="hidden sm:block text-sm text-gray-600 dark:text-gray-400 mx-6">{file.owner}</div>
+                  <div className="flex gap-1 sm:gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      className="p-1 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200"
+                      className="p-2 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 touch-manipulation min-h-[44px] min-w-[44px] sm:min-h-auto sm:min-w-auto sm:p-1 flex items-center justify-center"
                       onClick={(e) => {
                         e.stopPropagation();
                         setOperation({ type: 'rename', fileId: file.id });
@@ -838,7 +854,7 @@ const FileList: React.FC<FileListProps> = ({
                       ✏️
                     </button>
                     <button
-                      className="p-1 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200"
+                      className="p-2 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 touch-manipulation min-h-[44px] min-w-[44px] sm:min-h-auto sm:min-w-auto sm:p-1 flex items-center justify-center"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDownload(file.id, file.isFolder);
@@ -847,21 +863,17 @@ const FileList: React.FC<FileListProps> = ({
                     >
                       ⬇️
                     </button>
-                    {!file.isFolder && (
-                      <>
-                        {file.processingStatus === 'failed' && (
-                          <button
-                            className="p-1 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRetryProcessing(file.id);
-                            }}
-                            title="重试处理"
-                          >
-                            🔄
-                          </button>
-                        )}
-                      </>
+                    {!file.isFolder && file.processingStatus === 'failed' && (
+                      <button
+                        className="p-2 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 touch-manipulation min-h-[44px] min-w-[44px] sm:min-h-auto sm:min-w-auto sm:p-1 flex items-center justify-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRetryProcessing(file.id);
+                        }}
+                        title="重试处理"
+                      >
+                        🔄
+                      </button>
                     )}
                   </div>
                 </div>
@@ -869,33 +881,35 @@ const FileList: React.FC<FileListProps> = ({
             })}
           </div>
         ) : (
-          <div className="p-4 grid grid-cols-4 gap-4 flex-1 overflow-y-auto min-h-0 xl:grid-cols-4 lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1" ref={fileListRef}>
+          <div className="p-2 sm:p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-4 flex-1 overflow-y-auto min-h-0 touch-scroll" ref={fileListRef}>
             {sortedFiles.map(renderGridItem)}
           </div>
         )}
       </div>
 
+      {/* 对话框 - 移动端优化 */}
       {showNewFolderDialog && (
-        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg min-w-96 max-w-[90vw] max-h-[90vh] overflow-y-auto">
-            <h3 className="m-0 mb-4 text-lg text-gray-900">新建文件夹</h3>
+        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-700 p-4 sm:p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 className="m-0 mb-4 text-lg text-gray-900 dark:text-gray-100">新建文件夹</h3>
             <input
               type="text"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               placeholder="请输入文件夹名称"
-              className="w-full p-2 border border-gray-300 rounded text-sm mb-4 focus:border-blue-500 focus:outline-none"
+              className="w-full p-3 sm:p-2 border border-gray-300 dark:border-gray-600 rounded text-sm mb-4 min-h-[44px] sm:min-h-auto focus:border-blue-500 focus:outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              autoFocus
             />
-            <div className="flex justify-end gap-3 mt-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-4">
               <button
                 onClick={() => setShowNewFolderDialog(false)}
-                className="px-4 py-1.5 rounded text-sm cursor-pointer transition-all border border-gray-300 bg-white text-gray-900 hover:opacity-80"
+                className="px-4 py-3 sm:py-1.5 rounded text-sm cursor-pointer transition-all border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:opacity-80 touch-manipulation order-2 sm:order-1"
               >
                 取消
               </button>
               <button
                 onClick={handleCreateFolder}
-                className="px-4 py-1.5 rounded text-sm cursor-pointer transition-all border-none bg-blue-500 text-white hover:opacity-80"
+                className="px-4 py-3 sm:py-1.5 rounded text-sm cursor-pointer transition-all border-none bg-blue-500 text-white hover:opacity-80 touch-manipulation order-1 sm:order-2"
               >
                 确定
               </button>
@@ -905,20 +919,21 @@ const FileList: React.FC<FileListProps> = ({
       )}
 
       {operation?.type === 'rename' && (
-        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg min-w-96 max-w-[90vw] max-h-[90vh] overflow-y-auto">
-            <h3 className="m-0 mb-4 text-lg text-gray-900">重命名</h3>
+        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-700 p-4 sm:p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 className="m-0 mb-4 text-lg text-gray-900 dark:text-gray-100">重命名</h3>
             <input
               type="text"
               defaultValue={files.find(f => f.id === operation.fileId)?.name}
               onChange={(e) => operation.data = { ...operation.data, newName: e.target.value }}
               placeholder="请输入新名称"
-              className="w-full p-2 border border-gray-300 rounded text-sm mb-4 focus:border-blue-500 focus:outline-none"
+              className="w-full p-3 sm:p-2 border border-gray-300 dark:border-gray-600 rounded text-sm mb-4 min-h-[44px] sm:min-h-auto focus:border-blue-500 focus:outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              autoFocus
             />
-            <div className="flex justify-end gap-3 mt-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-4">
               <button
                 onClick={() => setOperation(null)}
-                className="px-4 py-1.5 rounded text-sm cursor-pointer transition-all border border-gray-300 bg-white text-gray-900 hover:opacity-80"
+                className="px-4 py-3 sm:py-1.5 rounded text-sm cursor-pointer transition-all border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:opacity-80 touch-manipulation order-2 sm:order-1"
               >
                 取消
               </button>
@@ -930,7 +945,7 @@ const FileList: React.FC<FileListProps> = ({
                     handleRenameDocument(operation.fileId || '', operation.data?.newName || '');
                   }
                 }}
-                className="px-4 py-1.5 rounded text-sm cursor-pointer transition-all border-none bg-blue-500 text-white hover:opacity-80"
+                className="px-4 py-3 sm:py-1.5 rounded text-sm cursor-pointer transition-all border-none bg-blue-500 text-white hover:opacity-80 touch-manipulation order-1 sm:order-2"
               >
                 确定
               </button>
@@ -940,13 +955,13 @@ const FileList: React.FC<FileListProps> = ({
       )}
 
       {operation?.type === 'move' && (
-        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg min-w-96 max-w-[90vw] max-h-[90vh] overflow-y-auto">
-            <h3 className="m-0 mb-4 text-lg text-gray-900">移动到</h3>
-            <div className="max-h-96 overflow-y-auto border border-gray-200 rounded p-2 my-2.5">
+        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-700 p-4 sm:p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 className="m-0 mb-4 text-lg text-gray-900 dark:text-gray-100">移动到</h3>
+            <div className="max-h-64 sm:max-h-96 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded p-2 my-2.5 touch-scroll">
               <div
-                className={`flex items-center p-2 cursor-pointer rounded transition-colors ${
-                  getCurrentFolderId() === null ? 'bg-blue-50' : 'hover:bg-gray-100'
+                className={`flex items-center p-3 sm:p-2 cursor-pointer rounded transition-colors touch-manipulation ${
+                  getCurrentFolderId() === null ? 'bg-blue-50 dark:bg-gray-700' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
                 onClick={() => handleMove(null)}
               >
@@ -959,10 +974,10 @@ const FileList: React.FC<FileListProps> = ({
                 selectedItems={selectedFiles}
               />
             </div>
-            <div className="flex justify-end gap-3 mt-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-4">
               <button
                 onClick={() => setOperation(null)}
-                className="px-4 py-1.5 rounded text-sm cursor-pointer transition-all border border-gray-300 bg-white text-gray-900 hover:opacity-80"
+                className="px-4 py-3 sm:py-1.5 rounded text-sm cursor-pointer transition-all border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:opacity-80 touch-manipulation"
               >
                 取消
               </button>
@@ -972,14 +987,14 @@ const FileList: React.FC<FileListProps> = ({
       )}
 
       {operation?.type === 'upload' && (
-        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg min-w-96 max-w-[90vw] max-h-[90vh] overflow-y-auto">
-            <h3 className="m-0 mb-4 text-lg text-gray-900">上传文件</h3>
+        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-700 p-4 sm:p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 className="m-0 mb-4 text-lg text-gray-900 dark:text-gray-100">上传文件</h3>
             <DragZone onFileSelect={handleUpload} />
-            <div className="flex justify-end gap-3 mt-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-4">
               <button
                 onClick={() => setOperation(null)}
-                className="px-4 py-1.5 rounded text-sm cursor-pointer transition-all border border-gray-300 bg-white text-gray-900 hover:opacity-80"
+                className="px-4 py-3 sm:py-1.5 rounded text-sm cursor-pointer transition-all border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:opacity-80 touch-manipulation"
               >
                 取消
               </button>

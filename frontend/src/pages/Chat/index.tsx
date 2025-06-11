@@ -1,5 +1,4 @@
 import React from 'react';
-import styles from './Chat.module.css';
 import PDFReader from '../../components/PDFReader';
 import { useParams } from 'react-router-dom';
 import { BASE_URL } from '../../api';
@@ -14,11 +13,10 @@ const Chat: React.FC = () => {
     return <ReadHistory />;
   }
 
-
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
-        <div className={styles.pdfContainer}>
+    <div className="flex flex-col h-screen overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        <div className="flex-1 overflow-hidden relative h-full">
           <PDFReader
             pdfUrl={conversationId ? `${BASE_URL}/documents/${conversationId}/download` : ''}
             documentId={conversationId}

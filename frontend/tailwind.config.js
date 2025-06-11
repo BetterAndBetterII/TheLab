@@ -6,6 +6,14 @@ module.exports = {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    screens: {
+      'xs': '475px',
+      'sm': '640px',
+      'md': '768px',
+      'lg': '1024px',
+      'xl': '1280px',
+      '2xl': '1536px',
+    },
     container: {
       center: true,
       padding: "2rem",
@@ -15,6 +23,20 @@ module.exports = {
     },
     extend: {
       colors: {
+        // Override default gray with neutral gray (no blue tones)
+        gray: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          200: '#e5e5e5',
+          300: '#d4d4d4',
+          400: '#a3a3a3',
+          500: '#737373',
+          600: '#525252',
+          700: '#404040',
+          800: '#262626',
+          900: '#171717',
+          950: '#0a0a0a',
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -133,12 +155,58 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    function({ addUtilities }) {
+      const newUtilities = {
+        '.touch-scroll': {
+          '-webkit-overflow-scrolling': 'touch',
+        },
+        '.touch-manipulation': {
+          'touch-action': 'manipulation',
+        },
+        '.scrollbar-hide': {
+          /* IE and Edge */
+          '-ms-overflow-style': 'none',
+          /* Firefox */
+          'scrollbar-width': 'none',
+          /* Safari and Chrome */
+          '&::-webkit-scrollbar': {
+            display: 'none'
+          }
+        },
+        '.line-clamp-2': {
+          display: '-webkit-box',
+          '-webkit-line-clamp': '2',
+          '-webkit-box-orient': 'vertical',
+          overflow: 'hidden',
+        },
+        '.safe-area-inset-top': {
+          'padding-top': 'env(safe-area-inset-top)',
+        },
+        '.safe-area-inset-bottom': {
+          'padding-bottom': 'env(safe-area-inset-bottom)',
+        },
+        '.safe-area-inset-left': {
+          'padding-left': 'env(safe-area-inset-left)',
+        },
+        '.safe-area-inset-right': {
+          'padding-right': 'env(safe-area-inset-right)',
+        },
+      }
+      addUtilities(newUtilities)
+    }
+  ],
   safelist: [
     'pdf-container-mobile',
     'resizer-horizontal-mobile',
     'tabs-container-mobile',
     'mindmap-container',
     'highlight-area-tooltip',
+    'xs:inline',
+    'touch-manipulation',
+    'touch-scroll',
+    'scrollbar-hide',
+    'line-clamp-2',
   ],
 }

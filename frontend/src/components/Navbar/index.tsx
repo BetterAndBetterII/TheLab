@@ -10,7 +10,8 @@ import {
   Menu, 
   ChevronLeft, 
   ChevronRight, 
-  Search 
+  Search,
+  Bookmark
 } from 'lucide-react';
 
 export default function Navbar(
@@ -112,7 +113,7 @@ export default function Navbar(
             </Button>
           </div>
 
-          <div className="flex flex-col space-y-1">
+          <div className="flex flex-col space-y-1 flex-1">
             {menuItems.map((item) => (
               <Link
                 key={item.path}
@@ -130,6 +131,26 @@ export default function Navbar(
                 {!isCollapsed && <span>{item.label}</span>}
               </Link>
             ))}
+          </div>
+
+          {/* 关于我们链接 */}
+          <div className="mt-auto pt-4 border-t border-border">
+            <Link
+              to="/about"
+              onClick={handleMenuItemClick}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
+                location.pathname === '/about'
+                  ? "bg-primary/10 text-primary" 
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              )}
+              title={isCollapsed ? '关于我们' : ''}
+            >
+              <div className="flex-shrink-0">
+                <Bookmark size={20} className="text-indigo-600 dark:text-indigo-400" />
+              </div>
+              {!isCollapsed && <span>关于我们</span>}
+            </Link>
           </div>
         </div>
       </nav>
