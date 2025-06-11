@@ -562,14 +562,14 @@ const FileList: React.FC<FileListProps> = ({
           isSelected
             ? 'bg-blue-50 dark:bg-gray-700 border-blue-500 dark:border-gray-500'
             : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
-        } h-32 sm:h-40 md:h-48`}
+        } h-48 sm:h-48 md:h-52`}
         onClick={(e) => {
           e.stopPropagation();
           handleFileSelect(file, e);
         }}
         onDoubleClick={() => handleFileDoubleClick(file)}
       >
-        <div className="text-3xl sm:text-4xl md:text-5xl mb-2 flex items-center justify-center flex-1 w-full relative">
+        <div className="text-3xl sm:text-4xl md:text-5xl mb-2 flex items-center justify-center flex-1 w-full max-h-24 relative">
           {showThumbnail ? (
             <img
               src={getThumbnailUrl(file.id)}
@@ -582,21 +582,19 @@ const FileList: React.FC<FileListProps> = ({
           )}
         </div>
         <div className="w-full overflow-hidden flex flex-col items-center">
-          <div className="text-center w-full text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 sm:mb-2 overflow-hidden text-ellipsis line-clamp-2 break-words leading-tight">
+          <div className="text-center w-full text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 sm:mb-2 overflow-hidden text-ellipsis line-clamp-2 break-words leading-tight whitespace-nowrap truncate w-full">
             {file.name}
           </div>
-          <div className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs text-gray-500 dark:text-gray-400">
-            {!file.isFolder && (
-              <div className="text-center">
-                {formatFileSize(file.size)}
-              </div>
-            )}
-            <div className="text-center hidden sm:block">{file.owner}</div>
+          <div className="grid grid-cols-2 items-center text-xs text-gray-500 dark:text-gray-400">
+            {!file.isFolder && <div className="text-center w-full">
+              {formatFileSize(file.size)}
+            </div>}
+            <div className="text-center">{file.owner}</div>
             <div className="text-center">
               {new Date(file.lastModified).toLocaleDateString()}
             </div>
             {file.processingStatus && (
-              <div className="relative mt-1 sm:mt-2 w-full flex flex-col items-center text-xs gap-1">
+              <div className="relative w-full flex flex-col items-center text-xs gap-1">
                 <span
                   className={`${
                     file.processingStatus === 'pending' ? 'text-yellow-500' :
@@ -620,7 +618,7 @@ const FileList: React.FC<FileListProps> = ({
             )}
           </div>
         </div>
-        <div className="absolute top-1 sm:top-2 right-1 sm:right-2 flex gap-0.5 sm:gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 rounded p-1 shadow-sm z-10">
+        <div className="absolute top-1 sm:top-2 right-1 sm:right-2 flex gap-0.5 sm:gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 rounded p-1 shadow-sm z-10">
           <button
             className="p-1.5 sm:p-1 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 touch-manipulation min-h-[36px] min-w-[36px] sm:min-h-auto sm:min-w-auto flex items-center justify-center"
             onClick={(e) => {
@@ -674,14 +672,15 @@ const FileList: React.FC<FileListProps> = ({
       {/* 工具栏 - 移动端优化 */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center p-2 sm:p-3 pb-3 border-b border-gray-200 dark:border-gray-700 gap-3 sm:gap-0">
         {/* 操作按钮区域 */}
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap gap-1 sm:gap-2 items-center">
           <button
             className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 border-none rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] hover:bg-gray-200 dark:hover:bg-gray-600 touch-manipulation flex-1 sm:flex-initial"
             onClick={() => setOperation({ type: 'upload' })}
             title="上传新文件"
           >
             <span>📤</span>
-            <span className="hidden xs:inline">上传文件</span>
+            <span className="hidden sm:inline text-xs sm:text-sm">上传文件</span>
+            <span className="sm:hidden text-xs sm:text-sm">上传</span>
           </button>
           <button
             className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 border-none rounded-md bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] hover:bg-gray-200 dark:hover:bg-gray-600 touch-manipulation flex-1 sm:flex-initial"
@@ -689,7 +688,8 @@ const FileList: React.FC<FileListProps> = ({
             title="创建新文件夹"
           >
             <span>📁</span>
-            <span className="hidden xs:inline">新建文件夹</span>
+            <span className="hidden sm:inline text-xs sm:text-sm">新建文件夹</span>
+            <span className="sm:hidden text-xs sm:text-sm">新建</span>
           </button>
           {selectedFiles.size > 0 && (
             <>
@@ -699,7 +699,7 @@ const FileList: React.FC<FileListProps> = ({
                 title="删除选中项"
               >
                 <span>🗑️</span>
-                <span className="hidden xs:inline">删除</span>
+                <span className="inline text-xs sm:text-sm">删除</span>
               </button>
               <button
                 className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 border-none rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] hover:bg-blue-200 dark:hover:bg-blue-900/50 touch-manipulation"
@@ -707,7 +707,7 @@ const FileList: React.FC<FileListProps> = ({
                 title="移动到其他文件夹"
               >
                 <span>📦</span>
-                <span className="hidden xs:inline">移动</span>
+                <span className="inline text-xs sm:text-sm">移动</span>
               </button>
             </>
           )}
@@ -717,7 +717,7 @@ const FileList: React.FC<FileListProps> = ({
         <div className="flex flex-wrap gap-2 items-center">
           <div className="flex gap-1 sm:gap-2 flex-1 sm:flex-initial">
             <button
-              className="px-2 sm:px-3 py-2 sm:py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs sm:text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] flex items-center justify-center hover:border-blue-500 hover:text-blue-500 touch-manipulation flex-1 sm:flex-initial"
+              className="px-0 sm:px-0.5 md:px-3 py-0 sm:py-0.5 md:py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] flex items-center justify-center hover:border-blue-500 hover:text-blue-500 touch-manipulation flex-1 sm:flex-initial"
               onClick={() => handleSort('name')}
             >
               <span className="hidden sm:inline">按名称排序</span>
@@ -727,7 +727,7 @@ const FileList: React.FC<FileListProps> = ({
               )}
             </button>
             <button
-              className="px-2 sm:px-3 py-2 sm:py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs sm:text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] flex items-center justify-center hover:border-blue-500 hover:text-blue-500 touch-manipulation flex-1 sm:flex-initial"
+              className="px-0 sm:px-0.5 md:px-3 py-0 sm:py-0.5 md:py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm cursor-pointer transition-all min-h-[44px] sm:min-h-[32px] flex items-center justify-center hover:border-blue-500 hover:text-blue-500 touch-manipulation flex-1 sm:flex-initial"
               onClick={() => handleSort('date')}
             >
               <span className="hidden sm:inline">按日期排序</span>
@@ -764,16 +764,16 @@ const FileList: React.FC<FileListProps> = ({
       {/* 面包屑导航 - 移动端优化 */}
       <div className="flex items-center gap-1 sm:gap-2 mb-4 sm:mb-6 p-2 bg-gray-100 dark:bg-gray-700 rounded-md overflow-x-auto scrollbar-hide">
         <span
-          className="text-gray-900 dark:text-gray-100 cursor-pointer transition-colors hover:text-blue-500 whitespace-nowrap px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 touch-manipulation"
+          className="text-gray-900 dark:text-gray-100 cursor-pointer transition-colors hover:text-blue-500 flex items-center"
           onClick={() => handleBreadcrumbClick(null)}
         >
           根目录
         </span>
         {folderPath.map((folder) => (
           <React.Fragment key={folder.id}>
-            <span className="text-gray-500 dark:text-gray-400 text-sm">/</span>
+            <span className="text-gray-500 dark:text-gray-400 flex items-center">/</span>
             <span
-              className="text-gray-900 dark:text-gray-100 cursor-pointer transition-colors hover:text-blue-500 whitespace-nowrap px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 touch-manipulation"
+              className="text-gray-900 dark:text-gray-100 cursor-pointer transition-colors hover:text-blue-500 flex items-center"
               onClick={() => handleBreadcrumbClick(folder.id)}
             >
               {folder.name}
@@ -807,10 +807,10 @@ const FileList: React.FC<FileListProps> = ({
                     <div className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                       {file.name}
                     </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-row sm:items-center gap-1 sm:gap-2 text-xs text-gray-500 dark:text-gray-400">
                       <div className="flex items-center gap-2">
-                        {!file.isFolder && <span>{formatFileSize(file.size)}</span>}
-                        {!file.isFolder && <span>•</span>}
+                        {!file.isFolder && <span className="hidden md:inline">{formatFileSize(file.size)}</span>}
+                        {!file.isFolder && <span className="hidden md:inline">•</span>}
                         <span className="hidden sm:inline">{new Date(file.lastModified).toLocaleString()}</span>
                         <span className="sm:hidden">{new Date(file.lastModified).toLocaleDateString()}</span>
                       </div>
@@ -842,7 +842,7 @@ const FileList: React.FC<FileListProps> = ({
                     </div>
                   </div>
                   <div className="hidden sm:block text-sm text-gray-600 dark:text-gray-400 mx-6">{file.owner}</div>
-                  <div className="flex gap-1 sm:gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       className="p-2 border-none bg-none cursor-pointer rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 touch-manipulation min-h-[44px] min-w-[44px] sm:min-h-auto sm:min-w-auto sm:p-1 flex items-center justify-center"
                       onClick={(e) => {
@@ -881,7 +881,7 @@ const FileList: React.FC<FileListProps> = ({
             })}
           </div>
         ) : (
-          <div className="p-2 sm:p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-4 flex-1 overflow-y-auto min-h-0 touch-scroll" ref={fileListRef}>
+          <div className="p-2 sm:p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-4 overflow-y-auto min-h-0 touch-scroll" ref={fileListRef}>
             {sortedFiles.map(renderGridItem)}
           </div>
         )}

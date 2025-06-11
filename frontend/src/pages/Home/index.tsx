@@ -89,7 +89,7 @@ const Home: React.FC = () => {
           <h1 className="m-0 text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 dark:text-gray-100">
             欢迎回来
           </h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+          <p className="hidden sm:block text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
             这里是您的工作空间，可以方便地管理文件和查看最近的活动。
           </p>
         </div>
