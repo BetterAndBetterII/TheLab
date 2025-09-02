@@ -319,7 +319,10 @@ class DocumentPipeline:
         document.keywords_pages = {}
 
         # 生成缩略图
-        document.thumbnail = self._generate_thumbnail(section.pages[0].file_path)
+        if section.pages:
+            document.thumbnail = self._generate_thumbnail(section.pages[0].file_path)
+        else:
+            document.thumbnail = None
 
         # 保存图片数据到content_pages
         for i, page in enumerate(section.pages, 1):

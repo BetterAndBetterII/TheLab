@@ -188,6 +188,8 @@ async def list_folders(
 
     folders = query.all()
 
+    if not folders:
+        return []
     user = db.query(User).filter(User.id == folders[0].owner_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -231,6 +233,8 @@ async def get_folder_tree(
         base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
     # 获取所有文件夹
     folders = base_query_folder.all()
+    if not folders:
+        return []
 
     # 构建树结构
     def build_tree(parent_id: Optional[int] = None):
