@@ -179,7 +179,7 @@ class KnowledgeBase:
         )
 
         # 执行文档注入管道
-        await self.pipeline.arun(documents=[doc], num_workers=12)
+        await self.pipeline.arun(documents=[doc], num_workers=4)
         return doc_id
 
     async def upload_files(self, file_paths: list[str]):
