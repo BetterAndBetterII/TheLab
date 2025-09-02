@@ -9,6 +9,7 @@ from datetime import datetime
 
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from typing import Optional, Dict, Any, List
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -26,7 +27,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import Mapped, mapped_column, relationship, sessionmaker
 
 from config import get_settings
 
@@ -83,14 +84,14 @@ class Folder(Base):
 
     __tablename__ = "folders"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    path = Column(String, index=True, unique=True)  # 完整路径，如 "/文档/工作"
-    parent_id = Column(Integer, ForeignKey("folders.id"), nullable=True)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # 修改为外键
-    is_folder = Column(Boolean, default=True)  # 添加类型标识字段
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String, index=True)
+    path: Mapped[str] = mapped_column(String, index=True, unique=True)  # 完整路径，如 "/文档/工作"
+    parent_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("folders.id"), nullable=True)
+    owner_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)  # 修改为外键
+    is_folder: Mapped[bool] = mapped_column(Boolean, default=True)  # 添加类型标识字段
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     # 关系
     parent = relationship("Folder", remote_side=[id], backref="subfolders")
@@ -106,20 +107,20 @@ class ApiKey(Base):
 
     __tablename__ = "api_keys"
 
-    id = Column(Integer, primary_key=True, index=True)
-    key = Column(String, unique=True)
-    base_url = Column(String, nullable=True)
-    api_type = Column(String, nullable=True)
-    name = Column(String)
-    description = Column(Text, nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.now)
-    last_used_at = Column(DateTime, nullable=True)
-    last_error_message = Column(Text, nullable=True)
-    counter = Column(Integer, default=0)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    key: Mapped[str] = mapped_column(String, unique=True)
+    base_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    api_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    counter: Mapped[int] = mapped_column(Integer, default=0)
 
     # 添加外键关联
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     # 关系
     user = relationship("User", back_populates="api_keys")
 
@@ -132,13 +133,13 @@ class ProcessingRecord(Base):
 
     __tablename__ = "processing_records"
 
-    id = Column(Integer, primary_key=True, index=True)
-    document_id = Column(Integer, ForeignKey("documents.id"))
-    file_hash = Column(String, index=True)  # 文件内容的哈希值
-    version = Column(Integer, default=1)  # 处理版本号
-    processor_version = Column(String)  # 处理器版本
-    processing_config = Column(JSON)  # 处理配置
-    created_at = Column(DateTime, default=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    document_id: Mapped[int] = mapped_column(Integer, ForeignKey("documents.id"))
+    file_hash: Mapped[str] = mapped_column(String, index=True)  # 文件内容的哈希值
+    version: Mapped[int] = mapped_column(Integer, default=1)  # 处理版本号
+    processor_version: Mapped[str] = mapped_column(String)  # 处理器版本
+    processing_config: Mapped[Dict[str, Any]] = mapped_column(JSON)  # 处理配置
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     # 关系
     document = relationship("Document", back_populates="processing_records")
@@ -152,48 +153,48 @@ class Document(Base):
 
     __tablename__ = "documents"
 
-    id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String, index=True)
-    content_type = Column(String)
-    file_data = Column(LargeBinary)  # 存储原始文件二进制数据
-    file_size = Column(Integer)  # 文件大小（字节）
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # 修改为外键
-    path = Column(String)  # 添加路径字段
-    is_folder = Column(Boolean, default=False)  # 添加类型标识字段
-    mime_type = Column(String)  # 添加MIME类型字段
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    filename: Mapped[str] = mapped_column(String, index=True)
+    content_type: Mapped[str] = mapped_column(String)
+    file_data: Mapped[bytes] = mapped_column(LargeBinary)  # 存储原始文件二进制数据
+    file_size: Mapped[int] = mapped_column(Integer)  # 文件大小（字节）
+    owner_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)  # 修改为外键
+    path: Mapped[str] = mapped_column(String)  # 添加路径字段
+    is_folder: Mapped[bool] = mapped_column(Boolean, default=False)  # 添加类型标识字段
+    mime_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # 添加MIME类型字段
 
     # 分页文本内容，格式：{"1": "第一页内容", "2": "第二页内容", ...}
-    content_pages = Column(JSON, default=dict)
+    content_pages: Mapped[Dict[str, str]] = mapped_column(JSON, default=dict)
     # 分页摘要，格式：{"1": "第一页摘要", "2": "第二页摘要", ...}
-    summary_pages = Column(JSON, default=dict)
+    summary_pages: Mapped[Dict[str, str]] = mapped_column(JSON, default=dict)
     # 分页翻译，格式：{"1": "第一页翻译", "2": "第二页翻译", ...}
-    translation_pages = Column(JSON, default=dict)
+    translation_pages: Mapped[Dict[str, str]] = mapped_column(JSON, default=dict)
     # 分页关键词，格式：{"1": ["关键词1", "关键词2"], "2": ["关键词3", "关键词4"], ...}
-    keywords_pages = Column(JSON, default=dict)
+    keywords_pages: Mapped[Dict[str, List[str]]] = mapped_column(JSON, default=dict)
 
     # thumbnail缩略图
-    thumbnail = Column(LargeBinary, nullable=True)
+    thumbnail: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
 
     # 每页字数限制
-    page_size = Column(Integer, default=2000)  # 默认每页2000字
-    total_pages = Column(Integer, default=0)  # 总页数
+    page_size: Mapped[int] = mapped_column(Integer, default=2000)  # 默认每页2000字
+    total_pages: Mapped[int] = mapped_column(Integer, default=0)  # 总页数
 
     # 处理状态
-    processing_status = Column(Enum(ProcessingStatus), default=ProcessingStatus.PENDING)
-    processor = Column(String, nullable=True)
-    error_message = Column(Text, nullable=True)
+    processing_status: Mapped[ProcessingStatus] = mapped_column(Enum(ProcessingStatus), default=ProcessingStatus.PENDING)
+    processor: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # 文件夹关联
-    folder_id = Column(Integer, ForeignKey("folders.id"))
+    folder_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("folders.id"))
     folder = relationship("Folder", back_populates="documents")
 
     # 用户关联
     owner = relationship("User", back_populates="documents")
 
     # 时间戳
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    processed_at = Column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # 关系
     conversations = relationship(
@@ -216,12 +217,12 @@ class Document(Base):
     #     "created": int(datetime.now().timestamp()),
     #     "summary": "总结内容"
     # }
-    flow_history = Column(JSON, default=list)
+    flow_history: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, default=list)
     # 测验历史记录，格式：[{"page": 1, "questions": [...], "created_at": "2024-03-21T10:00:00"}]
     # quiz_history = Column(JSON, default=list)
 
     # 思维导图
-    mindmap = Column(JSON, default=dict)
+    mindmap: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
 
     # 测验历史记录
     quiz_history = relationship(
@@ -255,12 +256,12 @@ class QuizHistory(Base):
 
     __tablename__ = "quiz_history"
 
-    id = Column(Integer, primary_key=True, index=True)
-    document_id = Column(Integer, ForeignKey("documents.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
-    quiz_history = Column(JSON, default=list)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    document_id: Mapped[int] = mapped_column(Integer, ForeignKey("documents.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    quiz_history: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     # 关系
     document = relationship("Document", back_populates="quiz_history")
@@ -275,10 +276,10 @@ class DocumentReadRecord(Base):
 
     __tablename__ = "document_read_records"
 
-    id = Column(Integer, primary_key=True, index=True)
-    document_id = Column(Integer, ForeignKey("documents.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
-    read_at = Column(DateTime, default=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    document_id: Mapped[int] = mapped_column(Integer, ForeignKey("documents.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    read_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
 class Note(Base):
@@ -289,14 +290,14 @@ class Note(Base):
 
     __tablename__ = "notes"
 
-    id = Column(Integer, primary_key=True, index=True)
-    content = Column(Text, nullable=False)
-    quote = Column(Text)  # 引用的原文内容
-    document_id = Column(Integer, ForeignKey("documents.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
-    highlight_areas = Column(JSON)  # 存储高亮区域信息
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    quote: Mapped[Optional[str]] = mapped_column(Text)  # 引用的原文内容
+    document_id: Mapped[int] = mapped_column(Integer, ForeignKey("documents.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    highlight_areas: Mapped[List[Dict[str, Any]]] = mapped_column(JSON)  # 存储高亮区域信息
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     # 关系
     document = relationship("Document", back_populates="notes")
@@ -311,12 +312,12 @@ class Conversation(Base):
 
     __tablename__ = "conversations"
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    user_id = Column(Integer, ForeignKey("users.id"))  # 添加用户关联
-    messages = Column(JSON, default=list)  # 存储聊天消息的JSON字段
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))  # 添加用户关联
+    messages: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, default=list)  # 存储聊天消息的JSON字段
 
     documents = relationship(
         "Document",

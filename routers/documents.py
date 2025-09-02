@@ -305,6 +305,7 @@ async def upload_file(
 
     # 读取文件内容
     file_content = await file.read()
+    filename = filename or file.filename
 
     # 创建新的文档记录
     db_document = Document(
@@ -314,7 +315,7 @@ async def upload_file(
         file_size=len(file_content),
         folder_id=int(folderId) if folderId else None,
         owner_id=current_user.id,  # 使用当前用户ID
-        path=os.path.join(folder_path, file.filename),  # 构建完整路径
+        path=os.path.join(folder_path, str(filename)),  # 构建完整路径
         is_folder=False,
         mime_type=file.content_type,
         processing_status=ProcessingStatus.PENDING,  # 设置初始状态为待处理
@@ -324,6 +325,10 @@ async def upload_file(
     db.commit()
     db.refresh(db_document)
 
+    user = db.query(User).filter(User.id == db_document.owner_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
     # 直接添加到处理队列
     document_pipeline.add_task(db_document.id)
 
@@ -333,12 +338,12 @@ async def upload_file(
         type=db_document.content_type,
         size=db_document.file_size,
         lastModified=db_document.updated_at,
-        owner=str(db.query(User).filter(User.id == db_document.owner_id).first().username),
+        owner=str(user.username),
         parentId=(str(db_document.folder_id) if db_document.folder_id else None),
         path=db_document.path,
         isFolder=False,
         mimeType=db_document.content_type,
-        processingStatus=db_document.processing_status,
+        processingStatus=db_document.processing_status.value,
     )
 
 
@@ -383,7 +388,7 @@ async def list_files(
     else:
         # 只返回当前用户的文档
         query = base_query.filter(
-            (Document.folder_id.is_(None) if parentId is None else True),
+            (Document.folder_id.is_(None) if parentId is None else True),  # type: ignore
         ).with_entities(
             Document.id,
             Document.filename,
@@ -399,6 +404,11 @@ async def list_files(
         )
 
     documents: List[Document] = query.all()
+    if not documents:
+        return []
+    user = db.query(User).filter(User.id == documents[0].owner_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
     return [
         FileResponse(
             id=str(doc.id),
@@ -406,12 +416,12 @@ async def list_files(
             type=doc.content_type,
             size=doc.file_size,
             lastModified=doc.updated_at,
-            owner=str(db.query(User).filter(User.id == doc.owner_id).first().username),
+            owner=str(user.username),
             parentId=str(doc.folder_id) if doc.folder_id else None,
             path=doc.path,
             isFolder=False,
             mimeType=doc.content_type,
-            processingStatus=doc.processing_status,
+            processingStatus=doc.processing_status.value,
             errorMessage=doc.error_message,
         )
         for doc in documents
@@ -492,13 +502,17 @@ async def get_file_details(
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
 
+    user = db.query(User).filter(User.id == document.owner_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
     return FileResponse(
         id=str(document.id),
         name=document.filename,
         type=document.content_type,
         size=document.file_size,
         lastModified=document.updated_at,
-        ownerId=str(document.owner_id),
+        owner=str(user.username),
         parentId=(str(document.folder_id) if document.folder_id else None),
         path=document.path,
         isFolder=False,
@@ -619,7 +633,7 @@ async def delete_file(
     Raises:
         HTTPException: 当文档不存在时抛出404错误
     """
-    if current_user.id in [1, 2]:
+    if current_user.is_superuser:
         base_query = db.query(Document)
     else:
         base_query = db.query(Document).filter(Document.owner_id == current_user.id)
@@ -674,7 +688,7 @@ async def rename_file(
         base_query = db.query(Document)
     else:
         base_query = db.query(Document).filter(Document.owner_id == current_user.id)
-    if current_user.id in [1, 2]:
+    if current_user.is_superuser:
         base_query = db.query(Document)
     document = base_query.filter(Document.id == int(fileId)).first()
     if not document:
@@ -686,13 +700,17 @@ async def rename_file(
     db.commit()
     db.refresh(document)
 
+    user = db.query(User).filter(User.id == document.owner_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
     return FileResponse(
         id=str(document.id),
         name=document.filename,
         type=document.content_type,
         size=document.file_size,
         lastModified=document.updated_at,
-        owner=str(db.query(User).filter(User.id == document.owner_id).first().username),
+        owner=str(user.username),
         parentId=(str(document.folder_id) if document.folder_id else None),
         path=document.path,
         isFolder=False,
@@ -744,13 +762,17 @@ async def move_file(
     db.commit()
     db.refresh(document)
 
+    user = db.query(User).filter(User.id == document.owner_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
     return FileResponse(
         id=str(document.id),
         name=document.filename,
         type=document.content_type,
         size=document.file_size,
         lastModified=document.updated_at,
-        owner=str(db.query(User).filter(User.id == document.owner_id).first().username),
+        owner=str(user.username),
         parentId=(str(document.folder_id) if document.folder_id else None),
         path=document.path,
         isFolder=False,
@@ -776,7 +798,7 @@ async def batch_delete_files(
     Returns:
         dict: 删除结果信息
     """
-    if current_user.id in [1, 2]:
+    if current_user.is_superuser:
         base_query = db.query(Document)
     else:
         base_query = db.query(Document).filter(Document.owner_id == current_user.id)
@@ -785,6 +807,9 @@ async def batch_delete_files(
         document = base_query.filter(Document.id == int(file_id)).with_entities(Document.id).first()
         if document:
             file_ids.append(document.id)
+
+    if not file_ids:
+        raise HTTPException(status_code=400, detail="没有要删除的文件")
 
     # 先删除相关的处理记录
     db.query(ProcessingRecord).filter(ProcessingRecord.document_id.in_(file_ids)).delete(synchronize_session=False)
@@ -837,7 +862,7 @@ async def batch_move_files(
     else:
         base_query_document = db.query(Document).filter(Document.owner_id == current_user.id)
         base_query_folder = db.query(Folder).filter(Folder.owner_id == current_user.id)
-    if current_user.id in [1, 2]:
+    if current_user.is_superuser:
         base_query_document = db.query(Document)
         base_query_folder = db.query(Folder)
     if request.targetFolderId:
@@ -1010,7 +1035,7 @@ async def create_note(
     return NoteResponse(
         id=str(db_note.id),
         content=db_note.content,
-        quote=db_note.quote,
+        quote=db_note.quote if db_note.quote else "",
         highlight_areas=db_note.highlight_areas,
         created_at=db_note.created_at,
         updated_at=db_note.updated_at,
@@ -1038,7 +1063,7 @@ async def get_document_notes(
         NoteResponse(
             id=str(note.id),
             content=note.content,
-            quote=note.quote,
+            quote=note.quote if note.quote else "",
             highlight_areas=note.highlight_areas,
             created_at=note.created_at,
             updated_at=note.updated_at,

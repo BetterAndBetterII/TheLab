@@ -2,14 +2,15 @@ version: '3.8'
 
 services:
   thelab:
-    # build: .
-    image: ghcr.io/betterandbetterii/the-lab:latest
+    build: .
+    # image: ghcr.io/betterandbetterii/the-lab:latest
     volumes:
       - ./tmp/persist:/app/tmp/persist
     ports:
       - "8003:8000"
     env_file:
-      - .env
+      # - .env
+      - docker.env
     depends_on:
       - db
       - redis
@@ -37,8 +38,8 @@ services:
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     restart: always
-    # ports:
-    #   - "4787:6379"
+    ports:
+      - "4787:6379"
     volumes:
       - redis_data:/data
     networks:

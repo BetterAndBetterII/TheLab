@@ -2,8 +2,6 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
-import Forum from './pages/Forum';
-import PostDetail from './pages/PostDetail';
 import Email from './pages/Email';
 import Settings from './pages/Settings';
 import Chat from './pages/Chat';
@@ -49,22 +47,6 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <Search />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/forum"
-        element={
-          <ProtectedRoute>
-            <Forum />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/forum/post/:postId"
-        element={
-          <ProtectedRoute>
-            <PostDetail />
           </ProtectedRoute>
         }
       />

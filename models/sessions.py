@@ -4,9 +4,10 @@
 """
 
 from datetime import datetime
+from typing import Optional, Dict, Any
 
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
 
@@ -19,18 +20,14 @@ class Session(Base):
 
     __tablename__ = "sessions"
 
-    id = Column(String, primary_key=True)  # 使用UUID作为session_id
-    user_id = Column(
-        Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
-        index=True,
-    )
-    created_at = Column(DateTime, default=datetime.now)
-    expires_at = Column(DateTime, nullable=False)
-    last_accessed_at = Column(DateTime, default=datetime.now)
-    data = Column(JSON, nullable=True)  # 存储会话上下文信息
-    user_agent = Column(String, nullable=True)  # 存储用户代理信息
-    ip_address = Column(String, nullable=True)  # 存储IP地址
+    id: Mapped[str] = mapped_column(String, primary_key=True)  # 使用UUID作为session_id
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    last_accessed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)  # 存储会话上下文信息
+    user_agent: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # 存储用户代理信息
+    ip_address: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # 存储IP地址
 
     # 关联到用户
     user = relationship("User", back_populates="sessions")

@@ -5,15 +5,15 @@
 
 import enum
 from datetime import datetime
+from typing import Optional
 
 from passlib.context import CryptContext
-from sqlalchemy import JSON, Boolean, Column, DateTime
+from sqlalchemy import JSON, Boolean, DateTime
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
-from models.forum import Reply, Topic
 from models.sessions import Session
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -53,33 +53,33 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True)
-    username = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
-    full_name = Column(String, nullable=True)
-    status = Column(SQLAlchemyEnum(UserStatus), default=UserStatus.PENDING)
-    is_superuser = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    last_login = Column(DateTime, nullable=True)
-    is_active = Column(Boolean, default=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    email: Mapped[str] = mapped_column(String, unique=True, index=True)
+    username: Mapped[str] = mapped_column(String, unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String)
+    full_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    status: Mapped[UserStatus] = mapped_column(SQLAlchemyEnum(UserStatus), default=UserStatus.PENDING)
+    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # 基本信息
-    bio = Column(String, nullable=True)
+    bio: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     # 通知设置默认值:
     # {
     #   "email": true,  # 是否开启邮件通知
     #   "push": true    # 是否开启推送通知
     # } {"email": true, "push": true}
-    notifications = Column(JSON, default={"email": True, "push": True})
+    notifications: Mapped[dict] = mapped_column(JSON, default={"email": True, "push": True})
 
     # AI服务配置
-    ai_provider = Column(SQLAlchemyEnum(AIProvider), default=AIProvider.OPENAI)
-    ai_api_key = Column(String, nullable=True)
-    ai_base_url = Column(String, nullable=True)
-    ai_standard_model = Column(String, nullable=True)
-    ai_advanced_model = Column(String, nullable=True)
+    ai_provider: Mapped[AIProvider] = mapped_column(SQLAlchemyEnum(AIProvider), default=AIProvider.OPENAI)
+    ai_api_key: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ai_base_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ai_standard_model: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ai_advanced_model: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # 关联到会话
     sessions = relationship(Session, back_populates="user", cascade="all, delete-orphan")
@@ -90,10 +90,6 @@ class User(Base):
 
     # 定义反向关系
     api_keys = relationship("ApiKey", back_populates="user")
-
-    # 添加 topics 和 replies 关系
-    topics = relationship(Topic, back_populates="user", cascade="all, delete-orphan")
-    replies = relationship(Reply, back_populates="user", cascade="all, delete-orphan")
 
     # 添加笔记关系
     notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")

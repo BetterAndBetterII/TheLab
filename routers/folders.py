@@ -139,13 +139,17 @@ async def create_folder(
     db.commit()
     db.refresh(folder)
 
+    user = db.query(User).filter(User.id == folder.owner_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
     return FileResponse(
         id=str(folder.id),
         name=folder.name,
         type="folder",
         size=0,
         lastModified=folder.updated_at,
-        owner=str(db.query(User).filter(User.id == folder.owner_id).first().username),
+        owner=str(user.username),
         parentId=str(folder.parent_id) if folder.parent_id else None,
         path=folder.path,
         isFolder=True,
@@ -180,9 +184,14 @@ async def list_folders(
         query = query.filter(Folder.parent_id == int(parentId))
 
     # 只返回当前用户的文件夹
-    query = query.filter(Folder.parent_id.is_(None) if parentId is None else True)
+    query = query.filter(Folder.parent_id.is_(None) if parentId is None else True)  # type: ignore
 
     folders = query.all()
+
+    user = db.query(User).filter(User.id == folders[0].owner_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
     return [
         FileResponse(
             id=str(folder.id),
@@ -190,7 +199,7 @@ async def list_folders(
             type="folder",
             size=0,
             lastModified=folder.updated_at,
-            owner=str(db.query(User).filter(User.id == folder.owner_id).first().username),
+            owner=str(user.username),
             parentId=(str(folder.parent_id) if folder.parent_id else None),
             path=folder.path,
             isFolder=True,
@@ -290,13 +299,17 @@ async def update_folder(
     db.commit()
     db.refresh(folder)
 
+    user = db.query(User).filter(User.id == folder.owner_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
     return FileResponse(
         id=str(folder.id),
         name=folder.name,
         type="folder",
         size=0,
         lastModified=folder.updated_at,
-        owner=str(db.query(User).filter(User.id == folder.owner_id).first().username),
+        owner=str(user.username),
         parentId=str(folder.parent_id) if folder.parent_id else None,
         path=folder.path,
         isFolder=True,
@@ -325,7 +338,7 @@ async def delete_folder(
     Raises:
         HTTPException: 当文件夹不存在或非空时抛出
     """
-    if current_user.id in [1, 2]:
+    if current_user.is_superuser:
         base_query_folder = db.query(Folder)
         base_query_document = db.query(Document)
     else:
@@ -369,7 +382,7 @@ async def batch_delete_folders(
     Raises:
         HTTPException: 当文件夹不存在时抛出
     """
-    if current_user.id in [1, 2]:
+    if current_user.is_superuser:
         base_query_folder = db.query(Folder)
         base_query_document = db.query(Document)
     else:
@@ -419,13 +432,17 @@ async def get_folder(
     if not folder:
         raise HTTPException(status_code=404, detail="文件夹不存在")
 
+    user = db.query(User).filter(User.id == folder.owner_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
     return FileResponse(
         id=str(folder.id),
         name=folder.name,
         type="folder",
         size=0,
         lastModified=folder.updated_at,
-        owner=str(db.query(User).filter(User.id == folder.owner_id).first().username),
+        owner=str(user.username),
         parentId=str(folder.parent_id) if folder.parent_id else None,
         path=folder.path,
         isFolder=True,
@@ -517,7 +534,7 @@ async def rename_folder(
         base_query = db.query(Folder)
     else:
         base_query = db.query(Folder).filter(Folder.owner_id == current_user.id)
-    if current_user.id in [1, 2]:
+    if current_user.is_superuser:
         base_query = db.query(Folder)
     folder = base_query.filter(Folder.id == int(folderId)).first()
     if not folder:
@@ -529,13 +546,17 @@ async def rename_folder(
     db.commit()
     db.refresh(folder)
 
+    user = db.query(User).filter(User.id == folder.owner_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
     return {
         "id": str(folder.id),
         "name": folder.name,
         "type": "folder",
         "size": 0,
         "lastModified": folder.updated_at,
-        "owner": str(db.query(User).filter(User.id == folder.owner_id).first().username),
+        "owner": str(user.username),
         "parentId": (str(folder.parent_id) if folder.parent_id else None),
         "path": folder.path,
         "isFolder": True,

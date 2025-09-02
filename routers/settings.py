@@ -101,7 +101,7 @@ async def get_settings(
         ),
         "globalLLM": settings.GLOBAL_LLM,
         "globalMODE": settings.GLOBAL_MODE,
-        "isAdmin": current_user.id in [1, 2],
+        "isAdmin": current_user.is_superuser,
     }
 
 

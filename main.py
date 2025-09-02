@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from routers import auth, conversations, documents, folders, forum, search, settings
+from routers import auth, conversations, documents, folders, search, settings
 
 # 配置根日志记录器
 root_logger = logging.getLogger()
@@ -94,7 +94,6 @@ api_app.include_router(auth.router)  # 用户认证路由
 api_app.include_router(documents.router)  # 文档路由
 api_app.include_router(folders.router)  # 文件夹路由
 api_app.include_router(conversations.router)  # 对话路由
-api_app.include_router(forum.router)  # 论坛路由
 api_app.include_router(search.router)  # 搜索路由
 api_app.include_router(settings.router)  # 设置路由
 

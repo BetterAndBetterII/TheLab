@@ -5,6 +5,7 @@ import DragZone from './DragZone';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { List, Grid } from 'lucide-react';
 import { BASE_URL } from '../../api/config';
+import { useToast } from '../Toast/ToastManager';
 
 interface FileOperation {
   type: 'rename' | 'move' | 'upload';
@@ -57,17 +58,6 @@ const PROGRESS: Record<ProcessingStatus, number> = {
   'failed': 100,
 };
 
-// 声明toast类型
-declare global {
-  interface Window {
-    toast: {
-      success: (message: string) => void;
-      error: (message: string) => void;
-      info: (message: string) => void;
-    };
-  }
-}
-
 const FileList: React.FC<FileListProps> = ({
   onFileSelect,
   onFolderChange,
@@ -96,6 +86,29 @@ const FileList: React.FC<FileListProps> = ({
   const [folderTree, setFolderTree] = useState<FolderTree[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
+  const { addToast } = useToast();
+
+  const getErrorMessage = (error: unknown): string => {
+    if (!error) return '未知错误';
+    if (typeof error === 'string') return error;
+    if (error instanceof Error && error.message) return error.message;
+    type MaybeAxiosError = {
+      response?: { data?: { message?: unknown; detail?: unknown; error?: unknown } };
+      message?: unknown;
+    };
+    const anyErr = error as MaybeAxiosError;
+    const axiosMsg =
+      anyErr?.response?.data?.message ||
+      anyErr?.response?.data?.detail ||
+      anyErr?.response?.data?.error ||
+      anyErr?.message;
+    if (typeof axiosMsg === 'string') return axiosMsg;
+    try {
+      return JSON.stringify(anyErr);
+    } catch {
+      return '未知错误';
+    }
+  };
 
   // 添加缩略图加载错误状态
   const [thumbnailErrors, setThumbnailErrors] = useState<Set<string>>(new Set());
@@ -222,10 +235,10 @@ const FileList: React.FC<FileListProps> = ({
       }
       fetchFiles(getCurrentFolderId());
       setOperation(null);
-      window.toast.success('上传文件成功');
+      addToast({ title: '成功', description: '上传文件成功', type: 'default' });
     } catch (error) {
       console.error('Error uploading files:', error);
-      window.toast.error('上传文件失败');
+      addToast({ title: '错误', description: `上传文件失败：${getErrorMessage(error)}` , type: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -240,10 +253,10 @@ const FileList: React.FC<FileListProps> = ({
       setNewFolderName('');
       setShowNewFolderDialog(false);
       fetchFiles(getCurrentFolderId());
-      window.toast.success('文件夹创建成功');
+      addToast({ title: '成功', description: '文件夹创建成功', type: 'default' });
     } catch (error) {
       console.error('Error creating folder:', error);
-      window.toast.error('创建文件夹失败');
+      addToast({ title: '错误', description: `创建文件夹失败：${getErrorMessage(error)}`, type: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -272,10 +285,10 @@ const FileList: React.FC<FileListProps> = ({
 
         setSelectedFiles(new Set());
         fetchFiles(getCurrentFolderId());
-        window.toast.success('删除成功');
+        addToast({ title: '成功', description: '删除成功', type: 'default' });
       } catch (error) {
         console.error('Error deleting files:', error);
-        window.toast.error('删除失败');
+        addToast({ title: '错误', description: `删除失败：${getErrorMessage(error)}`, type: 'destructive' });
       } finally {
         setLoading(false);
       }
@@ -296,10 +309,10 @@ const FileList: React.FC<FileListProps> = ({
       setSelectedFiles(new Set());
       setOperation(null);
       fetchFiles(targetFolderId);
-      window.toast.success('移动成功');
+      addToast({ title: '成功', description: '移动成功', type: 'default' });
     } catch (error) {
       console.error('Error moving files:', error);
-      window.toast.error('移动失败');
+      addToast({ title: '错误', description: `移动失败：${getErrorMessage(error)}`, type: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -312,10 +325,10 @@ const FileList: React.FC<FileListProps> = ({
       await fileApi.renameFile(fileId, { newName });
       setOperation(null);
       fetchFiles(getCurrentFolderId());
-      window.toast.success('重命名成功');
+      addToast({ title: '成功', description: '重命名成功', type: 'default' });
     } catch (error) {
       console.error('Error renaming file:', error);
-      window.toast.error('重命名失败');
+      addToast({ title: '错误', description: `重命名失败：${getErrorMessage(error)}`, type: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -328,17 +341,17 @@ const FileList: React.FC<FileListProps> = ({
       await fileApi.renameFolder(folderId, { newName });
       setOperation(null);
       fetchFiles(getCurrentFolderId());
-      window.toast.success('重命名成功');
+      addToast({ title: '成功', description: '重命名成功', type: 'default' });
     } catch (error) {
       console.error('Error renaming folder:', error);
-      window.toast.error('重命名失败');
+      addToast({ title: '错误', description: `重命名失败：${getErrorMessage(error)}`, type: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDownload = async (fileId: string, isFolder: boolean) => {
-    window.toast.info("文件正在下载中...");
+    addToast({ title: '提示', description: '文件正在下载中...', type: 'default' });
     try {
       if (isFolder) {
         await fileApi.downloadFolder(fileId);
@@ -347,9 +360,9 @@ const FileList: React.FC<FileListProps> = ({
       }
     } catch (error) {
       console.error('Error downloading file:', error);
-      window.toast.error('下载失败');
+      addToast({ title: '错误', description: `下载失败：${getErrorMessage(error)}`, type: 'destructive' });
     }
-    window.toast.success('下载成功');
+    addToast({ title: '成功', description: '下载成功', type: 'default' });
   };
 
   const handleSort = (key: 'name' | 'date') => {
@@ -508,10 +521,10 @@ const FileList: React.FC<FileListProps> = ({
       setLoading(true);
       await fileApi.retryProcessing(fileId);
       fetchFiles(getCurrentFolderId());
-      window.toast.success('已重新开始处理文件');
+      addToast({ title: '成功', description: '已重新开始处理文件', type: 'default' });
     } catch (error) {
       console.error('Error retrying file processing:', error);
-      window.toast.error('重试处理失败');
+      addToast({ title: '错误', description: `重试处理失败：${getErrorMessage(error)}`, type: 'destructive' });
     } finally {
       setLoading(false);
     }
