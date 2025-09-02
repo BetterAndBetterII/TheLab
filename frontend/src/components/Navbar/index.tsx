@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import styles from './Navbar.module.css';
-import { FiHome, FiMail, FiMessageSquare, FiSettings, FiMenu, FiChevronLeft, FiChevronRight, FiUsers, FiSearch } from 'react-icons/fi';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { 
+  Home, 
+  MessageSquare, 
+  Settings, 
+  Menu, 
+  ChevronLeft, 
+  ChevronRight, 
+  Search,
+  Bookmark
+} from 'lucide-react';
 
 export default function Navbar(
   {
@@ -40,12 +51,10 @@ export default function Navbar(
   if (isLoginPage) return null;
 
   const menuItems = [
-    { path: '/', icon: <FiHome size={20} />, label: '主页' },
-    { path: '/chat', icon: <FiMessageSquare size={20} />, label: '聊天' },
-    { path: '/search', icon: <FiSearch size={20} />, label: '搜索' },
-    // { path: '/forum', icon: <FiUsers size={20} />, label: '论坛' },
-    // { path: '/email', icon: <FiMail size={20} />, label: '邮件' },
-    { path: '/settings', icon: <FiSettings size={20} />, label: '设置' },
+    { path: '/', icon: <Home size={20} />, label: '主页' },
+    { path: '/chat', icon: <MessageSquare size={20} />, label: '聊天' },
+    { path: '/search', icon: <Search size={20} />, label: '搜索' },
+    { path: '/settings', icon: <Settings size={20} />, label: '设置' },
   ];
 
   const toggleCollapse = () => {
@@ -65,48 +74,87 @@ export default function Navbar(
 
   return (
     <>
-      <button
-        className={styles.mobileMenuButton}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <FiMenu size={24} />
-      </button>
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <ThemeToggle />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <Menu size={24} />
+        </Button>
+      </div>
 
-      <nav className={`${styles.navbar} ${isOpen ? styles.open : ''} ${!isMobile && isCollapsed ? styles.collapsed : ''}`}>
-        <div className={styles.container}>
-          <div className={styles.header}>
-            <Link to="/" className={styles.brand} onClick={handleMenuItemClick}>
-              <span className={styles.logoIcon}>🧪</span>
-              <span className={styles.logoText}>TheLab</span>
+      <nav className={cn(
+        "fixed top-0 left-0 h-full bg-background border-r border-border transition-all duration-300 z-40",
+        isCollapsed ? "w-[85px]" : "w-[240px]",
+        isMobile && !isOpen ? "-translate-x-full" : "translate-x-0"
+      )}>
+        <div className="flex flex-col h-full p-4">
+          <div className="flex items-center justify-between mb-8">
+            <Link to="/" className="flex items-center gap-3" onClick={handleMenuItemClick}>
+              <span className="text-2xl">🧪</span>
+              {!isCollapsed && (
+                <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                  TheLab
+                </span>
+              )}
             </Link>
 
-            <button
-              className={styles.collapseButton}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden md:flex"
               onClick={toggleCollapse}
               title={isCollapsed ? '展开导航栏' : '收起导航栏'}
             >
-              {isCollapsed ? <FiChevronRight size={20} /> : <FiChevronLeft size={20} />}
-            </button>
+              {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </Button>
+          </div>
 
-            <div className={styles.desktopMenu}>
-              {menuItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`${styles.menuItem} ${
-                    location.pathname === item.path ? styles.activeMenuItem : ''
-                  }`}
-                  title={isCollapsed ? item.label : ''}
-                  onClick={handleMenuItemClick}
-                >
-                  {item.icon}
-                  <span className={styles.menuLabel}>{item.label}</span>
-                </Link>
-              ))}
-            </div>
+          <div className="flex flex-col space-y-1 flex-1">
+            {menuItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={handleMenuItemClick}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
+                  location.pathname === item.path 
+                    ? "bg-primary/10 text-primary" 
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
+                title={isCollapsed ? item.label : ''}
+              >
+                <div className="flex-shrink-0">{item.icon}</div>
+                {!isCollapsed && <span>{item.label}</span>}
+              </Link>
+            ))}
+          </div>
+
+          {/* 关于我们链接 */}
+          <div className="mt-auto pt-4 border-t border-border">
+            <Link
+              to="/about"
+              onClick={handleMenuItemClick}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
+                location.pathname === '/about'
+                  ? "bg-primary/10 text-primary" 
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              )}
+              title={isCollapsed ? '关于我们' : ''}
+            >
+              <div className="flex-shrink-0">
+                <Bookmark size={20} className="text-indigo-600 dark:text-indigo-400" />
+              </div>
+              {!isCollapsed && <span>关于我们</span>}
+            </Link>
           </div>
         </div>
       </nav>
     </>
   );
 }
+

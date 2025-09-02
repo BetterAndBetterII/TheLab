@@ -1,8 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import AppRoutes from './routes';
-import styles from './App.module.css';
 import ToastManager from './components/Toast/ToastManager';
 import { clarity } from 'react-microsoft-clarity';
 
@@ -11,17 +11,16 @@ clarity.init("qjsxn8sbzh");
 const App: React.FC = () => {
   return (
     <Router>
-      <AuthProvider>
-        <div className={styles.layout}>
-          {/* 右侧主内容区域 */}
-          <main className={styles.main}>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastManager>
             <AppRoutes />
-          </main>
-        </div>
-        <ToastManager />
-      </AuthProvider>
+          </ToastManager>
+        </AuthProvider>
+      </ThemeProvider>
     </Router>
   );
 };
 
 export default App;
+

@@ -1,0 +1,118 @@
+/* PDFReader动画和复杂样式 */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-110%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes tabActivate {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-90%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-100%);
+  }
+}
+
+/* 移动端响应式调整 */
+@media (max-width: 768px) {
+  .pdf-container-mobile {
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .resizer-horizontal-mobile {
+    display: block;
+    width: 100%;
+    height: 4px;
+    background-color: #e0e0e0;
+    cursor: row-resize;
+    transition: background-color 0.2s ease;
+    user-select: none;
+  }
+
+  .resizer-horizontal-mobile:hover,
+  .resizer-horizontal-mobile.dragging {
+    background-color: #1976d2;
+  }
+
+  .tabs-container-mobile {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 高亮相关样式 */
+.highlight-area-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 20px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid white;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* 思维导图样式 */
+.mindmap-container .markmap-node {
+  color: #333;
+  font-size: 18px;
+  font-weight: 400;
+  position: relative;
+  text-decoration: none;
+}
+
+.mindmap-container .markmap-node line {
+  stroke: rgba(25, 118, 210, 0.4);
+}
+
+.mindmap-container .markmap-fold circle {
+  transition: transform 0.3s ease;
+  fill: rgba(25, 118, 210, 1);
+}
+
+.mindmap-container .markmap-node circle {
+  transition: transform 0.3s ease;
+  stroke: rgba(25, 118, 210, 1);
+}
+
+.mindmap-container .markmap-node-line {
+  stroke: rgba(25, 118, 210, 0.6);
+  transition: stroke-width 0.3s ease;
+}
+
+.mindmap-container .markmap-link {
+  stroke: rgba(25, 118, 210, 0.4);
+  transition: stroke-width 0.3s ease;
+}
+
+.mindmap-container .markmap-node:hover {
+  color: rgba(25, 118, 210, 1);
+}

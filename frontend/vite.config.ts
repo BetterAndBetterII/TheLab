@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { compression } from 'vite-plugin-compression2'
+import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -8,13 +9,25 @@ export default defineConfig({
     react(),
     compression(), // 启用 Gzip 压缩
   ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://nas.betterspace.top:8003',
         changeOrigin: true,
       },
     },
+    // 允许所有主机访问
+    host: '0.0.0.0',
+    // 允许特定主机访问
+    allowedHosts: [
+      '5173-ip0dm3bsf477vyvvj97qw-39386b98.manusvm.computer',
+      '.manusvm.computer'
+    ],
   },
   build: {
     // 生产环境打包配置
@@ -43,3 +56,4 @@ export default defineConfig({
     sourcemap: false
   }
 });
+

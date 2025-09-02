@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, MutableRefObject } from 'react';
-import { Viewer, Worker } from '@react-pdf-viewer/core';
+import { Viewer, Worker, RenderPageProps } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import { searchPlugin, RenderHighlightsProps as SearchRenderHighlightsProps, OnHighlightKeyword } from '@react-pdf-viewer/search';
 import { zoomPlugin } from '@react-pdf-viewer/zoom';
@@ -7,21 +7,21 @@ import { pageNavigationPlugin } from '@react-pdf-viewer/page-navigation';
 import {
   highlightPlugin,
   HighlightArea,
-  MessageIcon,
   RenderHighlightContentProps,
   RenderHighlightTargetProps,
   RenderHighlightsProps,
 } from '@react-pdf-viewer/highlight';
 import { Transformer } from 'markmap-lib';
 import { Markmap } from 'markmap-view';
-import { IoMdSend, IoMdChatboxes, IoMdDownload, IoMdRefresh, IoMdClose, IoMdCreate } from 'react-icons/io';
-import { FiChevronRight, FiChevronLeft, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { Send, Download, RefreshCw, X, Plus, MessageCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import { throttle } from 'lodash';
+import { useTheme } from '../../contexts/ThemeContext';
 
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
@@ -29,12 +29,13 @@ import '@react-pdf-viewer/search/lib/styles/index.css';
 import '@react-pdf-viewer/zoom/lib/styles/index.css';
 import '@react-pdf-viewer/page-navigation/lib/styles/index.css';
 import '@react-pdf-viewer/highlight/lib/styles/index.css';
+import 'katex/dist/katex.min.css';
+import './animations.css';
 
 // 使用CDN地址
 // const workerUrl = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 const workerUrl = '/pdf.worker.min.js';
 
-import styles from './PDFReader.module.css';
 import ChatPanel from './ChatPanel';
 import SummaryPanel from './SummaryPanel';
 import FlowPanel from './FlowPanel';
@@ -65,6 +66,37 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   documentId,
   onPageChange,
 }) => {
+  // 获取主题设置
+  const { theme } = useTheme();
+  
+  // 计算实际的主题（处理system选项）
+  const [actualTheme, setActualTheme] = useState<'light' | 'dark'>(() => {
+    if (theme === 'system') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return theme as 'light' | 'dark';
+  });
+
+  // 监听主题变化
+  useEffect(() => {
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      
+      const handleChange = () => {
+        setActualTheme(mediaQuery.matches ? 'dark' : 'light');
+      };
+
+      // 设置初始值
+      setActualTheme(mediaQuery.matches ? 'dark' : 'light');
+      
+      // 监听系统主题变化
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    } else {
+      setActualTheme(theme as 'light' | 'dark');
+    }
+  }, [theme]);
+
   // 定义状态持久化配置
   const STORAGE_KEY = `pdf_reader_state`;
 
@@ -78,7 +110,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   };
 
   // 保存状态到localStorage的函数
-  const saveState = (updates: Record<string, any>) => {
+  const saveState = (updates: Record<string, string | boolean | TabType | ModelType>) => {
     const currentState = getStoredState() || {};
     const newState = { ...currentState, ...updates };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
@@ -196,16 +228,19 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
       Object.entries(summaryData.summaries)
         .sort(([pageA], [pageB]) => parseInt(pageA) - parseInt(pageB))
-        .forEach(([page, summary]) => {
+        .forEach(([, summary]) => {
             EnSummary.push(summary.en);
             CnSummary.push(summary.cn);
         });
 
       setSummaryEn(EnSummary);
       setSummaryCn(CnSummary);
-    } catch (error) {
+    } catch (error: unknown) {
+      const err = error as Error;
+      if (err.message === 'No permission') {
+        setSummaryError('获取摘要失败，请稍后重试');
+      }
       console.error('获取摘要失败:', error);
-      setSummaryError('获取摘要失败，请稍后重试');
     } finally {
       setIsSummaryLoading(false);
     }
@@ -444,8 +479,9 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       } else {
         throw new Error('重新生成思维导图失败');
       }
-    } catch (error: any) {
-      if (error.message === 'No permission') {
+    } catch (error: unknown) {
+      const err = error as Error;
+      if (err.message === 'No permission') {
         setMindmapData({
           mindmap: "# 抱歉，您没有权限使用此功能。"
         });
@@ -474,19 +510,24 @@ const PDFReader: React.FC<PDFReaderProps> = ({
     const svgClone = svg.cloneNode(true) as SVGElement;
 
     // 应用计算后的样式
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const primaryColor = isDarkMode ? '96, 165, 250' : '37, 99, 235'; // blue-400 : blue-600
+    const textColor = isDarkMode ? getComputedStyle(document.documentElement).getPropertyValue('--gray-200') : getComputedStyle(document.documentElement).getPropertyValue('--gray-800');
+    const bgColor = isDarkMode ? '#1f2937' : 'white'; // gray-800 : white
+    
     const styleElement = document.createElement('style');
     styleElement.textContent = `
-        .markmap-node { color: ${getComputedStyle(document.documentElement).getPropertyValue('--text-color')}; font-size: 18px; font-weight: 400; }
-        .markmap-node line { stroke: rgba(25, 118, 210, 0.4); }
-        .markmap-fold circle { fill: rgba(25, 118, 210, 1); }
-        .markmap-node circle { stroke: rgba(25, 118, 210, 1); }
-        .markmap-node-line { stroke: rgba(25, 118, 210, 0.6); }
-        .markmap-link { stroke: rgba(25, 118, 210, 0.4); }
+        .markmap-node { color: ${textColor}; font-size: 18px; font-weight: 400; }
+        .markmap-node line { stroke: rgba(${primaryColor}, 0.4); }
+        .markmap-fold circle { fill: rgba(${primaryColor}, 1); }
+        .markmap-node circle { stroke: rgba(${primaryColor}, 1); }
+        .markmap-node-line { stroke: rgba(${primaryColor}, 0.6); }
+        .markmap-link { stroke: rgba(${primaryColor}, 0.4); }
     `;
     svgClone.insertBefore(styleElement, svgClone.firstChild);
 
     // 设置背景色
-    svgClone.style.backgroundColor = 'white';
+    svgClone.style.backgroundColor = bgColor;
 
     // 设置合适的视图框和尺寸
     const bbox = (svg as SVGSVGElement).getBBox();
@@ -510,7 +551,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
       // 绘制图片
       ctx.scale(scale, scale);
-      ctx.fillStyle = 'white';
+      ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, bbox.width + 20, bbox.height + 20);
 
@@ -521,7 +562,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       link.click();
     };
 
-    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    img.src = 'data:image/svg+xml;base64,' + btoa(decodeURIComponent(encodeURIComponent(svgData)));
   };
 
   const handleCopyAll = (lang: string) => {
@@ -623,7 +664,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
     return (
       <div
-        className={styles.highlightTarget}
+        className="absolute bg-transparent rounded-lg cursor-pointer transition-all duration-200 ease-in-out z-[1000] -translate-y-full mt-9 animate-[fadeIn_0.2s_ease-out]"
         style={{
             left: `${props.selectionRegion.left}%`,
             // 根据高亮位置决定按钮显示在上方还是下方
@@ -632,10 +673,10 @@ const PDFReader: React.FC<PDFReaderProps> = ({
               : `${props.selectionRegion.top + props.selectionRegion.height}%`, // 高亮在上方，按钮显示在下方
         }}
       >
-        <div className={styles.highlightTargetInner}>
-          <div className={styles.highlightTargetOptions}>
+        <div className="flex items-center rounded-lg gap-2 text-blue-600 dark:text-blue-400">
+          <div className="flex rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.2)] bg-white dark:bg-gray-800 border-none">
             <div
-              className={styles.highlightOption}
+              className="flex items-center justify-center bg-transparent px-3 py-2 cursor-pointer transition-all duration-200 hover:bg-black hover:bg-opacity-5 dark:hover:bg-white dark:hover:bg-opacity-10"
               onClick={async () => {
                 try {
                   highlightOnlyRef.current = true;
@@ -646,11 +687,11 @@ const PDFReader: React.FC<PDFReaderProps> = ({
               }}
               title="高亮"
             >
-              <span className={styles.highlightOptionIcon}><IoMdCreate /></span>
-              <span className={styles.highlightOptionText}>高亮</span>
+              <span className="flex items-center justify-center text-base"><Plus /></span>
+              <span className="text-base text-gray-600 dark:text-gray-400 ml-2">高亮</span>
             </div>
             <div
-              className={styles.highlightOption}
+              className="flex items-center justify-center bg-transparent px-3 py-2 cursor-pointer transition-all duration-200 hover:bg-black hover:bg-opacity-5 dark:hover:bg-white dark:hover:bg-opacity-10"
               onClick={() => {
                 highlightOnlyRef.current = false;
                 props.toggle();
@@ -663,8 +704,8 @@ const PDFReader: React.FC<PDFReaderProps> = ({
               }}
               title="添加批注"
             >
-              <span className={styles.highlightOptionIcon}><MessageIcon /></span>
-              <span className={styles.highlightOptionText}>添加批注</span>
+              <span className="flex items-center justify-center text-base"><MessageCircle /></span>
+              <span className="text-base text-gray-600 dark:text-gray-400 ml-2">添加批注</span>
             </div>
           </div>
         </div>
@@ -704,15 +745,13 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
     return (
       <div
-        className={styles.highlightContent}
+        className="absolute bg-white dark:bg-gray-800 p-4 rounded-lg shadow-[0_4px_16px_rgba(0,0,0,0.15)] w-80 border border-gray-300 dark:border-gray-600 z-[5]"
         style={{
-            position: 'absolute',
             left: `${props.selectionRegion.left}%`,
             // 根据高亮位置决定输入框显示在上方还是下方
             top: isBottomHalf
               ? `${props.selectionRegion.top - 20}%` // 高亮在下方，输入框显示在上方
               : `${props.selectionRegion.top + props.selectionRegion.height}%`, // 高亮在上方，输入框显示在下方
-            zIndex: 5,
         }}
       >
         <textarea
@@ -744,8 +783,9 @@ const PDFReader: React.FC<PDFReaderProps> = ({
               }
             }
           }}
+          className="w-full min-h-[120px] p-3 border border-gray-300 dark:border-gray-600 rounded-md mb-3 resize-y text-sm leading-6 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-colors duration-200 focus:outline-none focus:border-blue-600 dark:focus:border-blue-400 focus:shadow-[0_0_0_2px_rgba(25,118,210,0.1)] dark:focus:shadow-[0_0_0_2px_rgba(59,130,246,0.2)]"
         />
-        <div className={styles.highlightButtons}>
+        <div className="flex gap-2 justify-end">
           <button
             onClick={async () => {
               try {
@@ -768,6 +808,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                 console.error('保存笔记失败:', error);
               }
             }}
+            className="px-4 py-2 border-none rounded-md cursor-pointer font-medium text-sm transition-all duration-200 bg-blue-600 text-white hover:bg-blue-700"
           >
             保存
           </button>
@@ -776,6 +817,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
               setCurrentNote('');
               props.cancel();
             }}
+            className="px-4 py-2 border-none rounded-md cursor-pointer font-medium text-sm transition-all duration-200 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-800 dark:hover:text-gray-100"
           >
             取消
           </button>
@@ -799,7 +841,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                     .map((area, idx) => (
                         <div
                             key={idx}
-                            className={styles.highlightArea}
+                            className="group cursor-pointer transition-all duration-200 ease-in-out relative hover:bg-yellow-400 hover:bg-opacity-40 hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
                             style={Object.assign(
                                 {},
                                 props.getCssProperties(area, props.rotation),
@@ -826,10 +868,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                             }}
                         >
                           {note.content && (
-                            <div className={styles.highlightAreaText} style={{
-                              opacity: 1,
-                              zIndex: 6,
-                            }}>
+                            <div className="hidden group-hover:block absolute left-0 -top-2.5 -translate-y-full bg-white dark:bg-gray-800 bg-opacity-90 backdrop-blur-lg px-4 py-3 rounded-lg shadow-[0_4px_16px_rgba(0,0,0,0.15)] min-w-[200px] max-w-[300px] z-[1000] text-sm leading-6 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 after:content-[''] after:absolute after:-bottom-2 after:left-5 after:w-0 after:h-0 after:border-l-2 after:border-r-2 after:border-t-2 after:border-l-transparent after:border-r-transparent after:border-t-white dark:after:border-t-gray-800 after:filter after:drop-shadow-[0_2px_2px_rgba(0,0,0,0.1)]">
                               <ReactMarkdown
                                 remarkPlugins={[remarkGfm, remarkMath]}
                                 rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -943,9 +982,13 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
         try {
           let cum_content = '';
-          while (true) {
+          let isReading = true;
+          while (isReading) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              isReading = false;
+              break;
+            }
 
             const chunk = decoder.decode(value);
             const lines = chunk.split('\n');
@@ -1007,9 +1050,9 @@ const PDFReader: React.FC<PDFReaderProps> = ({
   };
 
   return (
-    <div className={styles.container} ref={containerRef}>
+    <div className="h-screen flex flex-col md:flex-row overflow-hidden bg-gray-50 dark:bg-gray-900" ref={containerRef}>
       <div
-        className={`${styles.pdfContainer} ${isNotesPanelCollapsed && window.innerWidth <= 768 ? styles.pdfContainerExpanded : ''}`}
+        className="relative overflow-hidden"
         ref={pdfContainerRef}
         style={{
           width: window.innerWidth <= 768 ? '100%' : (isNotesPanelCollapsed ? '100%' : pdfWidth),
@@ -1019,6 +1062,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
         <Worker workerUrl={workerUrl}>
           <Viewer
             fileUrl={pdfUrl}
+            theme={actualTheme}
             plugins={[
               defaultLayoutPluginInstance,
               searchPluginInstance,
@@ -1034,81 +1078,91 @@ const PDFReader: React.FC<PDFReaderProps> = ({
 
       <div
         ref={resizerRef}
-        className={`${styles.resizer} ${isDragging ? styles.dragging : ''}`}
+        className={`w-1 cursor-col-resize bg-gray-300 dark:bg-gray-600 transition-colors hover:bg-blue-600 dark:hover:bg-blue-400 hidden md:block ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : ''}`}
         style={{ display: isNotesPanelCollapsed ? 'none' : undefined }}
       />
 
       <div
         ref={resizerHorizontalRef}
-        className={`${styles.resizerHorizontal} ${isDraggingVertical ? styles.dragging : ''}`}
+        className={`h-1 w-full cursor-row-resize bg-gray-300 dark:bg-gray-600 transition-colors hover:bg-blue-600 dark:hover:bg-blue-400 block md:hidden ${isDraggingVertical ? 'bg-blue-600 dark:bg-blue-400' : ''}`}
         style={{ display: isNotesPanelCollapsed ? 'none' : undefined }}
       />
 
       <button
-        className={`${styles.collapseButton} ${window.innerWidth <= 768 ? styles.collapseButtonMobile : styles.collapseButtonDesktop}`}
+        className={`fixed z-[1000] w-6 h-6 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm flex items-center justify-center cursor-pointer text-gray-500 dark:text-gray-400 transition-all duration-200 hover:text-gray-800 dark:hover:text-gray-200 hover:shadow-md hover:scale-110 ${window.innerWidth <= 768 ? 'right-5 bottom-[140px]' : 'right-1.5 top-20'}`}
         onClick={() => setIsNotesPanelCollapsed(!isNotesPanelCollapsed)}
         title={isNotesPanelCollapsed ? '展开笔记面板' : '收起笔记面板'}
       >
         {window.innerWidth <= 768 ?
-          (isNotesPanelCollapsed ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />) :
-          (isNotesPanelCollapsed ? <FiChevronLeft size={20} /> : <FiChevronRight size={20} />)
+          (isNotesPanelCollapsed ? <ChevronUp size={20} /> : <ChevronDown size={20} />) :
+          (isNotesPanelCollapsed ? <ChevronLeft size={20} /> : <ChevronRight size={20} />)
         }
       </button>
 
       <div
-        className={`${styles.notesPanel} ${isNotesPanelCollapsed ? styles.notesPanelCollapsed : ''}`}
+        className={`flex flex-col bg-white dark:bg-gray-900 overflow-hidden transition-all duration-300 md:flex-1 md:border-l border-gray-200 dark:border-gray-700
+            ${isNotesPanelCollapsed
+                ? 'opacity-0 max-h-0 p-0 border-0'
+                : ''
+            }
+        `}
         style={{
           height: window.innerWidth <= 768 ? `calc(100vh - ${pdfHeight} - 4px)` : '100%',
           pointerEvents: isNotesPanelCollapsed ? 'none' : 'auto'
         }}
       >
-        <div className={styles.notesPanelContent}>
+        <div className="h-full overflow-hidden">
           {!isNotesPanelCollapsed && (
             <>
-              <div className={styles.tabsContainer}>
+              <div className={`flex w-full border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 ${window.innerWidth <= 768 ? 'tabs-container-mobile' : ''}`}>
                 <button
-                  className={`${styles.tab} ${activeTab === 'summary' ? styles.activeTab : ''}`}
+                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 dark:text-gray-400 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 dark:before:bg-blue-400 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'summary' ? "text-blue-500 dark:text-blue-400 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 dark:after:bg-blue-400 after:origin-center after:animate-tabActivate" : ''}`}
                   onClick={() => setActiveTab('summary')}
                 >
                   总结
                 </button>
                 <button
-                  className={`${styles.tab} ${activeTab === 'notes' ? styles.activeTab : ''}`}
+                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 dark:text-gray-400 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 dark:before:bg-blue-400 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'notes' ? "text-blue-500 dark:text-blue-400 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 dark:after:bg-blue-400 after:origin-center after:animate-tabActivate" : ''}`}
                   onClick={() => setActiveTab('notes')}
                 >
                   笔记
                 </button>
                 <button
-                  className={`${styles.tab} ${activeTab === 'chat' ? styles.activeTab : ''}`}
+                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 dark:text-gray-400 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 dark:before:bg-blue-400 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'chat' ? "text-blue-500 dark:text-blue-400 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 dark:after:bg-blue-400 after:origin-center after:animate-tabActivate" : ''}`}
                   onClick={() => setActiveTab('chat')}
                 >
                   对话
                 </button>
                 <button
-                  className={`${styles.tab} ${activeTab === 'flow' ? styles.activeTab : ''}`}
+                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 dark:text-gray-400 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 dark:before:bg-blue-400 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'flow' ? "text-blue-500 dark:text-blue-400 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 dark:after:bg-blue-400 after:origin-center after:animate-tabActivate" : ''}`}
                   onClick={() => setActiveTab('flow')}
                 >
                   心流
                 </button>
                 <button
-                  className={`${styles.tab} ${activeTab === 'quiz' ? styles.activeTab : ''}`}
+                  className={`flex-1 px-6 py-3 border-none bg-none cursor-pointer text-sm text-gray-600 dark:text-gray-400 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] relative overflow-hidden hover:before:w-full before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-0 before:h-0.5 before:bg-blue-500 dark:before:bg-blue-400 before:transition-all before:duration-300 before:ease-[cubic-bezier(0.4,0,0.2,1)] before:-translate-x-1/2 ${activeTab === 'quiz' ? "text-blue-500 dark:text-blue-400 font-medium before:w-full after:content-[''] after:absolute after:bottom-[-1px] after:left-0 after:w-full after:h-0.5 after:bg-blue-500 dark:after:bg-blue-400 after:origin-center after:animate-tabActivate" : ''}`}
                   onClick={() => setActiveTab('quiz')}
                 >
                   测验
                 </button>
               </div>
 
-              <div className={styles.tabContent}>
+              <div className="flex-1 overflow-y-auto relative h-full flex flex-col">
                 {activeTab === 'summary' && (
                   <>
                     {isSummaryLoading ? (
-                      <div className={styles.loadingContainer}>
+                      <div className="flex justify-center items-center h-full text-gray-600 text-base">
                         <span>加载摘要中...</span>
                       </div>
                     ) : summaryError ? (
-                      <div className={styles.errorContainer}>
-                        <span>{summaryError}</span>
-                        <button onClick={() => fetchSummaries(documentId)}>重试</button>
+                      <div className="flex flex-col justify-center items-center h-full gap-4">
+                        <span className="text-red-600 text-base">{summaryError}</span>
+                        <button
+                          className="px-4 py-2 bg-blue-600 text-white border-none rounded cursor-pointer text-sm transition-colors duration-200 hover:bg-blue-700"
+                          onClick={() => fetchSummaries(documentId)}
+                        >
+                          重试
+                        </button>
                       </div>
                     ) : (
                       <SummaryPanel
@@ -1121,21 +1175,19 @@ const PDFReader: React.FC<PDFReaderProps> = ({
                 )}
 
                 {activeTab === 'notes' && (
-                  <>
-                    <NotesPanel
-                      notes={notes}
-                      setNotes={setNotes}
-                      showAllNotes={showAllNotes}
-                      setShowAllNotes={setShowAllNotes}
-                      currentPage={currentPage}
-                      jumpToHighlightArea={jumpToHighlightArea}
-                      editingNoteId={editingNoteId}
-                      setEditingNoteId={setEditingNoteId}
-                      editingContent={editingContent}
-                      setEditingContent={setEditingContent}
-                      documentId={documentId}
-                    />
-                  </>
+                  <NotesPanel
+                    notes={notes}
+                    setNotes={setNotes}
+                    showAllNotes={showAllNotes}
+                    setShowAllNotes={setShowAllNotes}
+                    currentPage={currentPage}
+                    jumpToHighlightArea={jumpToHighlightArea}
+                    editingNoteId={editingNoteId}
+                    setEditingNoteId={setEditingNoteId}
+                    editingContent={editingContent}
+                    setEditingContent={setEditingContent}
+                    documentId={documentId}
+                  />
                 )}
 
                 {activeTab === 'chat' && (
@@ -1189,7 +1241,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
       </div>
 
       <button
-        className={`${styles.showInputButton} ${styles.fixedButton}`}
+        className="fixed z-[1000] left-5 bottom-5 w-11 h-11 rounded-full bg-blue-600 text-white border-none cursor-pointer flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-all duration-200 ease-in-out text-xl text-center leading-none p-0 hover:scale-105 hover:-translate-y-1 hover:bg-blue-700"
         onClick={() => {
           if (autoShowInput) {
             setIsInputVisible(true);
@@ -1202,35 +1254,33 @@ const PDFReader: React.FC<PDFReaderProps> = ({
         }}
         title={autoShowInput ? '鼠标放在屏幕下方自动呼出输入框' : '点按呼出输入框'}
       >
-        <IoMdChatboxes size={24} />
+        <MessageCircle size={24} />
       </button>
 
       <button
-        className={`${styles.showInputButton} ${styles.fixedButton}`}
-        style={{ bottom: '140px' }}
+        className="fixed z-[1000] left-5 bottom-[80px] w-11 h-11 rounded-full bg-blue-600 text-white border-none cursor-pointer flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-all duration-200 ease-in-out text-xl text-center leading-none p-0 hover:scale-105 hover:-translate-y-1 hover:bg-blue-700"
         onClick={() => setAutoShowInput(!autoShowInput)}
         title={autoShowInput ? '自动呼出已开启' : '自动呼出已关闭'}
       >
-        {autoShowInput ? <span className={styles.fixedButtonText}>🔔</span> : <span className={styles.fixedButtonText}>🔕</span>}
+        {autoShowInput ? <span className="leading-none pb-1">🔔</span> : <span className="leading-none pb-1">🔕</span>}
       </button>
 
       <button
-        className={`${styles.showMindmapButton} ${styles.fixedButton}`}
-        style={{ bottom: '80px' }}
+        className="fixed z-[1000] left-5 bottom-[140px] w-11 h-11 rounded-full bg-blue-600 text-white border-none cursor-pointer flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-all duration-200 ease-in-out text-xl text-center leading-none p-0 hover:scale-105 hover:-translate-y-1 hover:bg-blue-700"
         onClick={() => handleMindmapClick()}
         title="生成思维导图"
       >
-        {mindmapLoading ? <span className={`${styles.fixedButtonText} ${styles.mindmapButtonTextLoading}`}>🔄</span> : <span className={styles.fixedButtonText}>🗺️</span>}
+        {mindmapLoading ? <span className="leading-none pb-1 animate-spin">🔄</span> : <span className="leading-none pb-1">🗺️</span>}
       </button>
 
       <div
         ref={chatInputContainerRef}
-        className={`${styles.chatInputContainer} ${isInputVisible ? styles.visible : ''}`}
+        className={`fixed left-1/2 transform -translate-x-1/2 p-2 bg-white dark:bg-gray-800 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-all duration-300 ease-in-out z-[1000] w-[40rem] max-w-[90vw] ${isInputVisible ? 'bottom-5' : '-bottom-[100px]'}`}
       >
-        <form onSubmit={handleMessageSend} className={styles.chatForm}>
+        <form onSubmit={handleMessageSend} className="flex leading-[1.5] gap-2">
           <button
             type="button"
-            className={styles.modelToggle}
+            className="bg-transparent border-none cursor-pointer w-11 h-11 flex items-center justify-center p-0.5 text-4xl rounded-md gap-1 text-gray-600 dark:text-gray-400 text-base relative transition-all duration-200 ease-in-out hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={() => setCurrentModel(prev => prev === 'standard' ? 'advanced' : 'standard')}
             title={currentModel === 'standard' ? '标准模型' : '高级模型'}
           >
@@ -1238,7 +1288,7 @@ const PDFReader: React.FC<PDFReaderProps> = ({
           </button>
           <button
             type="button"
-            className={styles.modelToggle}
+            className="bg-transparent border-none cursor-pointer w-11 h-11 flex items-center justify-center p-0.5 text-4xl rounded-md gap-1 text-gray-600 dark:text-gray-400 text-base relative transition-all duration-200 ease-in-out hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={() => setAddNotes(prev => !prev)}
             title={addNotes ? '自动添加笔记' : '不自动添加笔记'}
           >
@@ -1250,42 +1300,49 @@ const PDFReader: React.FC<PDFReaderProps> = ({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="输入消息..."
-            className={styles.chatInput}
+            className="flex-1 p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out min-h-[45px] max-h-[150px] resize-y focus:outline-none focus:border-blue-600 dark:focus:border-blue-400 focus:shadow-[0_0_0_2px_rgba(25,118,210,0.1)] dark:focus:shadow-[0_0_0_2px_rgba(59,130,246,0.2)]"
           />
-          <button type="submit" className={styles.sendButton} title="发送消息">
-            <IoMdSend size={20} />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white border-none rounded-lg cursor-pointer flex items-center justify-center transition-all duration-200 ease-in-out h-11 hover:bg-blue-700"
+            title="发送消息"
+          >
+            <Send size={20} />
           </button>
         </form>
       </div>
 
       {showMindmap && (
-        <div className={styles.mindmapModal}>
-          <div className={styles.mindmapModalContent}>
-            <div className={styles.mindmapModalHeader}>
-              <h2>思维导图</h2>
-              <div className={styles.modalActions}>
+        <div className="fixed top-0 left-0 w-screen h-screen bg-black bg-opacity-50 flex justify-center items-center z-[1000]">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-[90vw] h-[90vh] flex flex-col shadow-[0_4px_6px_rgba(0,0,0,0.1)]">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 gap-3">
+              <h2 className="m-0 text-xl text-gray-800 dark:text-gray-200 flex-1">思维导图</h2>
+              <div className="flex gap-3 flex-row">
                 <button
-                  className={styles.exportButton}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 ease-in-out border-none bg-blue-600 text-white hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-md active:translate-y-px active:shadow-none"
                   onClick={handleExportImage}
                 >
-                  <IoMdDownload />
-                  <span className={styles.buttonText}>导出图片</span>
+                  <Download size={20} />
+                  <span className="ml-2 hidden md:inline">导出图片</span>
                 </button>
                 <button
-                  className={styles.regenerateButton}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 ease-in-out border-none bg-green-500 dark:bg-green-600 text-white hover:bg-green-600 dark:hover:bg-green-700 hover:-translate-y-0.5 hover:shadow-md active:translate-y-px active:shadow-none disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-70"
                   onClick={() => handleMindmapClick(true)}
                   disabled={mindmapLoading}
                 >
-                  <IoMdRefresh />
-                  <span className={styles.buttonText}>{mindmapLoading ? '生成中...' : '重新生成'}</span>
+                  <RefreshCw size={20} />
+                  <span className="ml-2 hidden md:inline">{mindmapLoading ? '生成中...' : '重新生成'}</span>
                 </button>
-                <button className={styles.closeButton} onClick={closeMindmap}>
-                  <IoMdClose />
+                <button
+                  className="flex items-center gap-2 p-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 ease-in-out border-none bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-800 dark:hover:text-gray-100 hover:-translate-y-0.5 active:translate-y-px"
+                  onClick={closeMindmap}
+                >
+                  <X size={20} />
                 </button>
               </div>
             </div>
-            <div className={styles.mindmapContainer}>
-              <svg ref={mindmapRef} className={styles.mindmap}></svg>
+            <div className="flex-1 overflow-hidden mindmap-container">
+              <svg ref={mindmapRef} className="w-full h-full min-h-[600px]"></svg>
             </div>
           </div>
         </div>

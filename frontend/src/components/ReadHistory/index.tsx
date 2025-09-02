@@ -1,19 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { List, Empty, Spin, message, Tooltip } from 'antd';
-import {
-  FileTextOutlined,
-  ClockCircleOutlined,
-  FileZipOutlined,
-  FilePdfOutlined,
-  FileWordOutlined,
-  FileExcelOutlined,
-  FileImageOutlined,
-  FileUnknownOutlined,
-  LoadingOutlined
-} from '@ant-design/icons';
 import { documentApi } from '../../api/documents';
-import styles from './ReadHistory.module.css';
 import { useNavigate } from 'react-router-dom';
+import {
+  FileText,
+  Clock,
+  Archive,
+  FileType,
+  FileText as FileWord,
+  FileSpreadsheet,
+  Image,
+  File,
+  Loader2
+} from 'lucide-react';
+import Loading from '../Loading';
 
 interface ReadRecord {
   id: string;
@@ -48,7 +47,8 @@ const ReadHistory: React.FC = () => {
 
       setHasMore(response.records.length === pageSize);
     } catch (error) {
-      message.error('获取阅读历史失败');
+      // 使用console.error代替message
+      console.error('获取阅读历史失败');
     } finally {
       setLoading(false);
     }
@@ -100,81 +100,89 @@ const ReadHistory: React.FC = () => {
     const type = mimeType.split('/')[1]?.toLowerCase();
     switch (type) {
       case 'pdf':
-        return <FilePdfOutlined className={styles.fileIcon} />;
+        return <FileType className="text-blue-600 dark:text-blue-400 opacity-90" size={18} />;
       case 'msword':
       case 'docx':
-        return <FileWordOutlined className={styles.fileIcon} />;
+        return <FileWord className="text-blue-600 dark:text-blue-400 opacity-90" size={18} />;
       case 'excel':
       case 'xlsx':
-        return <FileExcelOutlined className={styles.fileIcon} />;
+        return <FileSpreadsheet className="text-blue-600 dark:text-blue-400 opacity-90" size={18} />;
       case 'zip':
       case 'rar':
       case '7z':
-        return <FileZipOutlined className={styles.fileIcon} />;
+        return <Archive className="text-blue-600 dark:text-blue-400 opacity-90" size={18} />;
       case 'png':
       case 'jpg':
       case 'jpeg':
       case 'gif':
-        return <FileImageOutlined className={styles.fileIcon} />;
+        return <Image className="text-blue-600 dark:text-blue-400 opacity-90" size={18} />;
       default:
-        return <FileTextOutlined className={styles.fileIcon} />;
+        return <FileText className="text-blue-600 dark:text-blue-400 opacity-90" size={18} />;
     }
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h2>阅读历史</h2>
+    <div className="w-full h-full p-6">
+      <div className="flex justify-between items-center mb-7 pb-5 border-b border-gray-200 dark:border-gray-700 relative">
+        <h2 className="m-0 text-2xl font-semibold text-gray-900 dark:text-gray-100 relative pb-1">
+          阅读历史
+          <div className="absolute -bottom-5 left-0 w-12 h-0.5 bg-gradient-to-r from-blue-600 to-sky-500 dark:from-blue-400 dark:to-sky-400 rounded-sm"></div>
+        </h2>
       </div>
 
       {records.length === 0 && !loading ? (
-        <Empty
-          description="暂无阅读记录"
-          className={styles.empty}
-        />
+        <div className="my-15 text-gray-500 dark:text-gray-400 flex flex-col items-center">
+          <FileText size={48} className="text-gray-400 dark:text-gray-500" />
+          <p className="text-gray-400 dark:text-gray-500">暂无阅读记录</p>
+        </div>
       ) : (
-        <List
-          className={styles.list}
-          dataSource={records}
-          loading={{
-            spinning: loading,
-            indicator: <LoadingOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-          }}
-          renderItem={(record) => (
-            <List.Item className={styles.listItem} onClick={() => {
-              navigate(`/chat/${record.document_id}`);
-            }}>
-              <div className={styles.sessionInfo}>
-                <div className={styles.sessionTitle}>
+        <div className="w-full px-1">
+          {loading && records.length === 0 && (
+            <div className="flex justify-center items-center py-8">
+              <Loading size="medium" text="加载中..." />
+            </div>
+          )}
+
+          {records.map((record) => (
+            <div
+              key={record.id}
+              className="group relative p-5 cursor-pointer transition-all duration-300 ease-out rounded-xl mb-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden hover:bg-gray-50 dark:hover:bg-gray-750 hover:-translate-y-0.5 hover:shadow-lg dark:hover:shadow-gray-900/50 hover:border-transparent dark:hover:border-transparent before:content-[''] before:absolute before:left-0 before:top-0 before:w-1 before:h-full before:bg-gradient-to-b before:from-blue-600 before:to-sky-500 dark:before:from-blue-400 dark:before:to-sky-400 before:opacity-0 before:transition-opacity before:duration-300 hover:before:opacity-100"
+              onClick={() => navigate(`/chat/${record.document_id}`)}
+            >
+              <div className="mx-5 w-full pr-4">
+                <div className="text-base font-medium text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-3">
                   {getFileIcon(record.document_type)}
-                  <Tooltip title={record.document_name}>
+                  <span className="truncate" title={record.document_name}>
                     {record.document_name}
-                  </Tooltip>
-                  <span className={styles.badge}>
+                  </span>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-2xl text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 ml-3 tracking-wide">
                     {record.document_type.split('/')[1]?.toUpperCase()}
                   </span>
                 </div>
-                <div className={styles.sessionMeta}>
-                  <span className={styles.lastMessage}>
-                    <ClockCircleOutlined />
+                <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center text-gray-600 dark:text-gray-400 text-sm gap-1.5">
+                    <Clock size={14} />
                     {formatTime(record.read_at)}
                   </span>
-                  <Tooltip title="文件大小">
-                    <span className={styles.time}>
-                      <FileUnknownOutlined />
-                      {formatFileSize(record.document_size)}
-                    </span>
-                  </Tooltip>
+                  <span className="text-gray-500 dark:text-gray-400 text-xs flex items-center gap-1" title="文件大小">
+                    <File size={14} />
+                    {formatFileSize(record.document_size)}
+                  </span>
                 </div>
               </div>
-            </List.Item>
-          )}
-        />
+            </div>
+          ))}
+        </div>
       )}
 
       {hasMore && records.length > 0 && (
-        <div className={styles.loadMore}>
-          <button onClick={handleLoadMore} disabled={loading}>
+        <div className="text-center mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={handleLoadMore}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 px-8 py-2.5 border-none bg-gradient-to-r from-blue-600 to-sky-500 dark:from-blue-500 dark:to-sky-400 text-white rounded-3xl cursor-pointer text-sm font-medium transition-all duration-300 shadow-md hover:-translate-y-0.5 hover:shadow-lg disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:text-gray-500 dark:disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-600 dark:disabled:to-gray-600"
+          >
+            {loading && <Loader2 size={16} className="animate-spin" />}
             {loading ? '加载中...' : '加载更多'}
           </button>
         </div>

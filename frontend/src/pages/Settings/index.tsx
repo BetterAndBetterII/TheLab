@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import styles from './Settings.module.css';
-import { FiLogOut, FiAlertCircle } from 'react-icons/fi';
+import { LogOut, AlertCircle } from 'lucide-react';
 import { settingsApi } from '../../api';
 
 interface UserSettings {
@@ -151,281 +150,288 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleNotificationChange = (key: keyof typeof settings.notifications) => {
-    setSettings((prev) => ({
-      ...prev,
-      notifications: { ...prev.notifications, [key]: !prev.notifications[key] },
-    }));
-    settingsApi.updateSettings({
-      ...settings,
-      notifications: { ...settings.notifications, [key]: !settings.notifications[key] },
-    });
-
-    setMessage({ type: 'success', text: '设置保存成功！' });
-  };
-
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="w-full h-[calc(100vh-80px)] p-8 overflow-hidden">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-gray-600 dark:text-gray-400">加载中...</div>
+        </div>
+      </div>
+    );
   }
 
-  const renderProfileSettings = () => (
-    <div className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>个人信息</h2>
-        <p className={styles.sectionDescription}>
-          管理您的个人信息和账户设置
-        </p>
-      </div>
-
-      <form className={styles.form} onSubmit={handleSubmit}>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>邮箱</label>
-          <input
-            type="email"
-            className={styles.input}
-            value={settings.email}
-            onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-            placeholder="your@email.com"
-          />
-        </div>
-
-        <div className={styles.formGroup}>
-          <label className={styles.label}>全名</label>
-          <input
-            type="text"
-            className={styles.input}
-            value={settings.fullName}
-            onChange={(e) => setSettings({ ...settings, fullName: e.target.value })}
-            placeholder="您的姓名"
-          />
-        </div>
-
-        <div className={styles.formGroup}>
-          <label className={styles.label}>个人简介</label>
-          <textarea
-            className={styles.input}
-            value={settings.bio}
-            onChange={(e) => setSettings({ ...settings, bio: e.target.value })}
-            placeholder="简单介绍一下自己..."
-            rows={4}
-          />
-        </div>
-
-        <button type="submit" className={styles.button} disabled={saving}>
-          {saving ? '保存中...' : '保存更改'}
-        </button>
-
-        <div className={styles.dangerZone}>
-          <h3>危险区域</h3>
-          <button
-            type="button"
-            onClick={logout}
-            className={`${styles.button} ${styles.dangerButton}`}
-          >
-            <FiLogOut size={20} />
-            <span>退出登录</span>
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-
-  const renderNotificationSettings = () => (
-    <div className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>通知设置</h2>
-        <p className={styles.sectionDescription}>
-          自定义您想要接收的通知类型
-        </p>
-      </div>
-
-      <div className={styles.form}>
-        <label className={styles.switch}>
-          <input
-            type="checkbox"
-            className={styles.switchInput}
-            checked={settings.notifications.email}
-            onChange={() => handleNotificationChange('email')}
-          />
-          <span className={styles.switchSlider}></span>
-          <span className={styles.switchLabel}>电子邮件通知</span>
-        </label>
-
-        <label className={styles.switch}>
-          <input
-            type="checkbox"
-            className={styles.switchInput}
-            checked={settings.notifications.push}
-            onChange={() => handleNotificationChange('push')}
-          />
-          <span className={styles.switchSlider}></span>
-          <span className={styles.switchLabel}>推送通知</span>
-        </label>
-      </div>
-    </div>
-  );
-
-  const renderAISettings = () => (
-    <div className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>AI 设置</h2>
-        <p className={styles.sectionDescription}>
-          配置 AI 服务的基本设置，请妥善保管您的密钥
-        </p>
-      </div>
-
-      <div className={styles.form}>
-        {message && message.type === 'error' && (
-          <div className={styles.errorMessage}>
-            <FiAlertCircle className={styles.errorIcon} size={16} />
-            {message.text}
-          </div>
-        )}
-
-        <div className={styles.formGroup}>
-          <label htmlFor="apiKey" className={styles.label}>
-            API Key
-          </label>
-          <input
-            type="password"
-            id="apiKey"
-            value={tempAiSettings.apiKey}
-            onChange={(e) =>
-              setTempAiSettings(prev => ({
-                ...prev,
-                apiKey: e.target.value,
-              }))
-            }
-            className={styles.input}
-            placeholder="输入您的 API Key"
-          />
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="baseUrl" className={styles.label}>
-            Base URL
-          </label>
-          <input
-            type="text"
-            id="baseUrl"
-            value={tempAiSettings.baseUrl}
-            onChange={(e) =>
-              setTempAiSettings(prev => ({
-                ...prev,
-                baseUrl: e.target.value,
-              }))
-            }
-            className={styles.input}
-            placeholder="输入 API 的基础 URL"
-          />
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="standardModel" className={styles.label}>
-            标准模型
-          </label>
-          <input
-            type="text"
-            id="standardModel"
-            value={tempAiSettings.standardModel}
-            onChange={(e) =>
-              setTempAiSettings(prev => ({
-                ...prev,
-                standardModel: e.target.value,
-              }))
-            }
-            className={styles.input}
-            placeholder="输入标准模型名称"
-          />
-          <p className={styles.hint}>默认: gemini-1.5-flash</p>
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="advancedModel" className={styles.label}>
-            高级模型
-          </label>
-          <input
-            type="text"
-            id="advancedModel"
-            value={tempAiSettings.advancedModel}
-            onChange={(e) =>
-              setTempAiSettings(prev => ({
-                ...prev,
-                advancedModel: e.target.value,
-              }))
-            }
-            className={styles.input}
-            placeholder="输入高级模型名称"
-          />
-          <p className={styles.hint}>默认: deepseek-r1</p>
-        </div>
-
-        <div className={styles.buttonGroup}>
-          <button
-            type="button"
-            onClick={handleTestAI}
-            className={`${styles.button} ${styles.testButton}`}
-            disabled={aiTesting || saving}
-          >
-            {aiTesting ? '测试中...' : '测试连接'}
-          </button>
-
-          {aiTestPassed && (
-            <span className={styles.successBadge}>
-              ✓ 测试通过
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className={styles.container}>
-      {message && (
-        <div className={`${styles.message} ${styles[message.type]}`}>
-          {message.type === 'success' ? '✓' : '⚠'} {message.text}
-        </div>
-      )}
-      <div className={styles.header}>
-        <h1 className={styles.title}>设置</h1>
-        <p className={styles.subtitle}>
+    <div className="w-full h-[calc(100vh-80px)] p-4 md:p-8 overflow-hidden">
+      <div className="mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          设置
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 text-base">
           管理您的账户设置和偏好
         </p>
       </div>
 
-      <div className={styles.grid}>
-        <nav className={styles.nav}>
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(240px,25%)_1fr] gap-4 md:gap-8 h-[calc(100%-6rem)] overflow-hidden">
+        {/* 左侧导航 */}
+        <nav className="flex flex-col gap-2 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm h-full overflow-y-auto">
           <button
-            className={`${styles.navItem} ${
-              activeTab === 'profile' ? styles.navItemActive : ''
-            }`}
             onClick={() => setActiveTab('profile')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
+              activeTab === 'profile'
+                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+            }`}
           >
-            👤 个人资料
+            个人资料
           </button>
           <button
-            className={`${styles.navItem} ${
-              activeTab === 'notifications' ? styles.navItemActive : ''
-            }`}
             onClick={() => setActiveTab('notifications')}
-          >
-            🔔 通知设置
-          </button>
-          {settings.globalLLM === 'private' && <button
-            className={`${styles.navItem} ${
-              activeTab === 'ai' ? styles.navItemActive : ''
+            className={`flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
+              activeTab === 'notifications'
+                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
-            onClick={() => setActiveTab('ai')}
           >
-            🤖 AI 设置
-          </button>}
+            通知
+          </button>
+          <button
+            onClick={() => setActiveTab('ai')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
+              activeTab === 'ai'
+                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+            }`}
+          >
+            AI 设置
+          </button>
+          {settings.isAdmin && (
+            <>
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
+                  activeTab === 'admin'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+                }`}
+              >
+                系统设置
+              </button>
+            </>
+          )}
+          <div className="mt-auto">
+            <button
+              onClick={logout}
+              className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 w-full"
+            >
+              <LogOut size={16} />
+              退出登录
+            </button>
+          </div>
         </nav>
 
-        <div className={styles.section}>
-          {activeTab === 'profile' && renderProfileSettings()}
-          {activeTab === 'notifications' && renderNotificationSettings()}
-          {activeTab === 'ai' && renderAISettings()}
+        {/* 右侧内容 */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 h-full overflow-y-auto">
+          {message && (
+            <div className={`p-4 rounded-lg mb-6 flex items-center gap-3 ${
+              message.type === 'success'
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300'
+                : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+            }`}>
+              <AlertCircle size={20} />
+              {message.text}
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <>
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  个人资料
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  更新您的个人信息
+                </p>
+              </div>
+              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    邮箱
+                  </label>
+                  <input
+                    type="email"
+                    value={settings.email}
+                    onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    全名
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.fullName}
+                    onChange={(e) => setSettings({ ...settings, fullName: e.target.value })}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    简介
+                  </label>
+                  <textarea
+                    value={settings.bio}
+                    onChange={(e) => setSettings({ ...settings, bio: e.target.value })}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 min-h-[100px]"
+                    rows={4}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  {saving ? '保存中...' : '保存更改'}
+                </button>
+              </form>
+            </>
+          )}
+
+          {activeTab === 'notifications' && (
+            <>
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  通知设置
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  管理您的通知偏好
+                </p>
+              </div>
+              <div className="flex flex-col gap-4">
+                <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <span className="text-gray-700 dark:text-gray-300">邮件通知</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.notifications.email}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      notifications: { ...settings.notifications, email: e.target.checked }
+                    })}
+                    className="w-5 h-5 text-blue-600 bg-gray-100 dark:bg-gray-600 border-gray-300 dark:border-gray-500 rounded focus:ring-blue-500 dark:focus:ring-blue-400"
+                  />
+                </label>
+                <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <span className="text-gray-700 dark:text-gray-300">推送通知</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.notifications.push}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      notifications: { ...settings.notifications, push: e.target.checked }
+                    })}
+                    className="w-5 h-5 text-blue-600 bg-gray-100 dark:bg-gray-600 border-gray-300 dark:border-gray-500 rounded focus:ring-blue-500 dark:focus:ring-blue-400"
+                  />
+                </label>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'ai' && (
+            <>
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  AI 设置
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  配置您的私有 AI 服务
+                </p>
+              </div>
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={tempAiSettings.apiKey}
+                    onChange={(e) => setTempAiSettings({ ...tempAiSettings, apiKey: e.target.value })}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    placeholder="sk-..."
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    API Base URL
+                  </label>
+                  <input
+                    type="url"
+                    value={tempAiSettings.baseUrl}
+                    onChange={(e) => setTempAiSettings({ ...tempAiSettings, baseUrl: e.target.value })}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    placeholder="https://api.openai.com/v1"
+                  />
+                </div>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={handleTestAI}
+                    disabled={aiTesting || !tempAiSettings.apiKey || !tempAiSettings.baseUrl}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  >
+                    {aiTesting ? '测试中...' : '测试连接'}
+                  </button>
+                  {aiTestPassed && (
+                    <span className="text-green-600 dark:text-green-400 flex items-center">
+                      ✓ 测试通过
+                    </span>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'admin' && settings.isAdmin && (
+            <>
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  系统设置
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  管理系统全局配置
+                </p>
+              </div>
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    全局 LLM 提供商
+                  </label>
+                  <select
+                    value={settings.globalLLM}
+                    onChange={(e) => setSettings({ ...settings, globalLLM: e.target.value })}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                  >
+                    <option value="public">公共 AI</option>
+                    <option value="private">私有 AI</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    全局模式
+                  </label>
+                  <select
+                    value={settings.globalMODE}
+                    onChange={(e) => setSettings({ ...settings, globalMODE: e.target.value })}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                  >
+                    <option value="chat">聊天模式</option>
+                    <option value="assistant">助手模式</option>
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
