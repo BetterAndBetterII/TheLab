@@ -17,7 +17,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://nas.betterspace.top:8003',
+        target: 'http://10.20.30.15:8003',
         changeOrigin: true,
       },
     },

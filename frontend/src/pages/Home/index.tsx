@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Loading from '../../components/Loading';
 import FileList from '../../components/FileList';
-import { Github } from 'lucide-react';
+// import { Github } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 const Home: React.FC = () => {
@@ -83,7 +83,7 @@ const Home: React.FC = () => {
   return (
     <div className="p-3 sm:p-4 h-screen flex flex-col overflow-hidden">
       {/* 头部区域 */}
-      <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-gray-100 dark:border-gray-800">
+      <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:gap-4 pb-3 sm:pb-4">
         {/* 标题区域 */}
         <div className="flex flex-col gap-2">
           <h1 className="m-0 text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 dark:text-gray-100">
@@ -95,7 +95,7 @@ const Home: React.FC = () => {
         </div>
         
         {/* 通知区域 */}
-        {confettiShown && (
+        {/* {confettiShown && (
           <div className="w-full">
             <div className="p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-900/10 dark:to-sky-900/10 border-l-4 border-blue-500 dark:border-blue-400 rounded-lg text-blue-600 dark:text-blue-400 font-medium home-notice-animation">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
@@ -114,7 +114,7 @@ const Home: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* 主内容区域 */}

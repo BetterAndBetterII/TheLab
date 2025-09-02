@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,9 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Search,
-  Bookmark
+  Bookmark,
 } from 'lucide-react';
+import { SiGithub } from '@icons-pack/react-simple-icons';
 
 export default function Navbar(
   {
@@ -74,7 +75,16 @@ export default function Navbar(
 
   return (
     <>
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+      {document.location.pathname === '/' && <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <Link 
+          to="https://github.com/BetterAndBetterII/TheLab"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm font-medium no-underline transition-all duration-200 shadow-sm hover:bg-gray-800 hover:dark:bg-gray-700 hover:border-gray-800 hover:dark:border-gray-700 hover:text-white hover:shadow-md hover:-translate-y-0.5 min-w-[80px] touch-manipulation"
+        >
+          <SiGithub size={16} className="sm:w-[18px] sm:h-[18px]" />
+          <span>GitHub</span>
+        </Link>
         <ThemeToggle />
         <Button
           variant="ghost"
@@ -84,7 +94,7 @@ export default function Navbar(
         >
           <Menu size={24} />
         </Button>
-      </div>
+      </div>}
 
       <nav className={cn(
         "fixed top-0 left-0 h-full bg-background border-r border-border transition-all duration-300 z-40",

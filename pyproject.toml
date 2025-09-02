@@ -1,3 +1,43 @@
+[project]
+name = "thelab"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiosqlite==0.19.0",
+    "alembic==1.12.1",
+    "bcrypt==4.0.1",
+    "celery==5.3.6",
+    "click>=8.2.1",
+    "fastapi==0.104.1",
+    "flower==2.0.1",
+    "google-generativeai~=0.8.3",
+    "llama-index-core==0.12.22",
+    "llama-index-embeddings-siliconflow>=0.2.1",
+    "llama-index-llms-openai-like>=0.3.4",
+    "llama-index-llms-siliconflow>=0.3.0",
+    "llama-index-postprocessor-siliconflow-rerank>=0.2.0",
+    "llama-index-storage-docstore-postgres>=0.3.1",
+    "llama-index-vector-stores-postgres>=0.5.5",
+    "openai==1.65.2",
+    "passlib[bcrypt]==1.7.4",
+    "pdf2image~=1.17.0",
+    "pillow~=11.0.0",
+    "psycopg2-binary==2.9.9",
+    "pydantic[email]==2.8.0",
+    "pydantic-settings==2.1.0",
+    "pypdfium2==4.30.1",
+    "python-dotenv==1.0.1",
+    "python-jose[cryptography]==3.4.0",
+    "python-logging-loki==0.3.1",
+    "python-multipart==0.0.19",
+    "redis==5.0.1",
+    "sqlalchemy==2.0.23",
+    "uvicorn==0.24.0",
+]
+
+
 [tool.black]
 line-length = 120
 target-version = ['py311']
