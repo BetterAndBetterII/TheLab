@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from config import Settings, get_settings
 from database import Document, Folder, get_db
+from services.delete_service import delete_documents_by_ids
 from models.users import User
 from services.session import get_current_user
 
@@ -399,10 +400,37 @@ async def batch_delete_folders(
             raise HTTPException(status_code=404, detail="文件夹不存在")
         folder_ids.append(folder.id)
 
-    # 先删除文件夹下的所有文档
-    base_query_document.filter(Document.folder_id.in_(folder_ids)).delete(synchronize_session=False)
-    # 然后删除文件夹
-    base_query_folder.filter(Folder.id.in_(folder_ids)).delete(synchronize_session=False)
+    # 递归获取所有子文件夹ID（包含自身）
+    def get_all_subfolder_ids(parent_ids):
+        all_ids = set(parent_ids)
+        current_ids = list(parent_ids)
+        while current_ids:
+            subfolders = base_query_folder.filter(Folder.parent_id.in_(current_ids)).all()
+            current_ids = [f.id for f in subfolders if f.id not in all_ids]
+            all_ids.update(current_ids)
+        return list(all_ids)
+
+    all_folder_ids = get_all_subfolder_ids(folder_ids)
+
+    # 删除这些文件夹下的所有文档
+    documents_to_delete = base_query_document.filter(Document.folder_id.in_(all_folder_ids)).with_entities(Document.id).all()
+    document_ids = [doc.id for doc in documents_to_delete]
+    if document_ids:
+        delete_documents_by_ids(db, document_ids)
+
+    # 自底向上删除文件夹（先删叶子）
+    remaining_ids = set(all_folder_ids)
+    while remaining_ids:
+        # 找到当前集合中的叶子节点（没有子节点的）
+        leaf_ids = []
+        for fid in list(remaining_ids):
+            has_child = db.query(Folder).filter(Folder.parent_id == fid, Folder.id.in_(remaining_ids)).first()
+            if not has_child:
+                leaf_ids.append(fid)
+        if not leaf_ids:  # 防御性处理循环引用等异常情况
+            leaf_ids = list(remaining_ids)
+        base_query_folder.filter(Folder.id.in_(leaf_ids)).delete(synchronize_session=False)
+        remaining_ids -= set(leaf_ids)
     db.commit()
     return {"message": "文件夹已删除"}
 

@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   thelab:
-    build: .
-    # image: ghcr.io/betterandbetterii/the-lab:latest
+    # build: .
+    image: ghcr.io/betterandbetterii/the-lab:latest
     volumes:
       - ./tmp/persist:/app/tmp/persist
     ports:

@@ -15,18 +15,16 @@ from sqlalchemy.orm import Session
 
 from config import Settings, get_settings
 from database import (
-    Conversation,
     Document,
     DocumentReadRecord,
-    Folder,
     Note,
-    ProcessingRecord,
+    Folder,
     ProcessingStatus,
-    QuizHistory,
     get_db,
 )
 from models.users import User
 from pipeline.document_pipeline import DocumentPipeline, get_document_pipeline
+from services.delete_service import delete_documents_by_ids
 from services.session import get_current_user
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -637,26 +635,10 @@ async def delete_file(
         base_query = db.query(Document)
     else:
         base_query = db.query(Document).filter(Document.owner_id == current_user.id)
-    document = base_query.filter(Document.id == int(fileId)).first()
+    document = base_query.filter(Document.id == int(fileId)).with_entities(Document.id).first()
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
-    processing_record = db.query(ProcessingRecord).filter(ProcessingRecord.document_id == int(fileId)).first()
-    if processing_record:
-        db.delete(processing_record)
-
-    conversation = db.query(Conversation).filter(Conversation.documents.any(Document.id == int(fileId))).all()
-    for c in conversation:
-        db.delete(c)
-
-    note = db.query(Note).filter(Note.document_id == int(fileId)).all()
-    for n in note:
-        db.delete(n)
-
-    quiz_history = db.query(QuizHistory).filter(QuizHistory.document_id == int(fileId)).all()
-    for q in quiz_history:
-        db.delete(q)
-
-    db.delete(document)
+    delete_documents_by_ids(db, [int(fileId)])
     db.commit()
     return {"message": "文件已删除"}
 
@@ -811,26 +793,7 @@ async def batch_delete_files(
     if not file_ids:
         raise HTTPException(status_code=400, detail="没有要删除的文件")
 
-    # 先删除相关的处理记录
-    db.query(ProcessingRecord).filter(ProcessingRecord.document_id.in_(file_ids)).delete(synchronize_session=False)
-
-    # 删除阅读记录
-    db.query(DocumentReadRecord).filter(DocumentReadRecord.document_id.in_(file_ids)).delete(synchronize_session=False)
-
-    # 删除会话文档关联记录
-    conversations = db.query(Conversation).filter(Conversation.documents.any(Document.id.in_(file_ids))).all()
-    for conversation in conversations:
-        conversation.documents = [doc for doc in conversation.documents if doc.id not in file_ids]
-    db.commit()
-
-    # 删除笔记
-    db.query(Note).filter(Note.document_id.in_(file_ids)).delete(synchronize_session=False)
-
-    # 删除笔记
-    db.query(QuizHistory).filter(QuizHistory.document_id.in_(file_ids)).delete(synchronize_session=False)
-
-    # 然后删除文档
-    db.query(Document).filter(Document.id.in_(file_ids)).delete(synchronize_session=False)
+    delete_documents_by_ids(db, file_ids)
     db.commit()
     return {"message": "文件已批量删除"}
 
