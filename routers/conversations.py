@@ -394,8 +394,9 @@ async def chat_stream(
                 ],
             }
 
-            if chunk.choices[0].finish_reason:
-                finish_reason = chunk.choices[0].finish_reason
+            if chunk.choices and len(chunk.choices) > 0:
+                if chunk.choices[0].finish_reason:
+                    finish_reason = chunk.choices[0].finish_reason
 
             yield f"data: {json.dumps(response)}\n\n"
 
