@@ -364,17 +364,19 @@ async def chat_stream(
             chunk: ChatCompletionChunk
             # 更新最后一条AI消息的内容
             _c = ""
-            if chunk.choices[0].delta.content and chunk.choices[0].delta.content != "":
-                if is_reasoning:
-                    is_reasoning = False
-                    _c += "</think>"
-                _c += chunk.choices[0].delta.content
+            if chunk.choices and len(chunk.choices) > 0:
+                if chunk.choices[0].delta.content and chunk.choices[0].delta.content != "":
+                    if is_reasoning:
+                        is_reasoning = False
+                        _c += "</think>"
+                    _c += chunk.choices[0].delta.content
 
-            if getattr(chunk.choices[0].delta, "reasoning_content", None):
-                if not is_reasoning:
-                    is_reasoning = True
-                    _c += "<think>"
-                _c += chunk.choices[0].delta.reasoning_content
+            if chunk.choices and len(chunk.choices) > 0:
+                if getattr(chunk.choices[0].delta, "reasoning_content", None):
+                    if not is_reasoning:
+                        is_reasoning = True
+                        _c += "<think>"
+                    _c += chunk.choices[0].delta.reasoning_content
 
             cum_content += _c
             # 构造 OpenAI 格式的响应
@@ -762,10 +764,11 @@ async def generate_quiz_stream(
 
         content = ""
         async for chunk in await openai_client.chat_stream(messages):
-            if chunk.choices[0].delta.content and chunk.choices[0].delta.content != "":
-                _c = chunk.choices[0].delta.content
-                content += _c
-                yield f"data: {json.dumps({'content': _c})}\n\n"
+            if chunk.choices and len(chunk.choices) > 0:
+                if chunk.choices[0].delta.content and chunk.choices[0].delta.content != "":
+                    _c = chunk.choices[0].delta.content
+                    content += _c
+                    yield f"data: {json.dumps({'content': _c})}\n\n"
 
     except Exception as e:
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -954,9 +957,10 @@ async def get_mindmap(
         ]
         content = ""
         async for chunk in await openai_client.chat_stream(messages):
-            if chunk.choices[0].delta.content and chunk.choices[0].delta.content != "":
-                _c = chunk.choices[0].delta.content
-                content += _c
+            if chunk.choices and len(chunk.choices) > 0:
+                if chunk.choices[0].delta.content and chunk.choices[0].delta.content != "":
+                    _c = chunk.choices[0].delta.content
+                    content += _c
 
         mindmap_data = json.loads(content.replace("```json", "").replace("```", "").strip())
         logger.info(mindmap_data)
