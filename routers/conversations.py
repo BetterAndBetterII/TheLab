@@ -593,10 +593,11 @@ async def generate_flow_stream(
         ]
         content = ""
         async for chunk in await openai_client.chat_stream(messages):
-            if chunk.choices[0].delta.content and chunk.choices[0].delta.content != "":
-                _c = chunk.choices[0].delta.content
-                content += _c
-                yield f"data: {json.dumps({'content': _c})}\n\n"
+            if chunk.choices and len(chunk.choices) > 0:
+                if chunk.choices[0].delta.content and chunk.choices[0].delta.content != "":
+                    _c = chunk.choices[0].delta.content
+                    content += _c
+                    yield f"data: {json.dumps({'content': _c})}\n\n"
 
     except Exception as e:
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
