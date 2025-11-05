@@ -18,11 +18,11 @@ from routers import auth, conversations, documents, folders, search, settings
 
 # 配置根日志记录器
 root_logger = logging.getLogger()
-root_logger.setLevel(logging.DEBUG)
+root_logger.setLevel(logging.INFO)
 
 # 配置控制台处理器
 console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(logging.DEBUG)
+console_handler.setLevel(logging.INFO)
 console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(console_formatter)
 
@@ -43,7 +43,7 @@ if os.getenv("LOKI_URL", None):
         version="1",
         auth=None,
     )
-    loki_handler.setLevel(logging.DEBUG)
+    loki_handler.setLevel(logging.INFO)
     root_logger.addHandler(loki_handler)
 
 
