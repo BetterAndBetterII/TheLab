@@ -150,11 +150,6 @@ class KnowledgeBase:
         # 将用户提供的文本封装为一个Document对象
         doc = Document(text=text, id_=doc_id, metadata=metadata)
 
-        # 如果希望临时跳过索引/保存到知识库，可注释掉下一行 self.pipeline.arun(...) 或开启环境变量开关。
-        if self.disable_indexing:
-            logger.info("[upload_text] 索引已被禁用 (DISABLE_KB_INDEXING)，跳过保存知识库阶段")
-            return doc_id
-
         # 执行文档注入管道（索引与落库）
         await self.pipeline.arun(documents=[doc])
         return doc_id
@@ -182,11 +177,6 @@ class KnowledgeBase:
             excluded_embed_metadata_keys=["owner"],
             excluded_llm_metadata_keys=["owner"],
         )
-
-        # 如果希望临时跳过索引/保存到知识库，可注释掉下一行 self.pipeline.arun(...) 或开启环境变量开关。
-        if self.disable_indexing:
-            logger.info("[upload_document] 索引已被禁用 (DISABLE_KB_INDEXING)，跳过保存知识库阶段")
-            return doc_id
 
         # 执行文档注入管道（索引与落库）
         await self.pipeline.arun(documents=[doc])
