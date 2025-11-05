@@ -82,6 +82,7 @@ class Settings(BaseSettings):
     # 全局模式
     GLOBAL_MODE: Literal["public", "private"] = "public"
     GLOBAL_LLM: Literal["public", "private"] = "public"
+    DISABLE_KB_INDEXING: bool = False
 
     # Loki设置
     LOKI_URL: Optional[str] = None

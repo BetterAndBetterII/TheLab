@@ -415,6 +415,12 @@ class DocumentPipeline:
     async def stage_4(self, document: Document, db: Session) -> Document:
         """保存阶段：将处理后的内容保存到知识库."""
         logger.info(f"开始保存文档到知识库: {document.filename}")
+        # 临时关闭索引/保存到知识库阶段：
+        # 1) 可设置环境变量 DISABLE_KB_INDEXING=true
+        # 2) 或者直接注释掉下方调用 rag.upload_document(document)
+        if settings.DISABLE_KB_INDEXING:
+            logger.info("[stage_4] 索引/保存已被禁用 (DISABLE_KB_INDEXING)，跳过保存到知识库阶段")
+            return document
         if settings.GLOBAL_MODE == "public":
             namespace = "public"
         else:
