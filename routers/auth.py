@@ -22,6 +22,26 @@ from services.session import get_current_user, session_manager
 
 settings = get_settings()
 
+
+def ensure_registration_allowed(request: Request) -> None:
+    """根据配置和请求Host判断是否允许注册.
+
+    规则:
+    - INTERNAL_REGISTRATION_HOSTS 为空: 允许任何Host注册 (public注册)
+    - INTERNAL_REGISTRATION_HOSTS 非空: 仅当请求Host在白名单中时允许注册
+    """
+    # 为空 -> 无限制
+    if not settings.INTERNAL_REGISTRATION_HOSTS:
+        return
+
+    request_host = request.headers.get("host", "").split(":")[0].lower()
+    if request_host != settings.INTERNAL_REGISTRATION_HOSTS.strip():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只允许在内网注册账号，请使用内网注册域名访问",
+        )
+
+
 # 创建Redis客户端
 redis_client = Redis(
     host=settings.REDIS_HOST,
@@ -175,7 +195,11 @@ class OAuthCallbackRequest(BaseModel):
 async def get_available_providers():
     """获取可用的认证提供者."""
     providers = []
-    if settings.GITHUB_CLIENT_ID and settings.GITHUB_CLIENT_SECRET and settings.GITHUB_REDIRECT_URI:
+    if (
+        settings.GITHUB_CLIENT_ID
+        and settings.GITHUB_CLIENT_SECRET
+        and settings.GITHUB_REDIRECT_URI
+    ):
         providers.append(
             {
                 "name": "github",
@@ -184,7 +208,11 @@ async def get_available_providers():
                 "client_id": settings.GITHUB_CLIENT_ID,
             }
         )
-    if settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET and settings.GOOGLE_REDIRECT_URI:
+    if (
+        settings.GOOGLE_CLIENT_ID
+        and settings.GOOGLE_CLIENT_SECRET
+        and settings.GOOGLE_REDIRECT_URI
+    ):
         providers.append(
             {
                 "name": "google",
@@ -215,11 +243,20 @@ async def github_oauth_callback(
         user = db.query(User).filter(User.username == github_user["login"]).first()
 
         if not user:
+            # 未找到用户时，检查是否允许注册（包括内网域名白名单）
+            ensure_registration_allowed(request_obj)
+
             # 创建新用户
             user = User(
-                email=(github_user["email"] if github_user["email"] else f"{github_user['login']}@github-user.com"),
+                email=(
+                    github_user["email"]
+                    if github_user["email"]
+                    else f"{github_user['login']}@github-user.com"
+                ),
                 username=github_user["login"],
-                full_name=(github_user["name"] if github_user["name"] else github_user["login"]),
+                full_name=(
+                    github_user["name"] if github_user["name"] else github_user["login"]
+                ),
                 status=UserStatus.ACTIVE,  # GitHub用户直接激活
             )
             db.add(user)
@@ -228,7 +265,9 @@ async def github_oauth_callback(
 
         # 创建会话
         initial_data = {"registration_completed": True}
-        session_id = session_manager.create_session(db, user, initial_data, request=request_obj)
+        session_id = session_manager.create_session(
+            db, user, initial_data, request=request_obj
+        )
 
         # 重定向到首页
         return RedirectResponse(
@@ -251,10 +290,15 @@ async def github_oauth_callback(
 
 
 @router.post("/register/request-verification")
-async def request_verification(request: VerificationRequest, db: Session = Depends(get_db)):
+async def request_verification(
+    verification_request: VerificationRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(ensure_registration_allowed),
+):
     """请求发送验证码."""
     # 检查邮箱是否已被注册
-    if db.query(User).filter(User.email == request.email).first():
+    if db.query(User).filter(User.email == verification_request.email).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="该邮箱已被注册",
@@ -264,10 +308,10 @@ async def request_verification(request: VerificationRequest, db: Session = Depen
     code = auth_service.generate_verification_code()
 
     # 保存验证码
-    auth_service.save_verification_code(str(request.email), code)
+    auth_service.save_verification_code(str(verification_request.email), code)
 
     # 发送验证码邮件
-    if not email_service.send_verification_email(str(request.email), code):
+    if not email_service.send_verification_email(str(verification_request.email), code):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="验证码发送失败",
@@ -278,14 +322,17 @@ async def request_verification(request: VerificationRequest, db: Session = Depen
 
 @router.post("/register/verify", response_model=UserResponse)
 async def verify_and_register(
-    request: VerificationConfirmRequest,
+    verification_request: VerificationConfirmRequest,
     response: Response,
     request_obj: Request,
     db: Session = Depends(get_db),
+    _: None = Depends(ensure_registration_allowed),
 ):
     """验证验证码并完成注册."""
     # 验证验证码
-    if not auth_service.verify_code(str(request.email), request.code):
+    if not auth_service.verify_code(
+        str(verification_request.email), verification_request.code
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="验证码无效或已过期",
@@ -294,10 +341,10 @@ async def verify_and_register(
     # 注册用户
     user = auth_service.register_user(
         db,
-        str(request.email),
-        request.username,
-        request.password,
-        request.full_name,
+        str(verification_request.email),
+        verification_request.username,
+        verification_request.password,
+        verification_request.full_name,
     )
 
     # 激活用户
@@ -305,7 +352,9 @@ async def verify_and_register(
 
     # 创建会话
     initial_data = {"registration_completed": True}
-    session_id = session_manager.create_session(db, user, initial_data, request=request_obj)
+    session_id = session_manager.create_session(
+        db, user, initial_data, request=request_obj
+    )
     response.set_cookie(
         key=session_manager.cookie_name,
         value=session_id,
@@ -344,7 +393,9 @@ async def login(
 
     # 创建会话
     initial_data = {"last_login": datetime.now().isoformat()}
-    session_id = session_manager.create_session(db, user, initial_data, request=request_obj)
+    session_id = session_manager.create_session(
+        db, user, initial_data, request=request_obj
+    )
     response.set_cookie(
         key=session_manager.cookie_name,
         value=session_id,

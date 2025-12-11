@@ -84,6 +84,11 @@ class Settings(BaseSettings):
     GLOBAL_LLM: Literal["public", "private"] = "public"
     DISABLE_KB_INDEXING: bool = False
 
+    # 注册控制：内网域名白名单
+    # INTERNAL_REGISTRATION_HOSTS 为空 -> 允许任何 Host 访问注册接口（public 注册）
+    # 非空 -> 只有 Host 在该列表中的请求才允许注册
+    INTERNAL_REGISTRATION_HOSTS: str = ""
+
     # Loki设置
     LOKI_URL: Optional[str] = None
     LOKI_TAG: Optional[str] = None

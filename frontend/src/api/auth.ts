@@ -1,4 +1,4 @@
-import { BASE_URL, getAuthHeaders, handleRequest } from './config';
+import { BASE_URL, REGISTER_BASE_URL, getAuthHeaders, handleRequest } from './config';
 import type { LoginRequest, UserResponse, VerificationConfirmRequest, SessionInfo } from './types';
 
 export const authApi = {
@@ -11,16 +11,18 @@ export const authApi = {
 
   // 请求验证码
   requestVerification: async (email: string) => {
-    return handleRequest(`${BASE_URL}/auth/register/request-verification`, {
+    return handleRequest(`${REGISTER_BASE_URL}/auth/register/request-verification`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
+      timeoutMs: 8000,
+      timeoutMessage: '仅能在内网注册',
     });
   },
 
   // 验证并注册
   verifyAndRegister: async (data: VerificationConfirmRequest): Promise<UserResponse> => {
-    return handleRequest(`${BASE_URL}/auth/register/verify`, {
+    return handleRequest(`${REGISTER_BASE_URL}/auth/register/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
