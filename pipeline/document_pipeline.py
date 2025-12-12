@@ -309,6 +309,21 @@ class DocumentPipeline:
             document.mime_type = "application/pdf"
             document.content_type = "application/pdf"
             document.file_size = len(document.file_data)
+
+        # 规范化已处理文档的文件名和路径为 .pdf，避免下载时扩展名与内容不一致
+        original_filename = document.filename
+        name, ext = os.path.splitext(original_filename)
+        # 仅在原始扩展名不是 .pdf 且存在扩展名时才改名
+        if ext and ext.lower() != ".pdf":
+            new_filename = f"{name}.pdf"
+            document.filename = new_filename
+            if document.path:
+                # document.path 一般形如 "/folder/subfolder/filename.ext"
+                dir_path = os.path.dirname(document.path)
+                if not dir_path or dir_path == "/":
+                    document.path = f"/{new_filename}"
+                else:
+                    document.path = os.path.join(dir_path, new_filename)
         logger.debug(f"DocsIngester处理完成，共 {len(section.pages)} 页")
 
         # 更新文档状态

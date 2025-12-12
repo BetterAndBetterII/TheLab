@@ -516,15 +516,24 @@ async def download_folder(
     files: List[Document] = base_query_document.filter(Document.folder_id == int(folderId)).all()
 
     tmp_folder = tempfile.mkdtemp()
+    # 写入临时文件时，统一对 PDF 文档使用 .pdf 后缀，避免压缩包内扩展名与内容不一致
+    generated_files: List[tuple[str, str]] = []
     for file in files:
-        file_path = os.path.join(tmp_folder, file.filename)
+        filename = file.filename
+        mime_type = file.mime_type
+        if mime_type == "application/pdf":
+            name, ext = os.path.splitext(filename)
+            if ext.lower() != ".pdf":
+                filename = f"{name}.pdf"
+        file_path = os.path.join(tmp_folder, filename)
         with open(file_path, "wb") as f:
             f.write(file.file_data)
+        generated_files.append((filename, file_path))
     # 将文件夹和文件打包成zip
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, "w") as zip_file:
-        for file in files:
-            zip_file.write(f"{tmp_folder}/{file.filename}", file.filename)
+        for filename, file_path in generated_files:
+            zip_file.write(file_path, filename)
     zip_buffer.seek(0)
     # 删除临时文件夹
     shutil.rmtree(tmp_folder)

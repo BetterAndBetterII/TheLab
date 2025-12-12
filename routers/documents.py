@@ -547,11 +547,16 @@ async def download_file(
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
 
-    # 获取文件的 MIME 类型
+    # 获取文件的 MIME 类型，并统一对 PDF 文档使用 .pdf 后缀
     mime_type = document.mime_type or mimetypes.guess_type(document.filename)[0] or "application/octet-stream"
-
-    # 处理文件名编码
     filename = document.filename
+
+    # 如果文档内容是 PDF，但文件名后缀不是 .pdf，则规范为 .pdf
+    if mime_type == "application/pdf":
+        name, ext = os.path.splitext(filename)
+        if ext.lower() != ".pdf":
+            filename = f"{name}.pdf"
+
     # 使用 RFC 2231/5987 编码方式
     encoded_filename = urllib.parse.quote(filename)
 
