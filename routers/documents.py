@@ -5,11 +5,14 @@
 
 import mimetypes
 import os
+import zipfile
 import urllib.parse
 from datetime import datetime
-from typing import Dict, List, Optional
+from io import BytesIO
+from typing import Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -28,6 +31,34 @@ from services.delete_service import delete_documents_by_ids
 from services.session import get_current_user
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+DownloadFormat = Literal["original", "md", "md_cn", "md_en"]
+
+
+def _build_content_disposition(filename: str) -> str:
+    encoded_filename = urllib.parse.quote(filename)
+    return (
+        f"attachment; "
+        f'filename="{encoded_filename}"; '
+        f"filename*=UTF-8''{encoded_filename}"
+    )
+
+
+def _pages_to_markdown(title: str, pages: Dict[str, str]) -> str:
+    lines: List[str] = [f"# {title}", ""]
+    if not pages:
+        return "\n".join(lines).strip() + "\n"
+
+    def sort_key(k: str):
+        return int(k) if str(k).isdigit() else k
+
+    for k in sorted(pages.keys(), key=sort_key):
+        raw = pages.get(k) or ""
+        lines.append(f"## Page {int(k) + 1 if str(k).isdigit() else k}")
+        lines.append("")
+        lines.append(str(raw).rstrip())
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
 
 
 class FileResponse(BaseModel):
@@ -521,6 +552,7 @@ async def get_file_details(
 @router.get("/{fileId}/download")
 async def download_file(
     fileId: str,
+    format: DownloadFormat = Query("original"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
@@ -547,6 +579,62 @@ async def download_file(
     if not document:
         raise HTTPException(status_code=404, detail="文档未找到")
 
+    if format != "original" and document.processing_status != ProcessingStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="文档尚未处理完成，无法导出Markdown")
+
+    if format in {"md", "md_cn", "md_en"}:
+        base_name = os.path.splitext(document.filename)[0]
+        title = base_name or document.filename
+        en_pages = document.content_pages or {}
+        cn_pages = document.translation_pages or {}
+
+        if format == "md_en":
+            md_text = _pages_to_markdown(title, en_pages)
+            md_bytes = md_text.encode("utf-8")
+            md_filename = f"{base_name}.en.md" if base_name else "document.en.md"
+            return Response(
+                content=md_bytes,
+                media_type="text/markdown; charset=utf-8",
+                headers={
+                    "Content-Disposition": _build_content_disposition(md_filename),
+                    "Content-Length": str(len(md_bytes)),
+                    "Access-Control-Expose-Headers": "Content-Disposition",
+                },
+            )
+
+        if format == "md_cn":
+            md_text = _pages_to_markdown(title, cn_pages)
+            md_bytes = md_text.encode("utf-8")
+            md_filename = f"{base_name}.cn.md" if base_name else "document.cn.md"
+            return Response(
+                content=md_bytes,
+                media_type="text/markdown; charset=utf-8",
+                headers={
+                    "Content-Disposition": _build_content_disposition(md_filename),
+                    "Content-Length": str(len(md_bytes)),
+                    "Access-Control-Expose-Headers": "Content-Disposition",
+                },
+            )
+
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+            en_md_filename = f"{base_name}.en.md" if base_name else "document.en.md"
+            cn_md_filename = f"{base_name}.cn.md" if base_name else "document.cn.md"
+            zip_file.writestr(en_md_filename, _pages_to_markdown(title, en_pages))
+            zip_file.writestr(cn_md_filename, _pages_to_markdown(title, cn_pages))
+        zip_buffer.seek(0)
+
+        zip_filename = f"{base_name}.markdown.zip" if base_name else "document.markdown.zip"
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": _build_content_disposition(zip_filename),
+                "Content-Length": str(zip_buffer.getbuffer().nbytes),
+                "Access-Control-Expose-Headers": "Content-Disposition",
+            },
+        )
+
     # 获取文件的 MIME 类型，并统一对 PDF 文档使用 .pdf 后缀
     mime_type = document.mime_type or mimetypes.guess_type(document.filename)[0] or "application/octet-stream"
     filename = document.filename
@@ -557,15 +645,7 @@ async def download_file(
         if ext.lower() != ".pdf":
             filename = f"{name}.pdf"
 
-    # 使用 RFC 2231/5987 编码方式
-    encoded_filename = urllib.parse.quote(filename)
-
-    # 设置多种格式的文件名，以确保最大兼容性
-    content_disposition = (
-        f"attachment; "
-        f'filename="{encoded_filename}"; '  # 普通格式
-        f"filename*=UTF-8''{encoded_filename}"  # RFC 5987 格式
-    )
+    content_disposition = _build_content_disposition(filename)
 
     # 创建响应
     response = Response(

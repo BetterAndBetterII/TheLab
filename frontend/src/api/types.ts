@@ -230,6 +230,9 @@ export interface FileApi {
   createFolder: (name: string, parentId?: string | null) => Promise<FileItem>;
   uploadFile: (file: File, folderId?: string | null) => Promise<FileItem>;
   downloadFile: (fileId: string) => Promise<void>;
+  downloadFileWithFormat: (fileId: string, format: 'original' | 'md' | 'md_cn' | 'md_en') => Promise<void>;
+  downloadFolder: (folderId: string) => Promise<void>;
+  downloadFolderWithFormat: (folderId: string, format: 'original' | 'md' | 'md_cn' | 'md_en') => Promise<void>;
   renameFile: (fileId: string, data: { newName: string }) => Promise<FileItem>;
   moveFile: (fileId: string, targetFolderId: string | null) => Promise<FileItem>;
   deleteFile: (fileId: string) => Promise<void>;

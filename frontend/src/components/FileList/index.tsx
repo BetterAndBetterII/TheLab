@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Loading from '../Loading';
-import { fileApi, type FileItem, type FolderTree } from '../../api';
+import { fileApi, type DownloadFormat, type FileItem, type FolderTree } from '../../api';
 import DragZone from './DragZone';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { List, Grid } from 'lucide-react';
@@ -84,6 +84,7 @@ const FileList: React.FC<FileListProps> = ({
   const [newFolderName, setNewFolderName] = useState('');
   const fileListRef = useRef<HTMLDivElement>(null);
   const [folderTree, setFolderTree] = useState<FolderTree[]>([]);
+  const [downloadMenu, setDownloadMenu] = useState<null | { x: number; y: number; file: FileItem }>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { addToast } = useToast();
@@ -361,9 +362,51 @@ const FileList: React.FC<FileListProps> = ({
     } catch (error) {
       console.error('Error downloading file:', error);
       addToast({ title: '错误', description: `下载失败：${getErrorMessage(error)}`, type: 'destructive' });
+      return;
     }
     addToast({ title: '成功', description: '下载成功', type: 'default' });
   };
+
+  const handleDownloadWithFormat = async (file: FileItem, format: DownloadFormat) => {
+    const label =
+      format === 'original'
+        ? '原文件'
+        : format === 'md'
+          ? 'Markdown(中英)'
+          : format === 'md_cn'
+            ? 'Markdown(中文)'
+            : 'Markdown(英文)';
+
+    addToast({ title: '提示', description: `${label}正在下载中...`, type: 'default' });
+    try {
+      if (file.isFolder) {
+        await fileApi.downloadFolderWithFormat(file.id, format);
+      } else {
+        await fileApi.downloadFileWithFormat(file.id, format);
+      }
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      addToast({ title: '错误', description: `下载失败：${getErrorMessage(error)}`, type: 'destructive' });
+      return;
+    }
+    addToast({ title: '成功', description: '下载已开始', type: 'default' });
+  };
+
+  useEffect(() => {
+    if (!downloadMenu) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDownloadMenu(null);
+    };
+    const onScroll = () => setDownloadMenu(null);
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [downloadMenu]);
 
   const handleSort = (key: 'name' | 'date') => {
     if (sortBy === key) {
@@ -579,6 +622,14 @@ const FileList: React.FC<FileListProps> = ({
         onClick={(e) => {
           e.stopPropagation();
           handleFileSelect(file, e);
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!isSelected) {
+            setSelectedFiles(new Set([getItemKey({ id: file.id, type: file.isFolder ? 'folder' : 'file' })]));
+          }
+          setDownloadMenu({ x: e.clientX, y: e.clientY, file });
         }}
         onDoubleClick={() => handleFileDoubleClick(file)}
       >
@@ -811,6 +862,14 @@ const FileList: React.FC<FileListProps> = ({
                     e.stopPropagation();
                     handleFileSelect(file, e);
                   }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isSelected) {
+                      setSelectedFiles(new Set([getItemKey({ id: file.id, type: file.isFolder ? 'folder' : 'file' })]));
+                    }
+                    setDownloadMenu({ x: e.clientX, y: e.clientY, file });
+                  }}
                   onDoubleClick={() => handleFileDoubleClick(file)}
                 >
                   <div className="text-xl sm:text-2xl mr-3 sm:mr-4 w-6 text-center flex items-center justify-center">
@@ -900,10 +959,69 @@ const FileList: React.FC<FileListProps> = ({
         )}
       </div>
 
-      {/* 对话框 - 移动端优化 */}
-      {showNewFolderDialog && (
-        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-700 p-4 sm:p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+      {downloadMenu && (
+        <div
+          className="fixed inset-0 z-50"
+          onClick={() => setDownloadMenu(null)}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <div
+            className="fixed min-w-[220px] rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1 text-sm text-gray-900 dark:text-gray-100"
+            style={{
+              left: Math.max(8, Math.min(downloadMenu.x, window.innerWidth - 240)),
+              top: Math.max(8, Math.min(downloadMenu.y, window.innerHeight - 200)),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => {
+                const { file } = downloadMenu;
+                setDownloadMenu(null);
+                handleDownload(file.id, file.isFolder);
+              }}
+            >
+              下载（原文件）
+            </button>
+            <div className="my-1 h-px bg-gray-200 dark:bg-gray-700" />
+            <button
+              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => {
+                const { file } = downloadMenu;
+                setDownloadMenu(null);
+                handleDownloadWithFormat(file, 'md');
+              }}
+            >
+              只下载 Markdown（中英）
+            </button>
+            <button
+              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => {
+                const { file } = downloadMenu;
+                setDownloadMenu(null);
+                handleDownloadWithFormat(file, 'md_cn');
+              }}
+            >
+              只下载 Markdown（中文）
+            </button>
+            <button
+              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => {
+                const { file } = downloadMenu;
+                setDownloadMenu(null);
+                handleDownloadWithFormat(file, 'md_en');
+              }}
+            >
+              只下载 Markdown（英文）
+            </button>
+          </div>
+        </div>
+      )}
+
+	      {/* 对话框 - 移动端优化 */}
+	      {showNewFolderDialog && (
+	        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+	          <div className="bg-white dark:bg-gray-700 p-4 sm:p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="m-0 mb-4 text-lg text-gray-900 dark:text-gray-100">新建文件夹</h3>
             <input
               type="text"

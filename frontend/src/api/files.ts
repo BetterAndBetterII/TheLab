@@ -1,6 +1,43 @@
 import { BASE_URL, getAuthHeaders, handleRequest } from './config';
 import type { FileItem, FolderTree, MoveFileRequest, RenameFileRequest } from './types';
 
+export type DownloadFormat = 'original' | 'md' | 'md_cn' | 'md_en';
+
+async function downloadViaFetch(url: string) {
+  const response = await fetch(url, { headers: getAuthHeaders() });
+  if (!response.ok) {
+    throw new Error('下载失败');
+  }
+
+  const blob = await response.blob();
+
+  const contentDisposition = response.headers.get('Content-Disposition');
+  let filename = '';
+
+  if (contentDisposition) {
+    const matches = /filename\*=UTF-8''(.+)/i.exec(contentDisposition);
+    if (matches && matches[1]) {
+      filename = decodeURIComponent(matches[1]);
+    } else {
+      const filenameMatch = /filename="(.+?)"/i.exec(contentDisposition);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1];
+      }
+    }
+  }
+
+  if (!filename) filename = 'downloaded_file';
+
+  const objectUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(objectUrl);
+  document.body.removeChild(a);
+}
+
 export const fileApi = {
   // 获取文件列表
   getFiles: async (folderId: string | null = null): Promise<FileItem[]> => {
@@ -72,51 +109,17 @@ export const fileApi = {
   // 下载文件
   downloadFile: async (fileId: string) => {
     try {
-      const response = await fetch(`${BASE_URL}/documents/${fileId}/download`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error('下载失败');
-      }
-
-      const blob = await response.blob();
-
-      // 从 Content-Disposition 头中获取文件名
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = '';
-
-      if (contentDisposition) {
-        // 尝试获取 filename* 参数（RFC 5987）
-        const matches = /filename\*=UTF-8''(.+)/i.exec(contentDisposition);
-        if (matches && matches[1]) {
-          filename = decodeURIComponent(matches[1]);
-        } else {
-          // 回退到普通 filename 参数
-          const filenameMatch = /filename="(.+?)"/i.exec(contentDisposition);
-          if (filenameMatch && filenameMatch[1]) {
-            filename = filenameMatch[1];
-          }
-        }
-      }
-
-      // 如果没有获取到文件名，使用默认文件名
-      if (!filename) {
-        filename = 'downloaded_file';
-      }
-
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;  // 使用从服务器获取的文件名
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      await downloadViaFetch(`${BASE_URL}/documents/${fileId}/download`);
     } catch (error) {
       console.error('下载文件失败:', error);
       throw error;
     }
+  },
+
+  // 下载文件（导出格式：原文件/Markdown）
+  downloadFileWithFormat: async (fileId: string, format: DownloadFormat) => {
+    const qs = format === 'original' ? '' : `?format=${encodeURIComponent(format)}`;
+    return downloadViaFetch(`${BASE_URL}/documents/${fileId}/download${qs}`);
   },
 
   // 下载文件夹
@@ -127,6 +130,12 @@ export const fileApi = {
       console.error('下载文件失败:', error);
       throw error;
     }
+  },
+
+  // 下载文件夹（导出格式：原文件/Markdown）
+  downloadFolderWithFormat: async (folderId: string, format: DownloadFormat) => {
+    const qs = format === 'original' ? '' : `?format=${encodeURIComponent(format)}`;
+    window.open(`${BASE_URL}/folders/${folderId}/download${qs}`, '_blank');
   },
 
   // 重试处理文件

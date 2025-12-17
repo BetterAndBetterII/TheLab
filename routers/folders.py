@@ -7,22 +7,55 @@ import os
 import shutil
 import tempfile
 import zipfile
+import urllib.parse
 from datetime import datetime
 from io import BytesIO
-from typing import List, Optional
+from typing import Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from config import Settings, get_settings
-from database import Document, Folder, get_db
+from database import Document, Folder, ProcessingStatus, get_db
 from services.delete_service import delete_documents_by_ids
 from models.users import User
 from services.session import get_current_user
 
 router = APIRouter(prefix="/folders", tags=["folders"])
+
+DownloadFormat = Literal["original", "md", "md_cn", "md_en"]
+
+
+def _build_content_disposition(filename: str) -> str:
+    encoded_filename = urllib.parse.quote(filename)
+    return (
+        f"attachment; "
+        f'filename="{encoded_filename}"; '
+        f"filename*=UTF-8''{encoded_filename}"
+    )
+
+
+def _pages_to_markdown(title: str, pages: Dict[str, str]) -> str:
+    lines: List[str] = [f"# {title}", ""]
+    if not pages:
+        return "\n".join(lines).strip() + "\n"
+
+    def sort_key(k: str):
+        return int(k) if str(k).isdigit() else k
+
+    for k in sorted(pages.keys(), key=sort_key):
+        raw = pages.get(k) or ""
+        lines.append(f"## Page {int(k) + 1 if str(k).isdigit() else k}")
+        lines.append("")
+        lines.append(str(raw).rstrip())
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _not_ready_markdown(title: str, status: str) -> str:
+    return f"# {title}\n\n> 文档尚未处理完成，无法导出Markdown。\n\n当前状态：`{status}`\n"
 
 
 class FileResponse(BaseModel):
@@ -485,6 +518,7 @@ async def get_folder(
 @router.get("/{folderId}/download")
 async def download_folder(
     folderId: str,
+    format: DownloadFormat = Query("original"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
@@ -512,6 +546,60 @@ async def download_folder(
     folder = base_query_folder.filter(Folder.id == int(folderId)).first()
     if not folder:
         raise HTTPException(status_code=404, detail="文件夹不存在")
+
+    if format != "original":
+        files = (
+            base_query_document.filter(Document.folder_id == int(folderId))
+            .with_entities(
+                Document.id,
+                Document.filename,
+                Document.content_pages,
+                Document.translation_pages,
+                Document.processing_status,
+            )
+            .all()
+        )
+
+        zip_buffer = BytesIO()
+        used_names: set[str] = set()
+        with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+            for doc_id, filename, content_pages, translation_pages, processing_status in files:
+                base_name = os.path.splitext(filename or f"document_{doc_id}")[0] or f"document_{doc_id}"
+                safe_base = base_name
+                if safe_base in used_names:
+                    safe_base = f"{safe_base}_{doc_id}"
+                used_names.add(safe_base)
+
+                title = base_name
+                is_ready = processing_status == ProcessingStatus.COMPLETED
+                en_pages = content_pages or {}
+                cn_pages = translation_pages or {}
+
+                if format in {"md", "md_en"}:
+                    md_name = f"{safe_base}.en.md"
+                    zip_file.writestr(
+                        md_name,
+                        _pages_to_markdown(title, en_pages) if is_ready else _not_ready_markdown(title, str(processing_status)),
+                    )
+                if format in {"md", "md_cn"}:
+                    md_name = f"{safe_base}.cn.md"
+                    zip_file.writestr(
+                        md_name,
+                        _pages_to_markdown(title, cn_pages) if is_ready else _not_ready_markdown(title, str(processing_status)),
+                    )
+
+        zip_buffer.seek(0)
+        zip_filename = f"{folder.name}.markdown.zip"
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": _build_content_disposition(zip_filename),
+                "Content-Length": str(zip_buffer.getbuffer().nbytes),
+                "Access-Control-Expose-Headers": "Content-Disposition",
+            },
+        )
+
     # 获取文件夹下的所有文件
     files: List[Document] = base_query_document.filter(Document.folder_id == int(folderId)).all()
 
